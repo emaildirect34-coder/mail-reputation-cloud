@@ -12,6 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
+import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
+import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
+import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardReputationRouteImport } from './routes/dashboard.reputation'
+import { Route as DashboardServersRouteImport } from './routes/dashboard.servers'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
+import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +38,153 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardIpsRoute = DashboardIpsRouteImport.update({
+  id: '/ips',
+  path: '/ips',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardLogsRoute = DashboardLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardReputationRoute = DashboardReputationRouteImport.update({
+  id: '/reputation',
+  path: '/reputation',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardServersRoute = DashboardServersRouteImport.update({
+  id: '/servers',
+  path: '/servers',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardValidationRoute = DashboardValidationRouteImport.update({
+  id: '/validation',
+  path: '/validation',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/ips': typeof DashboardIpsRoute
+  '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/reputation': typeof DashboardReputationRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/ips': typeof DashboardIpsRoute
+  '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/reputation': typeof DashboardReputationRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/ips': typeof DashboardIpsRoute
+  '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/reputation': typeof DashboardReputationRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/dashboard/api-keys'
+    | '/dashboard/domains'
+    | '/dashboard/ips'
+    | '/dashboard/logs'
+    | '/dashboard/reputation'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/validation'
+    | '/dashboard/webhooks'
+    | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard'
-  id: '__root__' | '/' | '/auth' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard/api-keys'
+    | '/dashboard/domains'
+    | '/dashboard/ips'
+    | '/dashboard/logs'
+    | '/dashboard/reputation'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/validation'
+    | '/dashboard/webhooks'
+    | '/dashboard'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/dashboard/api-keys'
+    | '/dashboard/domains'
+    | '/dashboard/ips'
+    | '/dashboard/logs'
+    | '/dashboard/reputation'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/validation'
+    | '/dashboard/webhooks'
+    | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +210,113 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/api-keys': {
+      id: '/dashboard/api-keys'
+      path: '/api-keys'
+      fullPath: '/dashboard/api-keys'
+      preLoaderRoute: typeof DashboardApiKeysRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/domains': {
+      id: '/dashboard/domains'
+      path: '/domains'
+      fullPath: '/dashboard/domains'
+      preLoaderRoute: typeof DashboardDomainsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/ips': {
+      id: '/dashboard/ips'
+      path: '/ips'
+      fullPath: '/dashboard/ips'
+      preLoaderRoute: typeof DashboardIpsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/logs': {
+      id: '/dashboard/logs'
+      path: '/logs'
+      fullPath: '/dashboard/logs'
+      preLoaderRoute: typeof DashboardLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reputation': {
+      id: '/dashboard/reputation'
+      path: '/reputation'
+      fullPath: '/dashboard/reputation'
+      preLoaderRoute: typeof DashboardReputationRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/servers': {
+      id: '/dashboard/servers'
+      path: '/servers'
+      fullPath: '/dashboard/servers'
+      preLoaderRoute: typeof DashboardServersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/validation': {
+      id: '/dashboard/validation'
+      path: '/validation'
+      fullPath: '/dashboard/validation'
+      preLoaderRoute: typeof DashboardValidationRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/webhooks': {
+      id: '/dashboard/webhooks'
+      path: '/webhooks'
+      fullPath: '/dashboard/webhooks'
+      preLoaderRoute: typeof DashboardWebhooksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
+
+interface DashboardRouteChildren {
+  DashboardApiKeysRoute: typeof DashboardApiKeysRoute
+  DashboardDomainsRoute: typeof DashboardDomainsRoute
+  DashboardIpsRoute: typeof DashboardIpsRoute
+  DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardReputationRoute: typeof DashboardReputationRoute
+  DashboardServersRoute: typeof DashboardServersRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardValidationRoute: typeof DashboardValidationRoute
+  DashboardWebhooksRoute: typeof DashboardWebhooksRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardApiKeysRoute: DashboardApiKeysRoute,
+  DashboardDomainsRoute: DashboardDomainsRoute,
+  DashboardIpsRoute: DashboardIpsRoute,
+  DashboardLogsRoute: DashboardLogsRoute,
+  DashboardReputationRoute: DashboardReputationRoute,
+  DashboardServersRoute: DashboardServersRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardValidationRoute: DashboardValidationRoute,
+  DashboardWebhooksRoute: DashboardWebhooksRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
