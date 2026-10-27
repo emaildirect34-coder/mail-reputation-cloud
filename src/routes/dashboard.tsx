@@ -1,55 +1,41 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Send, Globe, Server, ShieldAlert, MailCheck, Webhook, KeyRound, BarChart3, Settings, LogOut,
+  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Tableau de bord — Email Direct" },
-      { name: "description", content: "Vue d'ensemble de vos envois, domaines et IPs." },
+      { name: "description", content: "Gérez vos serveurs, domaines, IPs et votre réputation d'envoi." },
       { property: "og:title", content: "Tableau de bord — Email Direct" },
       { property: "og:description", content: "Suivez vos envois et votre réputation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: Dashboard,
+  component: DashboardLayout,
 });
 
 const nav = [
-  { icon: LayoutDashboard, label: "Vue d'ensemble", active: true },
-  { icon: Send, label: "Envoi" },
-  { icon: BarChart3, label: "Analytics" },
-  { icon: Globe, label: "Domaines" },
-  { icon: Server, label: "IPs dédiées" },
-  { icon: ShieldAlert, label: "Réputation" },
-  { icon: MailCheck, label: "Validation" },
-  { icon: Webhook, label: "Webhooks" },
-  { icon: KeyRound, label: "Clés API" },
-  { icon: Settings, label: "Paramètres" },
-];
+  { to: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble", exact: true },
+  { to: "/dashboard/servers", icon: Server, label: "Serveurs" },
+  { to: "/dashboard/domains", icon: Globe, label: "Domaines" },
+  { to: "/dashboard/ips", icon: Network, label: "IPs & Warmup" },
+  { to: "/dashboard/reputation", icon: ShieldAlert, label: "Réputation" },
+  { to: "/dashboard/validation", icon: MailCheck, label: "Validation" },
+  { to: "/dashboard/logs", icon: ScrollText, label: "Logs" },
+  { to: "/dashboard/webhooks", icon: Webhook, label: "Webhooks" },
+  { to: "/dashboard/api-keys", icon: KeyRound, label: "Clés API" },
+  { to: "/dashboard/settings", icon: Settings, label: "Paramètres" },
+] as const;
 
-const stats = [
-  { label: "Envoyés", value: "0", sub: "30 derniers jours" },
-  { label: "Délivrés", value: "—", sub: "taux de délivrabilité" },
-  { label: "Rebonds", value: "—", sub: "hard + soft" },
-  { label: "Plaintes", value: "—", sub: "spam reports" },
-];
-
-const steps = [
-  { t: "Ajouter un domaine d'envoi", d: "Configurez SPF, DKIM et DMARC." },
-  { t: "Choisir vos IPs", d: "Partagée ou dédiée, selon votre volume." },
-  { t: "Créer une clé API", d: "Pour envoyer via REST ou SMTP." },
-  { t: "Envoyer votre premier email", d: "Testez depuis le tableau de bord." },
-];
-
-function Dashboard() {
+function DashboardLayout() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [name, setName] = useState<string>("");
@@ -71,18 +57,19 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 flex-col bg-sidebar p-4 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col bg-sidebar p-4 md:flex">
         <div className="px-2 py-2"><Logo inverted /></div>
         <nav className="mt-8 flex-1 space-y-1">
           {nav.map((n) => (
-            <button
-              key={n.label}
-              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm ${
-                n.active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/60"
-              }`}
+            <Link
+              key={n.to}
+              to={n.to}
+              activeOptions={{ exact: "exact" in n }}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/60"
+              activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
             >
               <n.icon className="h-4 w-4" /> {n.label}
-            </button>
+            </Link>
           ))}
         </nav>
         <button
@@ -93,60 +80,32 @@ function Dashboard() {
         </button>
       </aside>
 
-      <main className="flex-1">
-        <header className="flex items-center justify-between border-b bg-card px-8 py-4">
-          <div>
+      <main className="min-w-0 flex-1">
+        <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-4 md:px-8">
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground">Bonjour,</p>
-            <h1 className="text-xl font-semibold">{name}</h1>
+            <h1 className="truncate text-lg font-semibold">{name}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">Plan gratuit</span>
+            <span className="hidden rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground sm:inline">Plan gratuit</span>
             <Button size="sm">Mettre à niveau</Button>
           </div>
         </header>
-
-        <div className="space-y-8 p-8">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-lg border bg-card p-5">
-                <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="mt-2 font-display text-3xl font-bold">{s.value}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{s.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-lg border bg-card p-6 lg:col-span-2">
-              <h2 className="font-semibold">Démarrage rapide</h2>
-              <ol className="mt-4 divide-y">
-                {steps.map((s, i) => (
-                  <li key={s.t} className="flex items-center gap-4 py-4">
-                    <span className="grid h-8 w-8 place-items-center rounded-full border font-display text-sm">{i + 1}</span>
-                    <div className="flex-1">
-                      <p className="font-medium">{s.t}</p>
-                      <p className="text-sm text-muted-foreground">{s.d}</p>
-                    </div>
-                    <Button variant="outline" size="sm">Commencer</Button>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div className="space-y-6">
-              <div className="rounded-lg border bg-card p-6">
-                <h2 className="font-semibold">Réputation</h2>
-                <p className="mt-2 text-sm text-muted-foreground">Aucune IP ni domaine surveillé pour l'instant.</p>
-                <div className="mt-4 flex items-center gap-2 text-sm">
-                  <span className="h-2 w-2 rounded-full bg-success" /> Aucune alerte
-                </div>
-              </div>
-              <div className="rounded-lg border bg-card p-6">
-                <h2 className="font-semibold">Validation d'emails</h2>
-                <p className="mt-2 text-sm text-muted-foreground">0 / 100 validations gratuites utilisées.</p>
-                <div className="mt-3 h-2 rounded-full bg-muted"><div className="h-2 w-0 rounded-full bg-primary" /></div>
-              </div>
-            </div>
-          </div>
+        <nav className="flex gap-1 overflow-x-auto border-b bg-card px-2 py-2 md:hidden">
+          {nav.map((n) => (
+            <Link
+              key={n.to}
+              to={n.to}
+              activeOptions={{ exact: "exact" in n }}
+              className="flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-xs text-muted-foreground"
+              activeProps={{ className: "bg-accent text-accent-foreground" }}
+            >
+              <n.icon className="h-3.5 w-3.5" /> {n.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="space-y-6 p-4 md:p-8">
+          <Outlet />
         </div>
       </main>
     </div>
