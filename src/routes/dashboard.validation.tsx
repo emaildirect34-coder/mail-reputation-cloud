@@ -15,7 +15,7 @@ const roles = ["admin", "info", "contact", "support", "noreply"];
 
 function check(email: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { tone: "bad" as const, label: "Syntaxe invalide" };
-  const [u, d] = email.toLowerCase().split("@");
+  const [u = "", d = ""] = email.toLowerCase().split("@");
   if (disposable.includes(d)) return { tone: "bad" as const, label: "Jetable" };
   if (roles.includes(u)) return { tone: "warn" as const, label: "Adresse générique" };
   return { tone: "ok" as const, label: "Valide (démo)" };

@@ -25,7 +25,7 @@ const records = [
 ];
 
 function Domains() {
-  const [sel, setSel] = useState(domains[0].name);
+  const [sel, setSel] = useState("mail.monsite.fr");
   return (
     <>
       <PageHeader title="Domaines d'envoi" desc="Authentification SPF, DKIM, DMARC et rDNS." action={<Button><Plus className="h-4 w-4" /> Ajouter un domaine</Button>} />

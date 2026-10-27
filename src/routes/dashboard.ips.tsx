@@ -15,7 +15,7 @@ const ips = [
 const curve = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 40000, 70000, 100000];
 
 function Ips() {
-  const max = curve[curve.length - 1];
+  const max = 100000;
   return (
     <>
       <PageHeader title="IPs & Warmup" desc="Pools d'envoi et chauffe progressive de vos IPs." />
