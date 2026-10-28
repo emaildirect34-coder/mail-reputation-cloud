@@ -14,13 +14,17 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
+import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardQueuesRouteImport } from './routes/dashboard.queues'
 import { Route as DashboardReputationRouteImport } from './routes/dashboard.reputation'
 import { Route as DashboardServersRouteImport } from './routes/dashboard.servers'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardSuppressionRouteImport } from './routes/dashboard.suppression'
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
+import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
 
 const IndexRoute = IndexRouteImport.update({
@@ -48,6 +52,11 @@ const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCampaignsRoute = DashboardCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
@@ -61,6 +70,11 @@ const DashboardIpsRoute = DashboardIpsRouteImport.update({
 const DashboardLogsRoute = DashboardLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardQueuesRoute = DashboardQueuesRouteImport.update({
+  id: '/queues',
+  path: '/queues',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardReputationRoute = DashboardReputationRouteImport.update({
@@ -78,9 +92,19 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSuppressionRoute = DashboardSuppressionRouteImport.update({
+  id: '/suppression',
+  path: '/suppression',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardValidationRoute = DashboardValidationRouteImport.update({
   id: '/validation',
   path: '/validation',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWarmupRoute = DashboardWarmupRouteImport.update({
+  id: '/warmup',
+  path: '/warmup',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
@@ -94,13 +118,17 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -108,13 +136,17 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -124,13 +156,17 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -141,13 +177,17 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/domains'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/suppression'
     | '/dashboard/validation'
+    | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -155,13 +195,17 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/domains'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/suppression'
     | '/dashboard/validation'
+    | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard'
   id:
@@ -170,13 +214,17 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/domains'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/suppression'
     | '/dashboard/validation'
+    | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -224,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApiKeysRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/campaigns': {
+      id: '/dashboard/campaigns'
+      path: '/campaigns'
+      fullPath: '/dashboard/campaigns'
+      preLoaderRoute: typeof DashboardCampaignsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/domains': {
       id: '/dashboard/domains'
       path: '/domains'
@@ -243,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/dashboard/logs'
       preLoaderRoute: typeof DashboardLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/queues': {
+      id: '/dashboard/queues'
+      path: '/queues'
+      fullPath: '/dashboard/queues'
+      preLoaderRoute: typeof DashboardQueuesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/reputation': {
@@ -266,11 +328,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/suppression': {
+      id: '/dashboard/suppression'
+      path: '/suppression'
+      fullPath: '/dashboard/suppression'
+      preLoaderRoute: typeof DashboardSuppressionRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/validation': {
       id: '/dashboard/validation'
       path: '/validation'
       fullPath: '/dashboard/validation'
       preLoaderRoute: typeof DashboardValidationRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/warmup': {
+      id: '/dashboard/warmup'
+      path: '/warmup'
+      fullPath: '/dashboard/warmup'
+      preLoaderRoute: typeof DashboardWarmupRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/webhooks': {
@@ -285,26 +361,34 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardApiKeysRoute: typeof DashboardApiKeysRoute
+  DashboardCampaignsRoute: typeof DashboardCampaignsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardQueuesRoute: typeof DashboardQueuesRoute
   DashboardReputationRoute: typeof DashboardReputationRoute
   DashboardServersRoute: typeof DashboardServersRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardSuppressionRoute: typeof DashboardSuppressionRoute
   DashboardValidationRoute: typeof DashboardValidationRoute
+  DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApiKeysRoute: DashboardApiKeysRoute,
+  DashboardCampaignsRoute: DashboardCampaignsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLogsRoute: DashboardLogsRoute,
+  DashboardQueuesRoute: DashboardQueuesRoute,
   DashboardReputationRoute: DashboardReputationRoute,
   DashboardServersRoute: DashboardServersRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardSuppressionRoute: DashboardSuppressionRoute,
   DashboardValidationRoute: DashboardValidationRoute,
+  DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
