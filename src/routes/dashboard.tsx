@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers,
+  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/dashboard")({
 
 const nav = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble", exact: true },
+  { to: "/dashboard/agent", icon: Bot, label: "Agent Hermes" },
   { to: "/dashboard/campaigns", icon: Send, label: "Campagnes Pro" },
   { to: "/dashboard/servers", icon: Server, label: "Serveurs" },
   { to: "/dashboard/domains", icon: Globe, label: "Domaines" },
