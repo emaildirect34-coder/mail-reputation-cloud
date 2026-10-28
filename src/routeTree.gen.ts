@@ -16,9 +16,12 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
 import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
+import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
+import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardProvidersRouteImport } from './routes/dashboard.providers'
 import { Route as DashboardQueuesRouteImport } from './routes/dashboard.queues'
 import { Route as DashboardReputationRouteImport } from './routes/dashboard.reputation'
 import { Route as DashboardServersRouteImport } from './routes/dashboard.servers'
@@ -63,9 +66,19 @@ const DashboardCampaignsRoute = DashboardCampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardDnsRoute = DashboardDnsRouteImport.update({
+  id: '/dns',
+  path: '/dns',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardInboxTesterRoute = DashboardInboxTesterRouteImport.update({
+  id: '/inbox-tester',
+  path: '/inbox-tester',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardIpsRoute = DashboardIpsRouteImport.update({
@@ -76,6 +89,11 @@ const DashboardIpsRoute = DashboardIpsRouteImport.update({
 const DashboardLogsRoute = DashboardLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProvidersRoute = DashboardProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardQueuesRoute = DashboardQueuesRouteImport.update({
@@ -126,9 +144,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
@@ -145,9 +166,12 @@ export interface FileRoutesByTo {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
@@ -166,9 +190,12 @@ export interface FileRoutesById {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
@@ -188,9 +215,12 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
@@ -207,9 +237,12 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
@@ -227,9 +260,12 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
@@ -298,11 +334,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCampaignsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/dns': {
+      id: '/dashboard/dns'
+      path: '/dns'
+      fullPath: '/dashboard/dns'
+      preLoaderRoute: typeof DashboardDnsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/domains': {
       id: '/dashboard/domains'
       path: '/domains'
       fullPath: '/dashboard/domains'
       preLoaderRoute: typeof DashboardDomainsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/inbox-tester': {
+      id: '/dashboard/inbox-tester'
+      path: '/inbox-tester'
+      fullPath: '/dashboard/inbox-tester'
+      preLoaderRoute: typeof DashboardInboxTesterRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/ips': {
@@ -317,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/dashboard/logs'
       preLoaderRoute: typeof DashboardLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/providers': {
+      id: '/dashboard/providers'
+      path: '/providers'
+      fullPath: '/dashboard/providers'
+      preLoaderRoute: typeof DashboardProvidersRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/queues': {
@@ -382,9 +439,12 @@ interface DashboardRouteChildren {
   DashboardAgentRoute: typeof DashboardAgentRoute
   DashboardApiKeysRoute: typeof DashboardApiKeysRoute
   DashboardCampaignsRoute: typeof DashboardCampaignsRoute
+  DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
+  DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardProvidersRoute: typeof DashboardProvidersRoute
   DashboardQueuesRoute: typeof DashboardQueuesRoute
   DashboardReputationRoute: typeof DashboardReputationRoute
   DashboardServersRoute: typeof DashboardServersRoute
@@ -400,9 +460,12 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgentRoute: DashboardAgentRoute,
   DashboardApiKeysRoute: DashboardApiKeysRoute,
   DashboardCampaignsRoute: DashboardCampaignsRoute,
+  DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
+  DashboardInboxTesterRoute: DashboardInboxTesterRoute,
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLogsRoute: DashboardLogsRoute,
+  DashboardProvidersRoute: DashboardProvidersRoute,
   DashboardQueuesRoute: DashboardQueuesRoute,
   DashboardReputationRoute: DashboardReputationRoute,
   DashboardServersRoute: DashboardServersRoute,
