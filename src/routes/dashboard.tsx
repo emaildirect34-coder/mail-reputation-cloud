@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot,
+  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot, CloudCog, FlaskConical,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -28,6 +28,8 @@ const nav = [
   { to: "/dashboard/campaigns", icon: Send, label: "Campagnes Pro" },
   { to: "/dashboard/servers", icon: Server, label: "Serveurs" },
   { to: "/dashboard/domains", icon: Globe, label: "Domaines" },
+  { to: "/dashboard/dns", icon: CloudCog, label: "DNS & Automatisation" },
+  { to: "/dashboard/inbox-tester", icon: FlaskConical, label: "Testeur inbox" },
   { to: "/dashboard/ips", icon: Network, label: "IPs & Warmup" },
   { to: "/dashboard/warmup", icon: Flame, label: "Warmup par FAI" },
   { to: "/dashboard/queues", icon: Layers, label: "Queues KumoMTA" },
@@ -37,6 +39,7 @@ const nav = [
   { to: "/dashboard/logs", icon: ScrollText, label: "Logs" },
   { to: "/dashboard/webhooks", icon: Webhook, label: "Webhooks" },
   { to: "/dashboard/api-keys", icon: KeyRound, label: "Clés API" },
+  { to: "/dashboard/providers", icon: CloudCog, label: "Fournisseurs" },
   { to: "/dashboard/settings", icon: Settings, label: "Paramètres" },
 ] as const;
 
