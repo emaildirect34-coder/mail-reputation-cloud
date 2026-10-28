@@ -60,10 +60,10 @@ function InboxTester() {
 
       <Panel title="Analyse du contenu">
         <div className="space-y-3">
-          <div><div className="mb-1 flex justify-between text-xs"><span>Authentification (SPF/DKIM/DMARC)</span><span>100 %</span></div><Bar value={100} tone="ok" /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Ratio texte / HTML</span><span>78 %</span></div><Bar value={78} tone="ok" /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Mots à risque détectés</span><span>35 %</span></div><Bar value={35} tone="warn" /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Liens raccourcis / suspects</span><span>10 %</span></div><Bar value={10} tone="ok" /></div>
+          <div><div className="mb-1 flex justify-between text-xs"><span>Authentification (SPF/DKIM/DMARC)</span><span>100 %</span></div><Bar value={100} /></div>
+          <div><div className="mb-1 flex justify-between text-xs"><span>Ratio texte / HTML</span><span>78 %</span></div><Bar value={78} /></div>
+          <div><div className="mb-1 flex justify-between text-xs"><span>Mots à risque détectés</span><span>35 %</span></div><Bar value={35} /></div>
+          <div><div className="mb-1 flex justify-between text-xs"><span>Liens raccourcis / suspects</span><span>10 %</span></div><Bar value={10} /></div>
         </div>
       </Panel>
     </>
