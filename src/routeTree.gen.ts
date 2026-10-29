@@ -21,11 +21,15 @@ import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains
 import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardPoolsRouteImport } from './routes/dashboard.pools'
+import { Route as DashboardPostmasterRouteImport } from './routes/dashboard.postmaster'
+import { Route as DashboardPreflightRouteImport } from './routes/dashboard.preflight'
 import { Route as DashboardProvidersRouteImport } from './routes/dashboard.providers'
 import { Route as DashboardQueuesRouteImport } from './routes/dashboard.queues'
 import { Route as DashboardReputationRouteImport } from './routes/dashboard.reputation'
 import { Route as DashboardServersRouteImport } from './routes/dashboard.servers'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardShapingRouteImport } from './routes/dashboard.shaping'
 import { Route as DashboardSuppressionRouteImport } from './routes/dashboard.suppression'
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
@@ -91,6 +95,21 @@ const DashboardLogsRoute = DashboardLogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardPoolsRoute = DashboardPoolsRouteImport.update({
+  id: '/pools',
+  path: '/pools',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPostmasterRoute = DashboardPostmasterRouteImport.update({
+  id: '/postmaster',
+  path: '/postmaster',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPreflightRoute = DashboardPreflightRouteImport.update({
+  id: '/preflight',
+  path: '/preflight',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardProvidersRoute = DashboardProvidersRouteImport.update({
   id: '/providers',
   path: '/providers',
@@ -114,6 +133,11 @@ const DashboardServersRoute = DashboardServersRouteImport.update({
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardShapingRoute = DashboardShapingRouteImport.update({
+  id: '/shaping',
+  path: '/shaping',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardSuppressionRoute = DashboardSuppressionRouteImport.update({
@@ -149,11 +173,15 @@ export interface FileRoutesByFullPath {
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/pools': typeof DashboardPoolsRoute
+  '/dashboard/postmaster': typeof DashboardPostmasterRoute
+  '/dashboard/preflight': typeof DashboardPreflightRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -171,11 +199,15 @@ export interface FileRoutesByTo {
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/pools': typeof DashboardPoolsRoute
+  '/dashboard/postmaster': typeof DashboardPostmasterRoute
+  '/dashboard/preflight': typeof DashboardPreflightRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -195,11 +227,15 @@ export interface FileRoutesById {
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/pools': typeof DashboardPoolsRoute
+  '/dashboard/postmaster': typeof DashboardPostmasterRoute
+  '/dashboard/preflight': typeof DashboardPreflightRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
   '/dashboard/queues': typeof DashboardQueuesRoute
   '/dashboard/reputation': typeof DashboardReputationRoute
   '/dashboard/servers': typeof DashboardServersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -220,11 +256,15 @@ export interface FileRouteTypes {
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/pools'
+    | '/dashboard/postmaster'
+    | '/dashboard/preflight'
     | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/shaping'
     | '/dashboard/suppression'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -242,11 +282,15 @@ export interface FileRouteTypes {
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/pools'
+    | '/dashboard/postmaster'
+    | '/dashboard/preflight'
     | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/shaping'
     | '/dashboard/suppression'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -265,11 +309,15 @@ export interface FileRouteTypes {
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/logs'
+    | '/dashboard/pools'
+    | '/dashboard/postmaster'
+    | '/dashboard/preflight'
     | '/dashboard/providers'
     | '/dashboard/queues'
     | '/dashboard/reputation'
     | '/dashboard/servers'
     | '/dashboard/settings'
+    | '/dashboard/shaping'
     | '/dashboard/suppression'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -369,6 +417,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLogsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/pools': {
+      id: '/dashboard/pools'
+      path: '/pools'
+      fullPath: '/dashboard/pools'
+      preLoaderRoute: typeof DashboardPoolsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/postmaster': {
+      id: '/dashboard/postmaster'
+      path: '/postmaster'
+      fullPath: '/dashboard/postmaster'
+      preLoaderRoute: typeof DashboardPostmasterRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/preflight': {
+      id: '/dashboard/preflight'
+      path: '/preflight'
+      fullPath: '/dashboard/preflight'
+      preLoaderRoute: typeof DashboardPreflightRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/providers': {
       id: '/dashboard/providers'
       path: '/providers'
@@ -402,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/shaping': {
+      id: '/dashboard/shaping'
+      path: '/shaping'
+      fullPath: '/dashboard/shaping'
+      preLoaderRoute: typeof DashboardShapingRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/suppression': {
@@ -444,11 +520,15 @@ interface DashboardRouteChildren {
   DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardPoolsRoute: typeof DashboardPoolsRoute
+  DashboardPostmasterRoute: typeof DashboardPostmasterRoute
+  DashboardPreflightRoute: typeof DashboardPreflightRoute
   DashboardProvidersRoute: typeof DashboardProvidersRoute
   DashboardQueuesRoute: typeof DashboardQueuesRoute
   DashboardReputationRoute: typeof DashboardReputationRoute
   DashboardServersRoute: typeof DashboardServersRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardShapingRoute: typeof DashboardShapingRoute
   DashboardSuppressionRoute: typeof DashboardSuppressionRoute
   DashboardValidationRoute: typeof DashboardValidationRoute
   DashboardWarmupRoute: typeof DashboardWarmupRoute
@@ -465,11 +545,15 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardInboxTesterRoute: DashboardInboxTesterRoute,
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLogsRoute: DashboardLogsRoute,
+  DashboardPoolsRoute: DashboardPoolsRoute,
+  DashboardPostmasterRoute: DashboardPostmasterRoute,
+  DashboardPreflightRoute: DashboardPreflightRoute,
   DashboardProvidersRoute: DashboardProvidersRoute,
   DashboardQueuesRoute: DashboardQueuesRoute,
   DashboardReputationRoute: DashboardReputationRoute,
   DashboardServersRoute: DashboardServersRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardShapingRoute: DashboardShapingRoute,
   DashboardSuppressionRoute: DashboardSuppressionRoute,
   DashboardValidationRoute: DashboardValidationRoute,
   DashboardWarmupRoute: DashboardWarmupRoute,
