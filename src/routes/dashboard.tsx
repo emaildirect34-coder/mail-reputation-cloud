@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot, CloudCog, FlaskConical,
+  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot, CloudCog, FlaskConical, Boxes, Gauge, ClipboardCheck, BarChart3,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -32,9 +32,13 @@ const nav = [
   { to: "/dashboard/inbox-tester", icon: FlaskConical, label: "Testeur inbox" },
   { to: "/dashboard/ips", icon: Network, label: "IPs & Warmup" },
   { to: "/dashboard/warmup", icon: Flame, label: "Warmup par FAI" },
+  { to: "/dashboard/pools", icon: Boxes, label: "Pools VMTA" },
   { to: "/dashboard/queues", icon: Layers, label: "Queues KumoMTA" },
+  { to: "/dashboard/shaping", icon: Gauge, label: "Traffic Shaping" },
+  { to: "/dashboard/preflight", icon: ClipboardCheck, label: "Pre-Flight" },
   { to: "/dashboard/suppression", icon: Ban, label: "Suppression" },
   { to: "/dashboard/reputation", icon: ShieldAlert, label: "Réputation" },
+  { to: "/dashboard/postmaster", icon: BarChart3, label: "Postmaster & SNDS" },
   { to: "/dashboard/validation", icon: MailCheck, label: "Validation" },
   { to: "/dashboard/logs", icon: ScrollText, label: "Logs" },
   { to: "/dashboard/webhooks", icon: Webhook, label: "Webhooks" },
