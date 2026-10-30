@@ -98,3 +98,70 @@
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
 }
+
+/* ===== Space cockpit theme (dashboard) ===== */
+@theme inline {
+  --color-neon: var(--neon);
+  --color-neon-2: var(--neon-2);
+  --color-neon-violet: var(--neon-violet);
+  --color-neon-green: var(--neon-green);
+  --color-neon-amber: var(--neon-amber);
+  --color-neon-red: var(--neon-red);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+}
+.space {
+  --background: oklch(0.13 0.035 268);
+  --foreground: oklch(0.96 0.01 240);
+  --card: oklch(0.17 0.045 265);
+  --card-foreground: oklch(0.96 0.01 240);
+  --muted: oklch(0.22 0.04 265);
+  --muted-foreground: oklch(0.72 0.04 250);
+  --border: oklch(0.35 0.08 240 / 0.45);
+  --input: oklch(0.3 0.06 250);
+  --primary: oklch(0.82 0.15 205);
+  --primary-foreground: oklch(0.15 0.03 265);
+  --accent: oklch(0.25 0.07 240);
+  --accent-foreground: oklch(0.9 0.1 205);
+  --secondary: oklch(0.22 0.05 265);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.17 0.045 265);
+  --popover-foreground: oklch(0.96 0.01 240);
+  --neon: oklch(0.83 0.15 205);
+  --neon-2: oklch(0.7 0.17 240);
+  --neon-violet: oklch(0.65 0.22 300);
+  --neon-green: oklch(0.82 0.2 150);
+  --neon-amber: oklch(0.82 0.16 80);
+  --neon-red: oklch(0.65 0.22 25);
+  --glass: oklch(0.17 0.05 262 / 0.72);
+  --glass-border: oklch(0.6 0.12 225 / 0.28);
+  background:
+    radial-gradient(ellipse at 15% 0%, oklch(0.35 0.15 290 / 0.35), transparent 50%),
+    radial-gradient(ellipse at 85% 100%, oklch(0.35 0.15 300 / 0.3), transparent 50%),
+    radial-gradient(ellipse at 60% 30%, oklch(0.3 0.1 230 / 0.25), transparent 60%),
+    var(--background);
+  color: var(--foreground);
+}
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 oklch(0.8 0.12 210 / 0.12), 0 0 24px oklch(0.6 0.15 230 / 0.08);
+}
+@utility neon-glow {
+  box-shadow: 0 0 0 1px var(--neon), 0 0 16px color-mix(in oklab, var(--neon) 55%, transparent);
+}
+@utility neon-text {
+  text-shadow: 0 0 12px color-mix(in oklab, var(--neon) 70%, transparent);
+}
+@utility stars {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, oklch(1 0 0 / 0.7), transparent),
+    radial-gradient(1px 1px at 30% 70%, oklch(1 0 0 / 0.5), transparent),
+    radial-gradient(1px 1px at 55% 40%, oklch(1 0 0 / 0.6), transparent),
+    radial-gradient(1px 1px at 75% 85%, oklch(1 0 0 / 0.5), transparent),
+    radial-gradient(1px 1px at 90% 15%, oklch(1 0 0 / 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 45% 90%, oklch(1 0 0 / 0.6), transparent);
+  background-size: 400px 400px;
+}
