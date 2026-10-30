@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot, CloudCog, FlaskConical, Boxes, Gauge, ClipboardCheck, BarChart3,
+  LayoutDashboard, Globe, Server, Network, ShieldAlert, MailCheck, Webhook, KeyRound, ScrollText, Settings, LogOut, Send, Ban, Flame, Layers, Bot, CloudCog, FlaskConical, Boxes, Gauge, ClipboardCheck, BarChart3, Microscope, ShieldCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -30,6 +30,8 @@ const nav = [
   { to: "/dashboard/domains", icon: Globe, label: "Domaines" },
   { to: "/dashboard/dns", icon: CloudCog, label: "DNS & Automatisation" },
   { to: "/dashboard/inbox-tester", icon: FlaskConical, label: "Testeur inbox" },
+  { to: "/dashboard/lab", icon: Microscope, label: "Mail-Tester & DNS Lab" },
+  { to: "/dashboard/shield", icon: ShieldCheck, label: "Bouclier & Urgence" },
   { to: "/dashboard/ips", icon: Network, label: "IPs & Warmup" },
   { to: "/dashboard/warmup", icon: Flame, label: "Warmup par FAI" },
   { to: "/dashboard/pools", icon: Boxes, label: "Pools VMTA" },
