@@ -89,7 +89,7 @@ function DashboardLayout() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return navigate({ to: "/auth" });
+      if (!data.user) { navigate({ to: "/auth" }); return; }
       setUser(data.user);
     });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => { if (!s) navigate({ to: "/auth" }); });
@@ -196,7 +196,7 @@ function DashboardLayout() {
             <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-neon-red text-[9px] font-bold">3</span>
           </button>
           <div className="glass flex items-center gap-2.5 px-3 py-1.5">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-neon-2/30 text-sm font-bold">{(user.email ?? "A")[0].toUpperCase()}</div>
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-neon-2/30 text-sm font-bold">{(user.email || "A").charAt(0).toUpperCase()}</div>
             <div className="hidden sm:block">
               <p className="text-[13px] font-semibold">Admin</p>
               <p className="text-[10px] text-neon">Compte principal</p>
