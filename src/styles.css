@@ -195,8 +195,21 @@
   color: var(--foreground);
 }
 .lux-side {
-  background: linear-gradient(180deg, var(--side-2) 0%, var(--side) 55%, oklch(0.2 0.09 270) 100%);
-  color: var(--side-fg);
+  background: linear-gradient(180deg, oklch(0.99 0.006 250 / 0.92), oklch(0.96 0.02 250 / 0.92));
+  border-right: 1px solid var(--border);
+  color: var(--foreground);
+  backdrop-filter: blur(14px);
+}
+.lux-banner {
+  background:
+    radial-gradient(ellipse at 20% 50%, oklch(0.55 0.2 250 / 0.6), transparent 60%),
+    linear-gradient(110deg, oklch(0.32 0.14 262), oklch(0.2 0.1 265));
+  color: oklch(0.98 0.01 250);
+}
+.lux-hero {
+  background:
+    radial-gradient(ellipse at 75% 0%, oklch(0.75 0.15 240 / 0.35), transparent 55%),
+    linear-gradient(180deg, oklch(1 0 0 / 0.95), oklch(0.97 0.02 250 / 0.95));
 }
 @utility card-lux {
   background: var(--card);
