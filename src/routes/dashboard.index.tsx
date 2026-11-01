@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import hermes from "@/assets/hermes.jpg.asset.json";
 import ship from "@/assets/ship.jpg.asset.json";
+import worldMap from "@/assets/world-map.jpg.asset.json";
 import {
   ArrowRight, Bot, Package, CheckCircle2, ArrowUp, ArrowDown, Star, Boxes, Mail, Database, Timer,
   FlaskConical, Rocket, Target, ShieldAlert, ScanLine, FileBarChart, Sparkles, ShieldCheck, ChevronDown,
@@ -264,6 +265,47 @@ function Cockpit() {
             </div>
           </section>
         </div>
+      </div>
+
+      {/* GMAIL + ATLAS + MAP */}
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1.2fr]">
+        <section className="glass p-4">
+          <Title icon={<Mail className="h-4 w-4" />} right={<span className="text-[11px] text-neon-green">Postmaster Tools</span>}>PERFORMANCE GMAIL</Title>
+          <div className="grid grid-cols-2 gap-2">
+            {[["Réputation IP", "Haute", "green"], ["Réputation domaine", "Haute", "green"], ["Auth SPF/DKIM/DMARC", "100%", "green"], ["Chiffrement TLS", "100%", "neon"], ["Feedback-ID", "Actif", "neon"], ["Plaintes (spam rate)", "0.04%", "violet"]].map(([l, v, c]) => (
+              <div key={l} className="glass p-2.5">
+                <p className="text-[10.5px] text-muted-foreground">{l}</p>
+                <p className="flex items-center gap-2 font-display text-[15px]">{dot(c as Tone)}{v}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">Placement : Principale 92% • Promotions 7.6% • Spam 0.4%</p>
+          <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-muted">
+            <div style={{ width: "92%", background: "var(--neon-green)" }} /><div style={{ width: "7.6%", background: "var(--neon-amber)" }} /><div style={{ width: "0.4%", background: "var(--neon-red)" }} />
+          </div>
+        </section>
+
+        <section className="glass p-4">
+          <Title icon={<Bot className="h-4 w-4" />} right={<span className="flex items-center gap-1.5 text-[10px] text-neon-green">{dot("green")} En ligne</span>}>ACTIVITÉ ATLAS IA</Title>
+          <ul className="space-y-2.5">
+            {[["Postmaster SRE", "Surveille 4 FAI • 0 anomalie", 96, "green"], ["Infra & DNS", "Rotation DKIM planifiée J-3", 82, "neon"], ["Seed & Placement", "Test 48 boîtes en cours", 64, "violet"], ["Yield & Sponsors", "3 offres recommandées", 71, "amber"]].map(([n, d, v, c]) => (
+              <li key={n as string}>
+                <div className="flex items-center gap-2 text-[12px]">{dot(c as Tone)}<span className="font-semibold">{n}</span><span className="ml-auto text-[11px]">{v}%</span></div>
+                <p className="mb-1 pl-4 text-[10.5px] text-muted-foreground">{d}</p>
+                <div className="pl-4"><Bar value={v as number} tone={c as Tone} /></div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="glass relative overflow-hidden p-4">
+          <Title icon={<Target className="h-4 w-4" />}>LIVRAISON PAR PAYS</Title>
+          <div className="relative h-[190px] rounded-lg bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${worldMap.url})` }}>
+            {[["22%", "38%", "USA 41%"], ["48%", "30%", "France 28%"], ["52%", "24%", "Allemagne 12%"], ["78%", "45%", "Asie 9%"]].map(([x, y, l]) => (
+              <span key={l} className="absolute flex items-center gap-1 rounded bg-background/70 px-1.5 py-0.5 text-[10px]" style={{ left: x, top: y }}>{dot("neon")}{l}</span>
+            ))}
+          </div>
+        </section>
       </div>
 
       {/* BOTTOM */}
