@@ -108,9 +108,9 @@ function DashboardLayout() {
       <Link
         to={i.to}
         onClick={() => setMobile(false)}
-        className={`flex items-center gap-2.5 rounded-md px-3 py-[5px] text-[12.5px] transition-colors ${active ? "bg-neon/10 text-neon" : "text-foreground/85 hover:bg-neon/5 hover:text-neon"}`}
+        className={`flex items-center gap-2.5 rounded-lg px-3 py-[5px] text-[12.5px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_var(--primary)]" : "text-foreground hover:bg-primary/10"}`}
       >
-        <i.icon className="h-[15px] w-[15px] shrink-0 opacity-80" strokeWidth={1.6} />
+        <i.icon className={`h-[15px] w-[15px] shrink-0 ${active ? "" : "text-primary"}`} strokeWidth={2} />
         <span className="truncate">{i.label}</span>
         {i.badge && <span className="ml-auto rounded-full bg-neon-green/20 px-1.5 text-[9px] font-semibold text-neon-green">{i.badge}</span>}
       </Link>
@@ -135,7 +135,7 @@ function DashboardLayout() {
           const collapsed = open[s.title] === false;
           return (
             <div key={s.title} className="mt-3">
-              <button onClick={() => setOpen((o) => ({ ...o, [s.title]: collapsed }))} className="flex w-full items-center justify-between px-2 py-1 text-[12px] font-bold uppercase tracking-wide">
+              <button onClick={() => setOpen((o) => ({ ...o, [s.title]: collapsed }))} className="flex w-full items-center justify-between px-2 py-1 text-[12px] font-bold uppercase tracking-wide text-primary">
                 {s.title === "Domain Intelligence" ? "Domain & Auth" : s.title}
                 <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
               </button>
