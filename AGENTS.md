@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep the overview cockpit in its leaf route, with dashboard-scoped semantic CSS tokens and existing shared controls, to prevent presentation changes from altering delivery logic.
