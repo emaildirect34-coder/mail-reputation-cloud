@@ -1,191 +1,89 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import bot from "@/assets/hermes-bot.png";
-import netMap from "@/assets/net-map.jpg";
-import { LuxHeader, LuxTabs, Kpi, Card, Ring, Pill, GhostBtn, Spark, toneVar, type Tone } from "@/components/dash/lux";
-import {
-  LayoutGrid, Activity, Bot, Server, Globe, FlaskConical, Rocket, Send, Gauge, CheckCircle2, ShieldCheck, Zap,
-  Mail, Flame, ShieldAlert, ArrowRight, Boxes, Radio, Target, ScanLine, FileBarChart, KeyRound, Star,
-} from "lucide-react";
+import { useState, type ReactNode } from "react";
+import hero from "@/assets/cockpit-hero.jpg.asset.json";
+import worldMap from "@/assets/world-map.jpg.asset.json";
+import { Button } from "@/components/ui/button";
+import { Ring, Spark } from "@/components/dash/lux";
+import { Activity, ArrowRight, BadgeCheck, Bot, Boxes, CheckCircle2, ChevronRight, CircleDot, Globe, Mail, Radio, Recycle, Send, ShieldCheck, Star, Target, UserRound, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/")({
-  head: () => ({
-    meta: [
-      { title: "Vue d'ensemble — Cockpit Email Direct" },
-      { name: "description", content: "Métriques temps réel, réputation FAI, pools VMTA et activité Hermes AI." },
-      { property: "og:title", content: "Vue d'ensemble — Cockpit Email Direct" },
-      { property: "og:description", content: "Le tableau de bord temps réel de votre infrastructure d'envoi." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Cockpit,
+  head: () => ({ meta: [
+    { title: "Tableau de bord — Email Direct" },
+    { name: "description", content: "Cockpit Email Direct : performance Gmail, activité Atlas IA, pools VMTA et conformité des envois." },
+    { property: "og:title", content: "Tableau de bord — Email Direct" },
+    { property: "og:description", content: "Performance des envois, réputation Gmail et supervision de votre infrastructure email." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
+  ] }), component: Cockpit,
 });
 
-const tabs = [
-  { label: "Vue d'ensemble", icon: LayoutGrid },
-  { label: "Activité en direct", icon: Activity, to: "/dashboard/logs" },
-  { label: "Infrastructure", icon: Server, to: "/dashboard/servers" },
-  { label: "Domaines", icon: Globe, to: "/dashboard/domains" },
-  { label: "Deliverability Lab", icon: FlaskConical, to: "/dashboard/lab" },
-  { label: "Agent Hermes", icon: Bot, to: "/dashboard/agent" },
-];
-
-const isps: [string, number, string, Tone][] = [
-  ["Gmail", 98.9, "M", "red"], ["Yahoo", 98.2, "Y!", "violet"], ["Microsoft", 97.6, "⊞", "blue"], ["Orange", 96.9, "o", "amber"], ["Free", 95.4, "f", "red"],
-];
-const pools: [string, string, number, Tone, typeof Zap][] = [
-  ["Transactionnel", "2 VPS • 25 IPs", 98.7, "blue", Zap], ["Marketing Élite", "2 VPS • 32 IPs", 97.9, "violet", Mail],
-  ["Warmup", "2 VPS • 20 IPs", 99.1, "green", Rocket], ["Quarantaine", "1 VPS • 8 IPs", 95.3, "amber", ShieldAlert],
-];
-const live: [string, string, Tone][] = [
-  ["14:32:16", "IP 185.199.110.24 – +0.12% réputation", "green"],
-  ["14:32:14", "Warmup : 12.5k emails envoyés", "blue"],
-  ["14:32:12", "Gmail : +0.3% (98.7%)", "blue"],
-  ["14:32:10", "Rotation IP sur Pool Marketing Élite", "blue"],
-  ["14:32:08", "Délai de réessai Orange : 10 min", "amber"],
-];
-const compliance = ["SPF aligné (9 lookups)", "DKIM double (RSA + Ed25519)", "DMARC p=reject", "ARC (RFC 8617)", "MTA-STS enforce", "BIMI & VMC actifs"];
-const quick: [string, string, typeof Zap][] = [
-  ["Nouvelle campagne", "/dashboard/campaigns", Send], ["Testeur Inbox", "/dashboard/inbox-tester", FlaskConical],
-  ["Mail-Tester", "/dashboard/lab", Star], ["Scanner liens", "/dashboard/preflight", ScanLine],
-  ["Rapports DMARC", "/dashboard/postmaster", FileBarChart], ["Arrêt d'urgence", "/dashboard/shield", ShieldAlert],
-];
-
-const W = 520, H = 170;
-const pts = (a: number[]) => a.map((v, i) => `${(i / (a.length - 1)) * W},${H - (v / 100) * H}`).join(" ");
-const gmail = [88, 90, 89, 91, 92, 94, 98.9], global = [84, 85, 84, 87, 88, 90, 98.7];
-const days = ["18/04", "19/04", "20/04", "21/04", "22/04", "23/04", "24/04"];
+function Widget({ title, icon, action, children, className = "" }: { title: string; icon: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
+  return <section className={`cockpit-widget ${className}`}><div className="cockpit-widget-heading"><span className="cockpit-widget-icon">{icon}</span><h2>{title}</h2><div className="ml-auto">{action}</div></div>{children}</section>;
+}
+function Detail({ to, children = "Voir le détail" }: { to: string; children?: ReactNode }) {
+  return <Button asChild variant="outline" size="sm" className="cockpit-detail"><Link to={to}>{children}<ChevronRight /></Link></Button>;
+}
+function Chart({ compact = false, period = "24h" }: { compact?: boolean; period?: string }) {
+  const values = period === "24h" ? [53, 64, 60, 72, 75, 74, 73, 75, 78, 75, 80, 78, 84, 81, 83, 90, 87, 94, 91, 98] : [34, 40, 49, 45, 56, 54, 68, 63, 71, 75, 72, 83, 79, 90, 87, 94, 91, 96, 98, 99];
+  const points = (offset: number) => values.map((v, i) => `${i * 20},${130 - v * .9 + offset}`).join(" ");
+  return <svg className={compact ? "cockpit-chart-mini" : "cockpit-chart"} viewBox="-5 0 395 160" role="img" aria-label={`Tendance de délivrabilité sur ${period}`}>
+    {[30, 65, 100, 135].map(y => <line key={y} x1="0" x2="380" y1={y} y2={y} stroke="var(--border)" strokeDasharray="3 4" />)}
+    <polygon points={`0,140 ${points(0)} 380,140`} fill="var(--cockpit-chart-fill)" />
+    <polyline points={points(0)} fill="none" stroke="var(--neon-green)" strokeWidth="2" />
+    {!compact && <polyline points={points(43)} fill="none" stroke="var(--neon-violet)" strokeWidth="2" />}
+    {values.map((v, i) => <circle key={i} cx={i * 20} cy={130 - v * .9} r="2.5" fill="var(--neon-green)" />)}
+    {!compact && ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"].map((t,i) => <text key={t} x={i * 62} y="155" fontSize="9" fill="var(--muted-foreground)">{t}</text>)}
+  </svg>;
+}
+const metrics = [
+  { title: "Débit d’injection", value: "48 732", unit: "msg/s", sub: "+12%", icon: Send, tone: "blue" },
+  { title: "Volume 24h", value: "4 216 893", unit: "", sub: "/ 5 000 000 quota", icon: Mail, tone: "blue" },
+  { title: "Taux de livraison global", value: "99.42%", unit: "", sub: "+0.28%", icon: Target, tone: "violet" },
+  { title: "Taux de rebond (hard + soft)", value: "0.18%", unit: "", sub: "−0.07%", icon: Recycle, tone: "green" },
+  { title: "Taux de désabonnement", value: "0.13%", unit: "", sub: "−0.05%", icon: UserRound, tone: "blue" },
+  { title: "Score Mail-Tester", value: "9.8/10", unit: "", sub: "Excellent", icon: Star, tone: "green" },
+] as const;
+const events = [
+  ["14:28", "Adaptation du pacing Gmail (1 connexion)", "Infrastructure", "blue"],
+  ["14:20", "142 adresses inactives mises en sunset", "Hygiène", "violet"],
+  ["14:05", "Double DKIM Ed25519 validé sur 4 domaines", "Sécurité", "green"],
+  ["13:47", "IP 178.62.x.x promue dans le Pool Gold", "Infrastructure", "blue"],
+  ["12:32", "Alerte résolue : greylisting (Google)", "Délivrabilité", "red"],
+] as const;
 
 function Cockpit() {
-  return (
-    <>
-      <LuxHeader crumb="Vue d'ensemble" icon={<Gauge />} title="Cockpit Email Direct" desc="Pilotez vos envois, votre infrastructure et votre réputation en temps réel." status="Tous les systèmes sont opérationnels" sub="Hermes AI surveille 24/7" />
-      <LuxTabs tabs={tabs} active={0} />
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Kpi icon={<Send />} label="Débit d'injection" value="48 732/s" sub="↑ +12%" tone="blue" spark />
-        <Kpi icon={<Boxes />} label="Volume 24h" value="4.2M" sub="84% du quota" tone="violet" />
-        <Kpi icon={<CheckCircle2 />} label="Délivrabilité" value="99.4%" sub="✓ Excellent" tone="green" spark />
-        <Kpi icon={<Flame />} label="Plaintes Gmail" value="0.04%" sub="Objectif < 0.10%" tone="amber" />
-        <Kpi icon={<ShieldCheck />} label="Score Mail-Tester" value="10/10" sub="✓ Parfait" tone="green" />
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-[1fr_1fr_1.35fr]">
-        <Card title="Score de Réputation Global" icon={<ShieldCheck />}>
-          <div className="flex items-center gap-4">
-            <Ring value={98.7} size={160} stroke={13}>
-              <div><p className="font-display text-[34px] font-extrabold text-primary">98.7%</p><p className="text-[14px] font-bold">Excellent</p></div>
-            </Ring>
-            <ul className="flex-1 space-y-3 text-[13px] font-semibold">
-              {isps.slice(0, 4).map(([n, v, , t]) => (
-                <li key={n} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" style={{ color: toneVar[t === "amber" ? "amber" : "green"] }} />{n}<span className="ml-auto">{v}%</span></li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-3 flex items-center justify-between"><span className="text-[14px] font-bold text-neon-green">↑ +0.3%</span><GhostBtn to="/dashboard/reputation">Voir le détail <ArrowRight className="h-3.5 w-3.5" /></GhostBtn></div>
-        </Card>
-
-        <Card title="Réputation par FAI" icon={<Target />}>
-          <ul className="space-y-4">
-            {isps.map(([n, v, l, t]) => (
-              <li key={n} className="flex items-center gap-3 text-[13px] font-semibold">
-                <span className="grid h-7 w-7 place-items-center rounded-md font-display text-[14px] font-black" style={{ color: toneVar[t], background: `color-mix(in oklab, ${toneVar[t]} 12%, var(--card))` }}>{l}</span>
-                <span className="w-20">{n}</span>
-                <div className="h-2.5 flex-1 rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${(v - 80) * 5}%`, background: "linear-gradient(90deg, var(--neon-green), color-mix(in oklab, var(--neon-green) 70%, var(--neon)))" }} /></div>
-                <span className="w-12 text-right font-display text-[15px] font-bold text-primary">{v}%</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card title="Évolution de la Réputation" icon={<Activity />} right={<div className="flex gap-1 text-[11px] font-semibold">{["24h", "7j", "30j", "90j"].map((p) => <span key={p} className={`rounded-lg px-2.5 py-1 ${p === "7j" ? "bg-primary text-primary-foreground" : "card-lux"}`}>{p}</span>)}</div>}>
-          <div className="mb-1 flex gap-4 text-[12px] font-semibold"><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-neon-2" />Global</span><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-neon-green" />Gmail</span></div>
-          <svg viewBox={`-30 -10 ${W + 40} ${H + 30}`} className="h-[200px] w-full">
-            {[0, 25, 50, 75, 100].map((y) => <g key={y}><line x1={0} x2={W} y1={H - (y / 100) * H} y2={H - (y / 100) * H} stroke="var(--border)" /><text x={-6} y={H - (y / 100) * H + 4} fontSize="10" textAnchor="end" fill="var(--foreground)">{y}%</text></g>)}
-            {days.map((d, i) => <text key={d} x={(i / 6) * W} y={H + 16} fontSize="10" textAnchor="middle" fill="var(--foreground)">{d}</text>)}
-            <polygon points={`0,${H} ${pts(global)} ${W},${H}`} fill="color-mix(in oklab, var(--neon-2) 12%, transparent)" />
-            <polyline points={pts(global)} fill="none" stroke="var(--neon-2)" strokeWidth="2.5" />
-            <polyline points={pts(gmail)} fill="none" stroke="var(--neon-green)" strokeWidth="2.5" strokeDasharray="6 4" />
-            {global.map((v, i) => <circle key={i} cx={(i / 6) * W} cy={H - (v / 100) * H} r="3.5" fill="var(--card)" stroke="var(--neon-2)" strokeWidth="2" />)}
-          </svg>
-        </Card>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-[1.25fr_1fr_1fr]">
-        <Card title="Pools VMTA" icon={<Boxes />} right={<GhostBtn to="/dashboard/pools">Gérer <ArrowRight className="h-3.5 w-3.5" /></GhostBtn>}>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {pools.map(([n, d, v, t, I]) => (
-              <div key={n} className="rounded-xl p-3 text-center" style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${toneVar[t]} 14%, var(--card)), var(--card))`, border: `1px solid color-mix(in oklab, ${toneVar[t]} 30%, transparent)` }}>
-                <I className="mx-auto h-8 w-8" style={{ color: toneVar[t] }} />
-                <p className="mt-2 text-[13px] font-bold">{n}</p>
-                <p className="mt-2 text-[11.5px] font-semibold">{d}</p>
-                <p className="mt-3 flex items-center justify-center gap-1.5 font-display text-[18px] font-extrabold text-primary"><i className="h-2.5 w-2.5 rounded-full bg-neon-green" />{v}%</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="Activité en Temps Réel" icon={<Radio />} right={<Pill>● LIVE</Pill>}>
-          <ul className="divide-y divide-border">
-            {live.map(([t, l, c]) => (
-              <li key={t} className="flex items-center gap-3 py-2 text-[12.5px] font-medium">
-                <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: toneVar[c] }} /><span className="w-16 text-muted-foreground">{t}</span><span className="truncate">{l}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2 text-center"><GhostBtn to="/dashboard/logs">Voir tous les événements <ArrowRight className="h-3.5 w-3.5" /></GhostBtn></div>
-        </Card>
-
-        <Card title="Hermes SRE & Postmaster" icon={<Bot />} right={<Pill>✓ En ligne</Pill>}>
-          <div className="flex items-center gap-3">
-            <img src={bot} alt="Hermes AI" width={816} height={816} className="h-28 w-28 shrink-0 drop-shadow-[0_10px_20px_var(--neon-2)]" />
-            <ul className="space-y-2 text-[12.5px] font-semibold">
-              {["Surveillance SMTP : OK", "Adaptation automatique : OK", "Optimisation des débits : OK", "Protection anti-bounce : OK"].map((s) => (
-                <li key={s} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-neon-green" />{s}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-3 text-center"><GhostBtn to="/dashboard/agent">Voir les actions IA <ArrowRight className="h-3.5 w-3.5" /></GhostBtn></div>
-        </Card>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-[1fr_1.3fr_1fr]">
-        <Card title="Conformité Cryptographique" icon={<KeyRound />} right={<Pill>100%</Pill>}>
-          <ul className="space-y-2">
-            {compliance.map((c) => (
-              <li key={c} className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-[12.5px] font-semibold"><CheckCircle2 className="h-4 w-4 text-neon-green" />{c}<span className="ml-auto"><Pill>Validé</Pill></span></li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card title="Carte Réseau des Envois" icon={<Globe />} right={<Pill tone="blue">Vue temps réel</Pill>}>
-          <div className="relative overflow-hidden rounded-xl">
-            <img src={netMap} alt="Carte réseau mondiale" width={1280} height={640} loading="lazy" className="h-[220px] w-full object-cover" />
-            <div className="lux-banner absolute right-3 top-3 rounded-xl px-4 py-3 text-[12px] font-semibold">
-              <p className="mb-1 font-bold">Paris (FR)</p>
-              <p>Gmail : <span className="text-neon-green">99.1%</span></p>
-              <p>Débit : 12.4k msg/s</p>
-              <p className="mt-2"><Pill>● En ligne</Pill></p>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Actions Rapides" icon={<Rocket />}>
-          <div className="grid grid-cols-3 gap-2">
-            {quick.map(([l, to, I]) => (
-              <Link key={l} to={to} className="card-lux flex flex-col items-center gap-2 px-2 py-3 text-center text-[11.5px] font-bold text-primary transition hover:-translate-y-0.5">
-                <I className="h-7 w-7" />{l}
-              </Link>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div className="lux-banner flex items-center justify-center gap-3 rounded-2xl px-5 py-3 text-[13px] font-semibold">
-        <ShieldCheck className="h-6 w-6 text-neon-green" />
-        Votre infrastructure est parfaitement sécurisée et conforme aux exigences de Gmail et Yahoo.
-        <Spark className="ml-2 hidden h-6 w-20 md:block" />
-      </div>
-    </>
-  );
+  const [period, setPeriod] = useState("24h");
+  return <div className="cockpit-content">
+    <div className="cockpit-hero-grid">
+      <section className="cockpit-welcome">
+        <img src={hero.url} alt="Vaisseau Email Direct devant une planète illuminée" className="cockpit-hero-image" />
+        <div className="cockpit-welcome-copy"><p className="text-xs">👋 Bonjour,</p><h1>Email Direct <BadgeCheck className="inline h-6 w-6 text-neon-amber" /></h1><p className="text-sm">Votre infrastructure d’envoi nouvelle génération</p>
+          <div className="mt-5 flex flex-wrap gap-2"><Button asChild size="sm" className="cockpit-hero-secondary"><Link to="/dashboard/postmaster"><CircleDot />Voir les rapports</Link></Button><Button asChild size="sm" variant="secondary" className="cockpit-hero-primary"><Link to="/dashboard/campaigns"><Boxes />Configurer une campagne</Link></Button></div>
+        </div>
+      </section>
+      <section className="cockpit-summary"><h2>Performance globale</h2><div className="flex items-center gap-2"><Ring value={99.4} size={112} stroke={10}><div><p className="text-xl font-extrabold text-primary">99.4<span className="text-xs">/100</span></p><p className="text-xs font-semibold text-neon-green">Excellent</p></div></Ring><Spark className="h-20 min-w-0 flex-1" tone="blue" /></div></section>
+      <section className="cockpit-summary cockpit-revenue"><h2>Revenu aujourd’hui</h2><p className="mt-3 text-2xl font-extrabold text-primary">12 482,35 €</p><p className="cockpit-positive mt-1">↑ +18.4% vs hier</p><Spark className="absolute right-3 top-7 h-14 w-20 opacity-70" tone="blue" /><div className="mt-4 grid grid-cols-2 divide-x divide-border text-[11px]"><div>Emails envoyés<p className="text-base font-bold text-primary">489 732</p><span className="text-neon-green">↑ +12%</span></div><div className="pl-3">Campagnes en cours<p className="text-base font-bold text-primary">12</p><span className="text-neon-green">↑ 0</span></div></div></section>
+    </div>
+    <div className="cockpit-kpis">{metrics.map((m,i) => <section className="cockpit-metric" key={m.title}><span className={`cockpit-metric-icon cockpit-tone-${m.tone}`}><m.icon /></span><div className="min-w-0"><h2>{m.title}</h2><p className="cockpit-metric-value">{m.value} <span className="text-[10px]">{m.unit}</span></p><p className={`text-[10px] ${i===1 ? "text-muted-foreground" : "text-neon-green"}`}>{i!==1 && i!==5 ? "↑ " : ""}{m.sub}</p></div>{i===1 ? <div className="cockpit-quota"><progress value="84" max="100" aria-label="Quota 24 heures" /><span>84%</span></div> : i!==5 ? <Spark tone={i===4 ? "blue" : "green"} className="cockpit-metric-spark" /> : null}</section>)}</div>
+    <div className="cockpit-primary-grid">
+      <Widget title="Performance Gmail" icon={<Mail />} action={<span className="cockpit-chip">Unique FAI</span>} className="cockpit-gmail">
+        <div className="cockpit-gmail-inner"><div className="text-center"><Ring value={99.8} size={136} stroke={11}><div><p className="text-2xl font-extrabold text-primary">99.8%</p><p className="text-[10px]">Boîte principale</p></div></Ring><span className="cockpit-positive inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Excellent</span></div>
+          <div className="cockpit-gmail-stats">{[["Taux de délivrabilité", "99.8%", "+0.2%"],["Taux de plaintes", "0.04%", "−0.01%"],["Taux de rebonds", "0.18%", "−0.03%"]].map(([l,v,d]) => <div key={l} className="flex gap-2"><ShieldCheck className="h-7 w-7 shrink-0 rounded-lg bg-primary/5 p-1.5 text-primary" /><div><p className="text-[10px] text-muted-foreground">{l}</p><b className="text-xs text-primary">{v}</b><span className="ml-2 text-[9px] text-neon-green">{d}</span></div></div>)}<Detail to="/dashboard/reputation" /></div>
+          <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2 text-[10px]"><b>Tendance de délivrabilité (Gmail)</b><div className="flex gap-2"><span className="text-neon-green">● Délivrés</span><span className="text-neon-violet">● Plaintes</span></div></div><Chart period={period} /><div className="flex justify-end gap-1">{["24h", "7j"].map(p => <Button key={p} variant={period===p ? "secondary" : "ghost"} size="sm" className="h-5 px-2 text-[9px]" onClick={() => setPeriod(p)} aria-pressed={period===p}>{p}</Button>)}</div></div>
+        </div>
+      </Widget>
+      <Widget title="Activité Atlas IA" icon={<Bot />} action={<span className="cockpit-positive">● En direct</span>}>
+        <ul className="cockpit-agent-events">{events.map(([t,l,c,tone]) => <li key={t}><time>{t}</time><span className={`cockpit-event-icon cockpit-tone-${tone}`}><ShieldCheck /></span><div><p>{l}</p><span>• {c}</span></div><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></li>)}</ul><Detail to="/dashboard/agent">Voir toutes les actions</Detail>
+      </Widget>
+    </div>
+    <div className="cockpit-secondary-grid">
+      <Widget title="Répartition des ouvertures par pays" icon={<Globe />} action={<span className="cockpit-chip">● {period}</span>}><div className="cockpit-geography"><img src={worldMap.url} alt="Carte mondiale de répartition des ouvertures" /><ul>{[["🇫🇷", "France", "24.8%"],["🇺🇸", "États-Unis", "18.7%"],["🇩🇪", "Allemagne", "11.5%"],["🇨🇦", "Canada", "7.9%"],["🇬🇧", "Royaume-Uni", "6.2%"],["🌐", "Autres", "30.9%"]].map(([f,n,v]) => <li key={n}><span>{f} {n}</span><b>{v}</b></li>)}</ul></div><div className="flex items-end justify-between gap-2"><div className="text-[10px] text-muted-foreground">Total des ouvertures<p className="text-sm font-bold text-primary">2 486 231</p><span className="text-neon-green">↑ +14.2% vs hier</span></div><Detail to="/dashboard/postmaster" /></div></Widget>
+      <Widget title="État des services Gmail" icon={<Mail />} action={<span className="cockpit-positive">Tous opérationnels</span>}><div className="flex items-center gap-3"><ul className="flex-1 space-y-3 text-[10px]">{["API Gmail (Envoi / Réception)","SNDS (Microsoft)","BIMI (Affichage logo)","MTA-STS / TLS-RPT","SPF / DKIM / DMARC"].map(l => <li key={l} className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" /><span>{l}</span><span className="cockpit-positive ml-auto">OK</span></li>)}</ul><div className="w-28 shrink-0 text-center"><Ring value={99.8} size={105} stroke={9} tone="blue"><div><b className="text-lg text-primary">99.8%</b><p className="text-[9px]">Délivrabilité<br />globale</p></div></Ring><Spark className="mt-3 h-8 w-full" /></div></div></Widget>
+      <Widget title="Pools VMTA & IPs" icon={<Boxes />} action={<span className="cockpit-chip">Total : 16 IPs</span>}><div className="cockpit-pools">{[["Pool Gold","8 IPs actives","100","green"],["Pool Silver","4 IPs en warmup","75","blue"],["Pool Quarantaine","0 IP","0","violet"]].map(([n,s,v,t]) => <div key={n} className={`cockpit-pool cockpit-tone-${t}`}><p className="flex items-center gap-1 font-bold"><ShieldCheck className="h-3 w-3" />{n}</p><p className="mt-1 text-[9px] text-muted-foreground">{s}</p><Ring value={Number(v)} size={78} stroke={7} tone={t === "green" ? "green" : "blue"}><b className="text-primary">{v}%</b></Ring></div>)}</div><Detail to="/dashboard/pools">Gestion des IPs</Detail></Widget>
+    </div>
+    <div className="cockpit-bottom-grid">
+      <Widget title="Distribution des ouvertures Gmail" icon={<Target />} action={<span className="cockpit-chip">{period}</span>}><div className="flex items-center gap-4"><Ring value={99.8} size={92} stroke={9} tone="blue"><div><b className="text-base text-primary">99.8%</b><p className="text-[9px]">Gmail</p></div></Ring><ul className="flex-1 space-y-2 text-[10px]">{[["Boîte principale","99.8%"],["Promotions","0.12%"],["Spam","0.06%"],["Social","0.02%"],["Autres","0.0%"]].map(([l,v]) => <li key={l} className="flex items-center gap-2"><CircleDot className="h-3 w-3 text-primary" /><span>{l}</span><b className="ml-auto">{v}</b></li>)}</ul></div></Widget>
+      <Widget title="Flux d’événements récents" icon={<Radio />} action={<Detail to="/dashboard/logs">Voir tout</Detail>}><ul className="cockpit-flow">{events.map(([t,l,c,tone]) => <li key={t}><time>{t}</time><span className={`cockpit-flow-dot cockpit-tone-${tone}`}><Zap className="h-2.5 w-2.5" /></span><span className="min-w-0 flex-1 truncate">{l}</span><span className="cockpit-chip">{c}</span></li>)}<li><time>11:58</time><span className="cockpit-flow-dot cockpit-tone-green"><CheckCircle2 className="h-2.5 w-2.5" /></span><span>Rapport DMARC traité (RUA)</span><span className="cockpit-chip ml-auto">Conformité</span></li></ul></Widget>
+      <Widget title="Conformité & Sécurité" icon={<ShieldCheck />}><div className="flex items-center gap-3"><Ring value={100} size={92} stroke={9}><div><b className="text-lg text-primary">100%</b><p className="text-[9px]">Conforme</p></div></Ring><ul className="flex-1 space-y-1 text-[9px]">{["SPF (10 lookup max)","DKIM (RSA · Ed25519)","DMARC (p=reject)","ARC (RFC 8617)","MTA-STS (RFC 8461)","TLS-RPT (RFC 8460)","BIMI & VMC"].map(l => <li className="flex items-center gap-1" key={l}><CheckCircle2 className="h-2.5 w-2.5 text-neon-green" /><span>{l}</span><span className="ml-auto text-primary">100%</span></li>)}</ul></div><Detail to="/dashboard/shield" /></Widget>
+    </div>
+  </div>;
 }
