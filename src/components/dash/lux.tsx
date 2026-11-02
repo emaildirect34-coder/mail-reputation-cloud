@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, ShieldCheck, TrendingUp } from "lucide-react";
 
 export type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -56,11 +56,37 @@ export function Kpi({ icon, label, value, sub, tone = "blue", spark }: { icon: R
   );
 }
 
-export function Spark({ tone = "green", className = "", d = "M0 24 L12 20 L22 22 L32 14 L44 17 L54 10 L66 12 L76 6 L88 8 L100 2" }: { tone?: Tone; className?: string; d?: string }) {
+/** Smooth Catmull-Rom path through points */
+export function smoothPath(pts: [number, number][]) {
+  if (pts.length < 2) return "";
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1[0].toFixed(2)} ${c1[1].toFixed(2)} ${c2[0].toFixed(2)} ${c2[1].toFixed(2)} ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+
+const defaultSpark = [22, 19, 21, 15, 17, 12, 13, 9, 10, 6, 7, 4];
+export function Spark({ tone = "green", className = "", values = defaultSpark }: { tone?: Tone; className?: string; values?: number[]; d?: string }) {
+  const id = useId().replace(/:/g, "");
+  const step = 100 / (values.length - 1);
+  const pts = values.map((v, i) => [+(i * step).toFixed(2), v] as [number, number]);
+  const line = smoothPath(pts);
+  const last = pts[pts.length - 1];
   return (
-    <svg viewBox="0 0 100 28" preserveAspectRatio="none" className={className}>
-      <path d={`${d} L100 28 L0 28 Z`} fill={`color-mix(in oklab, ${toneVar[tone]} 18%, transparent)`} />
-      <path d={d} fill="none" stroke={toneVar[tone]} strokeWidth="2" />
+    <svg viewBox="0 -2 100 32" preserveAspectRatio="none" className={className} aria-hidden>
+      <defs>
+        <linearGradient id={`sp${id}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={toneVar[tone]} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={toneVar[tone]} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L100 30 L0 30 Z`} fill={`url(#sp${id})`} />
+      <path d={line} fill="none" stroke={toneVar[tone]} strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={last[0]} cy={last[1]} r="1.8" fill="var(--card)" stroke={toneVar[tone]} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -78,13 +104,35 @@ export function Card({ title, icon, right, children, className = "" }: { title: 
   );
 }
 
+/** Gauge: 270° arc with gradient, tick marks and end marker */
 export function Ring({ value, size = 150, stroke = 12, tone = "green", children }: { value: number; size?: number; stroke?: number; tone?: Tone; children?: ReactNode }) {
-  const r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const id = useId().replace(/:/g, "");
+  const s = Math.max(4, stroke * 0.75);
+  const r = (size - s) / 2 - 6, c = 2 * Math.PI * r, sweep = 0.75;
+  const pct = Math.min(100, Math.max(0, value)) / 100;
+  const cx = size / 2, cy = size / 2;
+  const endA = (135 + 270 * pct) * Math.PI / 180;
+  const ticks = Array.from({ length: 28 }, (_, i) => (135 + (270 * i) / 27) * Math.PI / 180);
+  const second = tone === "green" ? "var(--neon-2)" : tone === "blue" ? "var(--neon-violet)" : toneVar[tone];
   return (
     <div className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={toneVar[tone]} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)} style={{ filter: `drop-shadow(0 0 6px ${toneVar[tone]})` }} />
+      <svg width={size} height={size}>
+        <defs>
+          <linearGradient id={`rg${id}`} x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor={second} />
+            <stop offset="100%" stopColor={toneVar[tone]} />
+          </linearGradient>
+        </defs>
+        {ticks.map((a, i) => {
+          const r1 = r + s / 2 + 2, r2 = r1 + 3;
+          const on = i / 27 <= pct;
+          return <line key={i} x1={cx + r1 * Math.cos(a)} y1={cy + r1 * Math.sin(a)} x2={cx + r2 * Math.cos(a)} y2={cy + r2 * Math.sin(a)} stroke={on ? toneVar[tone] : "var(--border)"} strokeOpacity={on ? 0.55 : 1} strokeWidth="1" />;
+        })}
+        <g transform={`rotate(135 ${cx} ${cy})`}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--muted)" strokeWidth={s} strokeLinecap="round" strokeDasharray={`${c * sweep} ${c}`} />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={`url(#rg${id})`} strokeWidth={s} strokeLinecap="round" strokeDasharray={`${c * sweep * pct} ${c}`} style={{ filter: `drop-shadow(0 2px 3px color-mix(in oklab, ${toneVar[tone]} 35%, transparent))` }} />
+        </g>
+        {pct > 0 && <circle cx={cx + r * Math.cos(endA)} cy={cy + r * Math.sin(endA)} r={s / 2 + 1.5} fill="var(--card)" stroke={toneVar[tone]} strokeWidth="2" />}
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">{children}</div>
     </div>
