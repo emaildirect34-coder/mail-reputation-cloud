@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import hero from "@/assets/cockpit-hero.jpg.asset.json";
 import worldMap from "@/assets/world-map.jpg.asset.json";
 import { Button } from "@/components/ui/button";
-import { Ring, Spark } from "@/components/dash/lux";
+import { Ring, Spark, smoothPath } from "@/components/dash/lux";
 import { Activity, ArrowRight, BadgeCheck, Bot, Boxes, CheckCircle2, ChevronRight, CircleDot, Globe, Mail, Radio, Recycle, Send, ShieldCheck, Star, Target, UserRound, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/")({
@@ -23,15 +23,25 @@ function Detail({ to, children = "Voir le détail" }: { to: string; children?: R
   return <Button asChild variant="outline" size="sm" className="cockpit-detail"><Link to={to}>{children}<ChevronRight /></Link></Button>;
 }
 function Chart({ compact = false, period = "24h" }: { compact?: boolean; period?: string }) {
-  const values = period === "24h" ? [53, 64, 60, 72, 75, 74, 73, 75, 78, 75, 80, 78, 84, 81, 83, 90, 87, 94, 91, 98] : [34, 40, 49, 45, 56, 54, 68, 63, 71, 75, 72, 83, 79, 90, 87, 94, 91, 96, 98, 99];
-  const points = (offset: number) => values.map((v, i) => `${i * 20},${130 - v * .9 + offset}`).join(" ");
-  return <svg className={compact ? "cockpit-chart-mini" : "cockpit-chart"} viewBox="-5 0 395 160" role="img" aria-label={`Tendance de délivrabilité sur ${period}`}>
-    {[30, 65, 100, 135].map(y => <line key={y} x1="0" x2="380" y1={y} y2={y} stroke="var(--border)" strokeDasharray="3 4" />)}
-    <polygon points={`0,140 ${points(0)} 380,140`} fill="var(--cockpit-chart-fill)" />
-    <polyline points={points(0)} fill="none" stroke="var(--neon-green)" strokeWidth="2" />
-    {!compact && <polyline points={points(43)} fill="none" stroke="var(--neon-violet)" strokeWidth="2" />}
-    {values.map((v, i) => <circle key={i} cx={i * 20} cy={130 - v * .9} r="2.5" fill="var(--neon-green)" />)}
-    {!compact && ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"].map((t,i) => <text key={t} x={i * 62} y="155" fontSize="9" fill="var(--muted-foreground)">{t}</text>)}
+  const values = period === "24h" ? [96.1, 96.8, 96.4, 97.2, 97.6, 97.3, 97.9, 98.2, 97.8, 98.4, 98.9, 98.6, 99.1, 99.0, 99.3, 99.5, 99.4, 99.7, 99.6, 99.8] : [93.8, 94.6, 95.1, 94.8, 95.9, 96.3, 96.0, 96.9, 97.4, 97.1, 97.8, 98.2, 98.0, 98.6, 98.9, 99.1, 99.0, 99.4, 99.6, 99.8];
+  const complaints = [0.09, 0.08, 0.085, 0.07, 0.072, 0.065, 0.06, 0.062, 0.055, 0.05, 0.052, 0.048, 0.045, 0.047, 0.043, 0.041, 0.042, 0.04, 0.041, 0.04];
+  const y = (v: number) => 135 - ((v - 92) / 8) * 115;
+  const yc = (v: number) => 135 - (v / 0.12) * 60;
+  const step = 380 / (values.length - 1);
+  const pts = values.map((v, i) => [+(i * step).toFixed(1), +y(v).toFixed(1)] as [number, number]);
+  const cpts = complaints.map((v, i) => [+(i * step).toFixed(1), +yc(v).toFixed(1)] as [number, number]);
+  const line = smoothPath(pts), last = pts[pts.length - 1];
+  const labels = period === "24h" ? ["00h", "04h", "08h", "12h", "16h", "20h", "24h"] : ["L", "M", "M", "J", "V", "S", "D"];
+  return <svg className={compact ? "cockpit-chart-mini" : "cockpit-chart"} viewBox="-26 0 416 160" role="img" aria-label={`Tendance de délivrabilité sur ${period}`}>
+    <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".28" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
+    {[100, 98, 96, 94].map(v => <g key={v}><line x1="0" x2="380" y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray="2 4" /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{v}%</text></g>)}
+    <path d={`${line} L380 140 L0 140 Z`} fill="url(#gmailFill)" />
+    <path d={line} fill="none" stroke="var(--neon-green)" strokeWidth="2.2" strokeLinecap="round" />
+    {!compact && <path d={smoothPath(cpts)} fill="none" stroke="var(--neon-violet)" strokeWidth="1.6" strokeDasharray="4 3" />}
+    <line x1={last[0]} x2={last[0]} y1={last[1]} y2="140" stroke="var(--neon-green)" strokeOpacity=".4" strokeDasharray="2 3" />
+    <circle cx={last[0]} cy={last[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2" />
+    <g transform={`translate(${last[0] - 46} ${last[1] - 24})`}><rect width="44" height="16" rx="4" fill="var(--primary)" /><text x="22" y="11" fontSize="8.5" fontWeight="700" textAnchor="middle" fill="var(--primary-foreground)">{values[values.length - 1]}%</text></g>
+    {!compact && labels.map((t, i) => <text key={i} x={i * (380 / 6)} y="155" fontSize="8.5" textAnchor="middle" fill="var(--muted-foreground)">{t}</text>)}
   </svg>;
 }
 const metrics = [
