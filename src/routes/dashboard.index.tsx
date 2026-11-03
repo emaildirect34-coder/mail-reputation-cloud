@@ -35,16 +35,17 @@ const fr = (v: number, n = 2) => v.toFixed(n).replace(".", ",");
 function Chart({ period }: { period: Period }) {
   const data = SERIES[period];
   const [hover, setHover] = useState<number | null>(null);
-  const W = 380, TOP = 12, BOT = 128, VX = -30, VW = 448;
+  const W = 380, TOP = 12, BOT = 128, VX = -36, VW = 454;
   const vals = data.map(p => p.d);
-  const lo = Math.floor((Math.min(...vals) - 0.15) * 4) / 4, hi = 100;
+  const lo = Math.floor((Math.min(...vals) - 0.08) * 4) / 4, hi = 100;
   const y = (v: number) => BOT - ((v - lo) / (hi - lo)) * (BOT - TOP);
   const C_MAX = 0.12, yc = (v: number) => BOT - (v / C_MAX) * (BOT - TOP);
   const step = W / (data.length - 1);
   const pts = data.map((p, i) => [+(i * step).toFixed(1), +y(p.d).toFixed(1)] as [number, number]);
   const cpts = data.map((p, i) => [+(i * step).toFixed(1), +yc(p.c).toFixed(1)] as [number, number]);
   const line = smoothPath(pts);
-  const ticks = [0, 1, 2, 3].map(k => +(lo + ((hi - lo) * k) / 3).toFixed(2));
+  const tStep = hi - lo > 1 ? 0.5 : 0.25;
+  const ticks = Array.from({ length: Math.round((hi - lo) / tStep) + 1 }, (_, k) => +(lo + k * tStep).toFixed(2));
   const labelEvery = data.length > 12 ? 4 : 1;
   const a = hover ?? data.length - 1, ap = pts[a], cp = cpts[a];
   const tipX = Math.min(Math.max(ap[0] - 52, -4), W - 100);
@@ -56,7 +57,7 @@ function Chart({ period }: { period: Period }) {
   };
   return <svg className="cockpit-chart" viewBox={`${VX} 0 ${VW} 150`} role="img" aria-label={`Délivrabilité Gmail sur ${period} : ${fr(data[data.length - 1].d)} %, plaintes ${fr(data[data.length - 1].c)} %`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
     <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".24" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
-    {ticks.map(v => <g key={v}><line x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray={v === lo ? "0" : "2 4"} /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{fr(v, v % 1 ? 2 : 0)}%</text></g>)}
+    {ticks.map(v => <g key={v}><line x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray={v === lo ? "0" : "2 4"} /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{fr(v, v % 1 ? 2 : 0)} %</text></g>)}
     {[0, 0.05, 0.1].map(v => <text key={v} x={W + 6} y={yc(v) + 3} fontSize="7.5" fill="var(--neon-violet)">{fr(v)}%</text>)}
     <line x1="0" x2={W} y1={yc(0.1)} y2={yc(0.1)} stroke="var(--neon-red)" strokeOpacity=".55" strokeDasharray="5 4" />
     <text x="4" y={yc(0.1) - 3} fontSize="7" fill="var(--neon-red)">Seuil Google 0,10 %</text>
@@ -105,7 +106,7 @@ function Cockpit() {
           <div className="mt-5 flex flex-wrap gap-2"><Button asChild size="sm" className="cockpit-hero-secondary"><Link to="/dashboard/postmaster"><CircleDot />Voir les rapports</Link></Button><Button asChild size="sm" variant="secondary" className="cockpit-hero-primary"><Link to="/dashboard/campaigns"><Boxes />Configurer une campagne</Link></Button></div>
         </div>
       </section>
-      <section className="cockpit-summary"><h2>Performance globale</h2><div className="flex items-center gap-2"><Ring value={99.4} size={112} stroke={10}><div><p className="text-xl font-extrabold text-primary">99.4<span className="text-xs">/100</span></p><p className="text-xs font-semibold text-neon-green">Excellent</p></div></Ring><div className="min-w-0 flex-1"><Spark values={scoreWeek} className="h-16 w-full" tone="blue" /><div className="mt-1 flex justify-between text-[9px] text-muted-foreground">{["M","M","J","V","S","D","L"].map((d,i)=><span key={i}>{d}</span>)}</div><p className="text-[9px] text-muted-foreground">Score sur 7 jours · <span className="text-neon-green">+1,6 pt</span></p></div></div></section>
+      <section className="cockpit-summary"><h2>Performance globale</h2><div className="flex items-center gap-2"><Ring value={99.4} size={112} stroke={10}><div><p className="text-xl font-extrabold text-primary">99.4<span className="text-xs">/100</span></p><p className="text-xs font-semibold text-neon-green">Excellent</p></div></Ring><div className="min-w-0 flex-1"><Spark values={scoreWeek} className="h-16 w-full" tone="blue" /><div className="mt-1 flex justify-between text-[9px] text-muted-foreground">{["M","M","J","V","S","D","L"].map((d,i)=><span key={i}>{d}</span>)}</div><p className="text-[9px] text-muted-foreground">7 jours · <span className="text-neon-green">+1,6 pt</span></p></div></div></section>
       <section className="cockpit-summary cockpit-revenue"><h2>Revenu aujourd’hui</h2><p className="mt-3 text-2xl font-extrabold text-primary">12 482,35 €</p><p className="cockpit-positive mt-1">↑ +18.4% vs hier</p><Spark values={revenueHours} className="absolute right-4 top-9 h-12 w-24" tone="green" /><div className="mt-4 grid grid-cols-2 divide-x divide-border text-[11px]"><div>Emails envoyés<p className="text-base font-bold text-primary">489 732</p><span className="text-neon-green">↑ +12%</span></div><div className="pl-3">Campagnes en cours<p className="text-base font-bold text-primary">12</p><span className="text-neon-green">↑ 0</span></div></div></section>
     </div>
     <div className="cockpit-kpis">{metrics.map((m,i) => <section className="cockpit-metric" key={m.title}><span className={`cockpit-metric-icon cockpit-tone-${m.tone}`}><m.icon /></span><div className="min-w-0"><h2>{m.title}</h2><p className="cockpit-metric-value">{m.value} <span className="text-[10px]">{m.unit}</span></p><p className={`text-[10px] ${i===1 ? "text-muted-foreground" : "text-neon-green"}`}>{m.sub}</p></div>{i===1 ? <div className="cockpit-quota"><progress value="84" max="100" aria-label="Quota 24 heures" /><span>84%</span></div> : m.series ? <Spark values={[...m.series]} tone={m.tone === "violet" ? "violet" : m.tone === "blue" ? "blue" : "green"} className="cockpit-metric-spark" /> : null}</section>)}</div>
