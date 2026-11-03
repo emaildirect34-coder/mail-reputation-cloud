@@ -22,36 +22,71 @@ function Widget({ title, icon, action, children, className = "" }: { title: stri
 function Detail({ to, children = "Voir le détail" }: { to: string; children?: ReactNode }) {
   return <Button asChild variant="outline" size="sm" className="cockpit-detail"><Link to={to}>{children}<ChevronRight /></Link></Button>;
 }
-function Chart({ compact = false, period = "24h" }: { compact?: boolean; period?: string }) {
-  const values = period === "24h" ? [96.1, 96.8, 96.4, 97.2, 97.6, 97.3, 97.9, 98.2, 97.8, 98.4, 98.9, 98.6, 99.1, 99.0, 99.3, 99.5, 99.4, 99.7, 99.6, 99.8] : [93.8, 94.6, 95.1, 94.8, 95.9, 96.3, 96.0, 96.9, 97.4, 97.1, 97.8, 98.2, 98.0, 98.6, 98.9, 99.1, 99.0, 99.4, 99.6, 99.8];
-  const complaints = [0.09, 0.08, 0.085, 0.07, 0.072, 0.065, 0.06, 0.062, 0.055, 0.05, 0.052, 0.048, 0.045, 0.047, 0.043, 0.041, 0.042, 0.04, 0.041, 0.04];
-  const y = (v: number) => 135 - ((v - 92) / 8) * 115;
-  const yc = (v: number) => 135 - (v / 0.12) * 60;
-  const step = 380 / (values.length - 1);
-  const pts = values.map((v, i) => [+(i * step).toFixed(1), +y(v).toFixed(1)] as [number, number]);
-  const cpts = complaints.map((v, i) => [+(i * step).toFixed(1), +yc(v).toFixed(1)] as [number, number]);
-  const line = smoothPath(pts), last = pts[pts.length - 1];
-  const labels = period === "24h" ? ["00h", "04h", "08h", "12h", "16h", "20h", "24h"] : ["L", "M", "M", "J", "V", "S", "D"];
-  return <svg className={compact ? "cockpit-chart-mini" : "cockpit-chart"} viewBox="-26 0 416 160" role="img" aria-label={`Tendance de délivrabilité sur ${period}`}>
-    <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".28" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
-    {[100, 98, 96, 94].map(v => <g key={v}><line x1="0" x2="380" y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray="2 4" /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{v}%</text></g>)}
-    <path d={`${line} L380 140 L0 140 Z`} fill="url(#gmailFill)" />
-    <path d={line} fill="none" stroke="var(--neon-green)" strokeWidth="2.2" strokeLinecap="round" />
-    {!compact && <path d={smoothPath(cpts)} fill="none" stroke="var(--neon-violet)" strokeWidth="1.6" strokeDasharray="4 3" />}
-    <line x1={last[0]} x2={last[0]} y1={last[1]} y2="140" stroke="var(--neon-green)" strokeOpacity=".4" strokeDasharray="2 3" />
-    <circle cx={last[0]} cy={last[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2" />
-    <g transform={`translate(${last[0] - 46} ${last[1] - 24})`}><rect width="44" height="16" rx="4" fill="var(--primary)" /><text x="22" y="11" fontSize="8.5" fontWeight="700" textAnchor="middle" fill="var(--primary-foreground)">{values[values.length - 1]}%</text></g>
-    {!compact && labels.map((t, i) => <text key={i} x={i * (380 / 6)} y="155" fontSize="8.5" textAnchor="middle" fill="var(--muted-foreground)">{t}</text>)}
+type Period = "24h" | "7j";
+const SERIES: Record<Period, { t: string; d: number; c: number }[]> = {
+  "24h": [99.52, 99.55, 99.58, 99.61, 99.57, 99.49, 99.38, 99.44, 99.56, 99.63, 99.68, 99.66, 99.71, 99.74, 99.69, 99.72, 99.76, 99.79, 99.75, 99.78, 99.81, 99.79, 99.82, 99.8, 99.8]
+    .map((d, i) => ({ t: `${String(i).padStart(2, "0")}h`, d, c: [0.05, 0.048, 0.047, 0.046, 0.05, 0.058, 0.064, 0.06, 0.052, 0.048, 0.046, 0.047, 0.044, 0.043, 0.045, 0.044, 0.042, 0.041, 0.043, 0.041, 0.04, 0.041, 0.04, 0.04, 0.04][i] })),
+  "7j": [["Mar", 99.31, 0.061], ["Mer", 99.42, 0.057], ["Jeu", 99.38, 0.059], ["Ven", 99.55, 0.05], ["Sam", 99.62, 0.047], ["Dim", 99.71, 0.043], ["Lun", 99.8, 0.04]]
+    .map(([t, d, c]) => ({ t: t as string, d: d as number, c: c as number })),
+};
+const fr = (v: number, n = 2) => v.toFixed(n).replace(".", ",");
+
+/** Interactive dual-axis chart: deliverability (left axis) + complaint rate vs Google 0.10% threshold (right axis). */
+function Chart({ period }: { period: Period }) {
+  const data = SERIES[period];
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 380, TOP = 12, BOT = 128, VX = -30, VW = 448;
+  const vals = data.map(p => p.d);
+  const lo = Math.floor((Math.min(...vals) - 0.15) * 4) / 4, hi = 100;
+  const y = (v: number) => BOT - ((v - lo) / (hi - lo)) * (BOT - TOP);
+  const C_MAX = 0.12, yc = (v: number) => BOT - (v / C_MAX) * (BOT - TOP);
+  const step = W / (data.length - 1);
+  const pts = data.map((p, i) => [+(i * step).toFixed(1), +y(p.d).toFixed(1)] as [number, number]);
+  const cpts = data.map((p, i) => [+(i * step).toFixed(1), +yc(p.c).toFixed(1)] as [number, number]);
+  const line = smoothPath(pts);
+  const ticks = [0, 1, 2, 3].map(k => +(lo + ((hi - lo) * k) / 3).toFixed(2));
+  const labelEvery = data.length > 12 ? 4 : 1;
+  const a = hover ?? data.length - 1, ap = pts[a], cp = cpts[a];
+  const tipX = Math.min(Math.max(ap[0] - 52, -4), W - 100);
+  const tipY = ap[1] - 50 < 0 ? ap[1] + 12 : ap[1] - 50;
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * VW + VX;
+    setHover(Math.max(0, Math.min(data.length - 1, Math.round(x / step))));
+  };
+  return <svg className="cockpit-chart" viewBox={`${VX} 0 ${VW} 150`} role="img" aria-label={`Délivrabilité Gmail sur ${period} : ${fr(data[data.length - 1].d)} %, plaintes ${fr(data[data.length - 1].c)} %`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+    <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".24" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
+    {ticks.map(v => <g key={v}><line x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray={v === lo ? "0" : "2 4"} /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{fr(v, v % 1 ? 2 : 0)}%</text></g>)}
+    {[0, 0.05, 0.1].map(v => <text key={v} x={W + 6} y={yc(v) + 3} fontSize="7.5" fill="var(--neon-violet)">{fr(v)}%</text>)}
+    <line x1="0" x2={W} y1={yc(0.1)} y2={yc(0.1)} stroke="var(--neon-red)" strokeOpacity=".55" strokeDasharray="5 4" />
+    <text x="4" y={yc(0.1) - 3} fontSize="7" fill="var(--neon-red)">Seuil Google 0,10 %</text>
+    <path d={`${line} L${W} ${BOT} L0 ${BOT} Z`} fill="url(#gmailFill)" />
+    <path d={smoothPath(cpts)} fill="none" stroke="var(--neon-violet)" strokeWidth="1.5" strokeDasharray="4 3" strokeLinecap="round" />
+    <path d={line} fill="none" stroke="var(--neon-green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    {data.map((p, i) => i % labelEvery === 0 || i === data.length - 1 ? <text key={p.t} x={i * step} y="144" fontSize="8" textAnchor="middle" fill={i === a ? "var(--primary)" : "var(--muted-foreground)"} fontWeight={i === a ? 700 : 400}>{period === "24h" && i === data.length - 1 ? "Now" : p.t}</text> : null)}
+    <line x1={ap[0]} x2={ap[0]} y1={TOP} y2={BOT} stroke="var(--primary)" strokeOpacity=".35" strokeDasharray="2 3" />
+    <circle cx={cp[0]} cy={cp[1]} r="3" fill="var(--card)" stroke="var(--neon-violet)" strokeWidth="1.6" />
+    <circle cx={ap[0]} cy={ap[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2.2" />
+    <g transform={`translate(${tipX} ${tipY})`} pointerEvents="none">
+      <rect width="104" height="38" rx="6" fill="var(--primary)" />
+      <text x="8" y="12" fontSize="7.5" fill="var(--primary-foreground)" opacity=".8">{period === "24h" ? `Aujourd’hui · ${data[a].t}` : data[a].t}</text>
+      <text x="8" y="23" fontSize="8.5" fontWeight="700" fill="var(--primary-foreground)">Délivrés {fr(data[a].d)} %</text>
+      <text x="8" y="33" fontSize="8" fill="var(--primary-foreground)" opacity=".9">Plaintes {fr(data[a].c, 3)} %</text>
+    </g>
+    <rect x="0" y="0" width={W} height={BOT} fill="transparent" />
   </svg>;
 }
 const metrics = [
-  { title: "Débit d’injection", value: "48 732", unit: "msg/s", sub: "+12%", icon: Send, tone: "blue" },
-  { title: "Volume 24h", value: "4 216 893", unit: "", sub: "/ 5 000 000 quota", icon: Mail, tone: "blue" },
-  { title: "Taux de livraison global", value: "99.42%", unit: "", sub: "+0.28%", icon: Target, tone: "violet" },
-  { title: "Taux de rebond (hard + soft)", value: "0.18%", unit: "", sub: "−0.07%", icon: Recycle, tone: "green" },
-  { title: "Taux de désabonnement", value: "0.13%", unit: "", sub: "−0.05%", icon: UserRound, tone: "blue" },
-  { title: "Score Mail-Tester", value: "9.8/10", unit: "", sub: "Excellent", icon: Star, tone: "green" },
+  { title: "Débit d’injection", value: "48 732", unit: "msg/s", sub: "↑ +12%", icon: Send, tone: "blue", series: [41.2, 42.8, 42.1, 44.6, 43.9, 45.8, 46.9, 46.2, 47.8, 47.1, 48.9, 48.7] },
+  { title: "Volume 24h", value: "4 216 893", unit: "", sub: "/ 5 000 000 quota", icon: Mail, tone: "blue", series: null },
+  { title: "Taux de livraison global", value: "99.42%", unit: "", sub: "↑ +0.28%", icon: Target, tone: "violet", series: [99.12, 99.15, 99.13, 99.2, 99.24, 99.22, 99.29, 99.33, 99.31, 99.37, 99.4, 99.42] },
+  { title: "Taux de rebond (hard + soft)", value: "0.18%", unit: "", sub: "↓ −0.07% (mieux)", icon: Recycle, tone: "green", series: [0.25, 0.26, 0.24, 0.24, 0.22, 0.23, 0.21, 0.2, 0.2, 0.19, 0.18, 0.18] },
+  { title: "Taux de désabonnement", value: "0.13%", unit: "", sub: "↓ −0.05% (mieux)", icon: UserRound, tone: "blue", series: [0.18, 0.19, 0.17, 0.17, 0.16, 0.16, 0.15, 0.15, 0.14, 0.14, 0.13, 0.13] },
+  { title: "Score Mail-Tester", value: "9.8/10", unit: "", sub: "Excellent", icon: Star, tone: "green", series: null },
 ] as const;
+const scoreWeek = [97.8, 98.1, 98.0, 98.6, 98.9, 99.1, 99.4];
+const revenueHours = [0.4, 0.9, 1.6, 2.1, 3.0, 4.2, 5.1, 6.4, 7.6, 8.9, 10.3, 11.4, 12.48];
+const gmailWeek = [99.31, 99.42, 99.38, 99.55, 99.62, 99.71, 99.8];
 const events = [
   ["14:28", "Adaptation du pacing Gmail (1 connexion)", "Infrastructure", "blue"],
   ["14:20", "142 adresses inactives mises en sunset", "Hygiène", "violet"],

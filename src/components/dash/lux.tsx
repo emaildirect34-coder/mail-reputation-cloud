@@ -69,25 +69,30 @@ export function smoothPath(pts: [number, number][]) {
   return d;
 }
 
-const defaultSpark = [22, 19, 21, 15, 17, 12, 13, 9, 10, 6, 7, 4];
+const defaultSpark = [8, 11, 9, 14, 13, 17, 16, 20, 19, 23, 22, 26];
+/** Sparkline from real data values (higher value = higher on screen), auto-scaled. */
 export function Spark({ tone = "green", className = "", values = defaultSpark }: { tone?: Tone; className?: string; values?: number[]; d?: string }) {
   const id = useId().replace(/:/g, "");
+  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
   const step = 100 / (values.length - 1);
-  const pts = values.map((v, i) => [+(i * step).toFixed(2), v] as [number, number]);
+  const pts = values.map((v, i) => [+(i * step).toFixed(2), +(27 - ((v - min) / span) * 23).toFixed(2)] as [number, number]);
   const line = smoothPath(pts);
   const last = pts[pts.length - 1];
+  const positioned = /\b(absolute|fixed)\b/.test(className) || className.includes("cockpit-metric-spark");
   return (
-    <svg viewBox="0 -2 100 32" preserveAspectRatio="none" className={className} aria-hidden>
-      <defs>
-        <linearGradient id={`sp${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={toneVar[tone]} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={toneVar[tone]} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${line} L100 30 L0 30 Z`} fill={`url(#sp${id})`} />
-      <path d={line} fill="none" stroke={toneVar[tone]} strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={last[0]} cy={last[1]} r="1.8" fill="var(--card)" stroke={toneVar[tone]} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className={`${positioned ? "" : "relative"} ${className}`} aria-hidden>
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible">
+        <defs>
+          <linearGradient id={`sp${id}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={toneVar[tone]} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={toneVar[tone]} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={`${line} L100 30 L0 30 Z`} fill={`url(#sp${id})`} />
+        <path d={line} fill="none" stroke={toneVar[tone]} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span className="absolute h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] bg-card" style={{ left: `${last[0]}%`, top: `${(last[1] / 30) * 100}%`, borderColor: toneVar[tone], boxShadow: `0 0 0 3px color-mix(in oklab, ${toneVar[tone]} 18%, transparent)` }} />
+    </div>
   );
 }
 
