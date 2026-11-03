@@ -25,7 +25,7 @@ function Detail({ to, children = "Voir le détail" }: { to: string; children?: R
 type Period = "24h" | "7j";
 const SERIES: Record<Period, { t: string; d: number; c: number }[]> = {
   "24h": [99.52, 99.55, 99.58, 99.61, 99.57, 99.49, 99.38, 99.44, 99.56, 99.63, 99.68, 99.66, 99.71, 99.74, 99.69, 99.72, 99.76, 99.79, 99.75, 99.78, 99.81, 99.79, 99.82, 99.8, 99.8]
-    .map((d, i) => ({ t: `${String(i).padStart(2, "0")}h`, d, c: [0.05, 0.048, 0.047, 0.046, 0.05, 0.058, 0.064, 0.06, 0.052, 0.048, 0.046, 0.047, 0.044, 0.043, 0.045, 0.044, 0.042, 0.041, 0.043, 0.041, 0.04, 0.041, 0.04, 0.04, 0.04][i] })),
+    .map((d, i) => ({ t: `${String(i).padStart(2, "0")}h`, d, c: ([0.05, 0.048, 0.047, 0.046, 0.05, 0.058, 0.064, 0.06, 0.052, 0.048, 0.046, 0.047, 0.044, 0.043, 0.045, 0.044, 0.042, 0.041, 0.043, 0.041, 0.04, 0.041, 0.04, 0.04, 0.04][i] ?? 0.04) })),
   "7j": [["Mar", 99.31, 0.061], ["Mer", 99.42, 0.057], ["Jeu", 99.38, 0.059], ["Ven", 99.55, 0.05], ["Sam", 99.62, 0.047], ["Dim", 99.71, 0.043], ["Lun", 99.8, 0.04]]
     .map(([t, d, c]) => ({ t: t as string, d: d as number, c: c as number })),
 };
@@ -47,7 +47,7 @@ function Chart({ period }: { period: Period }) {
   const tStep = hi - lo > 1 ? 0.5 : 0.25;
   const ticks = Array.from({ length: Math.round((hi - lo) / tStep) + 1 }, (_, k) => +(lo + k * tStep).toFixed(2));
   const labelEvery = data.length > 12 ? 4 : 1;
-  const a = hover ?? data.length - 1, ap = pts[a], cp = cpts[a];
+  const a = hover ?? data.length - 1, ap = pts[a]!, cp = cpts[a]!, cur = data[a]!, lastP = data[data.length - 1]!;
   const tipX = Math.min(Math.max(ap[0] - 52, -4), W - 100);
   const tipY = ap[1] - 50 < 0 ? ap[1] + 12 : ap[1] - 50;
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -55,7 +55,7 @@ function Chart({ period }: { period: Period }) {
     const x = ((e.clientX - r.left) / r.width) * VW + VX;
     setHover(Math.max(0, Math.min(data.length - 1, Math.round(x / step))));
   };
-  return <svg className="cockpit-chart" viewBox={`${VX} 0 ${VW} 150`} role="img" aria-label={`Délivrabilité Gmail sur ${period} : ${fr(data[data.length - 1].d)} %, plaintes ${fr(data[data.length - 1].c)} %`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+  return <svg className="cockpit-chart" viewBox={`${VX} 0 ${VW} 150`} role="img" aria-label={`Délivrabilité Gmail sur ${period} : ${fr(lastP.d)} %, plaintes ${fr(lastP.c)} %`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
     <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".24" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
     {ticks.map(v => <g key={v}><line x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray={v === lo ? "0" : "2 4"} /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{fr(v, v % 1 ? 2 : 0)} %</text></g>)}
     {[0, 0.05, 0.1].map(v => <text key={v} x={W + 6} y={yc(v) + 3} fontSize="7.5" fill="var(--neon-violet)">{fr(v)}%</text>)}
@@ -70,9 +70,9 @@ function Chart({ period }: { period: Period }) {
     <circle cx={ap[0]} cy={ap[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2.2" />
     <g transform={`translate(${tipX} ${tipY})`} pointerEvents="none">
       <rect width="104" height="38" rx="6" fill="var(--primary)" />
-      <text x="8" y="12" fontSize="7.5" fill="var(--primary-foreground)" opacity=".8">{period === "24h" ? `Aujourd’hui · ${data[a].t}` : data[a].t}</text>
-      <text x="8" y="23" fontSize="8.5" fontWeight="700" fill="var(--primary-foreground)">Délivrés {fr(data[a].d)} %</text>
-      <text x="8" y="33" fontSize="8" fill="var(--primary-foreground)" opacity=".9">Plaintes {fr(data[a].c, 3)} %</text>
+      <text x="8" y="12" fontSize="7.5" fill="var(--primary-foreground)" opacity=".8">{period === "24h" ? `Aujourd’hui · ${cur.t}` : cur.t}</text>
+      <text x="8" y="23" fontSize="8.5" fontWeight="700" fill="var(--primary-foreground)">Délivrés {fr(cur.d)} %</text>
+      <text x="8" y="33" fontSize="8" fill="var(--primary-foreground)" opacity=".9">Plaintes {fr(cur.c, 3)} %</text>
     </g>
     <rect x="0" y="0" width={W} height={BOT} fill="transparent" />
   </svg>;
