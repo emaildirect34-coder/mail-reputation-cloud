@@ -22,36 +22,72 @@ function Widget({ title, icon, action, children, className = "" }: { title: stri
 function Detail({ to, children = "Voir le détail" }: { to: string; children?: ReactNode }) {
   return <Button asChild variant="outline" size="sm" className="cockpit-detail"><Link to={to}>{children}<ChevronRight /></Link></Button>;
 }
-function Chart({ compact = false, period = "24h" }: { compact?: boolean; period?: string }) {
-  const values = period === "24h" ? [96.1, 96.8, 96.4, 97.2, 97.6, 97.3, 97.9, 98.2, 97.8, 98.4, 98.9, 98.6, 99.1, 99.0, 99.3, 99.5, 99.4, 99.7, 99.6, 99.8] : [93.8, 94.6, 95.1, 94.8, 95.9, 96.3, 96.0, 96.9, 97.4, 97.1, 97.8, 98.2, 98.0, 98.6, 98.9, 99.1, 99.0, 99.4, 99.6, 99.8];
-  const complaints = [0.09, 0.08, 0.085, 0.07, 0.072, 0.065, 0.06, 0.062, 0.055, 0.05, 0.052, 0.048, 0.045, 0.047, 0.043, 0.041, 0.042, 0.04, 0.041, 0.04];
-  const y = (v: number) => 135 - ((v - 92) / 8) * 115;
-  const yc = (v: number) => 135 - (v / 0.12) * 60;
-  const step = 380 / (values.length - 1);
-  const pts = values.map((v, i) => [+(i * step).toFixed(1), +y(v).toFixed(1)] as [number, number]);
-  const cpts = complaints.map((v, i) => [+(i * step).toFixed(1), +yc(v).toFixed(1)] as [number, number]);
-  const line = smoothPath(pts), last = pts[pts.length - 1];
-  const labels = period === "24h" ? ["00h", "04h", "08h", "12h", "16h", "20h", "24h"] : ["L", "M", "M", "J", "V", "S", "D"];
-  return <svg className={compact ? "cockpit-chart-mini" : "cockpit-chart"} viewBox="-26 0 416 160" role="img" aria-label={`Tendance de délivrabilité sur ${period}`}>
-    <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".28" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
-    {[100, 98, 96, 94].map(v => <g key={v}><line x1="0" x2="380" y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray="2 4" /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{v}%</text></g>)}
-    <path d={`${line} L380 140 L0 140 Z`} fill="url(#gmailFill)" />
-    <path d={line} fill="none" stroke="var(--neon-green)" strokeWidth="2.2" strokeLinecap="round" />
-    {!compact && <path d={smoothPath(cpts)} fill="none" stroke="var(--neon-violet)" strokeWidth="1.6" strokeDasharray="4 3" />}
-    <line x1={last[0]} x2={last[0]} y1={last[1]} y2="140" stroke="var(--neon-green)" strokeOpacity=".4" strokeDasharray="2 3" />
-    <circle cx={last[0]} cy={last[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2" />
-    <g transform={`translate(${last[0] - 46} ${last[1] - 24})`}><rect width="44" height="16" rx="4" fill="var(--primary)" /><text x="22" y="11" fontSize="8.5" fontWeight="700" textAnchor="middle" fill="var(--primary-foreground)">{values[values.length - 1]}%</text></g>
-    {!compact && labels.map((t, i) => <text key={i} x={i * (380 / 6)} y="155" fontSize="8.5" textAnchor="middle" fill="var(--muted-foreground)">{t}</text>)}
+type Period = "24h" | "7j";
+const SERIES: Record<Period, { t: string; d: number; c: number }[]> = {
+  "24h": [99.52, 99.55, 99.58, 99.61, 99.57, 99.49, 99.38, 99.44, 99.56, 99.63, 99.68, 99.66, 99.71, 99.74, 99.69, 99.72, 99.76, 99.79, 99.75, 99.78, 99.81, 99.79, 99.82, 99.8, 99.8]
+    .map((d, i) => ({ t: `${String(i).padStart(2, "0")}h`, d, c: ([0.05, 0.048, 0.047, 0.046, 0.05, 0.058, 0.064, 0.06, 0.052, 0.048, 0.046, 0.047, 0.044, 0.043, 0.045, 0.044, 0.042, 0.041, 0.043, 0.041, 0.04, 0.041, 0.04, 0.04, 0.04][i] ?? 0.04) })),
+  "7j": [["Mar", 99.31, 0.061], ["Mer", 99.42, 0.057], ["Jeu", 99.38, 0.059], ["Ven", 99.55, 0.05], ["Sam", 99.62, 0.047], ["Dim", 99.71, 0.043], ["Lun", 99.8, 0.04]]
+    .map(([t, d, c]) => ({ t: t as string, d: d as number, c: c as number })),
+};
+const fr = (v: number, n = 2) => v.toFixed(n).replace(".", ",");
+
+/** Interactive dual-axis chart: deliverability (left axis) + complaint rate vs Google 0.10% threshold (right axis). */
+function Chart({ period }: { period: Period }) {
+  const data = SERIES[period];
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 380, TOP = 12, BOT = 128, VX = -36, VW = 454;
+  const vals = data.map(p => p.d);
+  const lo = Math.floor((Math.min(...vals) - 0.08) * 4) / 4, hi = 100;
+  const y = (v: number) => BOT - ((v - lo) / (hi - lo)) * (BOT - TOP);
+  const C_MAX = 0.12, yc = (v: number) => BOT - (v / C_MAX) * (BOT - TOP);
+  const step = W / (data.length - 1);
+  const pts = data.map((p, i) => [+(i * step).toFixed(1), +y(p.d).toFixed(1)] as [number, number]);
+  const cpts = data.map((p, i) => [+(i * step).toFixed(1), +yc(p.c).toFixed(1)] as [number, number]);
+  const line = smoothPath(pts);
+  const tStep = hi - lo > 1 ? 0.5 : 0.25;
+  const ticks = Array.from({ length: Math.round((hi - lo) / tStep) + 1 }, (_, k) => +(lo + k * tStep).toFixed(2));
+  const labelEvery = data.length > 12 ? 4 : 1;
+  const a = hover ?? data.length - 1, ap = pts[a]!, cp = cpts[a]!, cur = data[a]!, lastP = data[data.length - 1]!;
+  const tipX = Math.min(Math.max(ap[0] - 52, -4), W - 100);
+  const tipY = ap[1] - 50 < 0 ? ap[1] + 12 : ap[1] - 50;
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * VW + VX;
+    setHover(Math.max(0, Math.min(data.length - 1, Math.round(x / step))));
+  };
+  return <svg className="cockpit-chart" viewBox={`${VX} 0 ${VW} 150`} role="img" aria-label={`Délivrabilité Gmail sur ${period} : ${fr(lastP.d)} %, plaintes ${fr(lastP.c)} %`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+    <defs><linearGradient id="gmailFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--neon-green)" stopOpacity=".24" /><stop offset="100%" stopColor="var(--neon-green)" stopOpacity="0" /></linearGradient></defs>
+    {ticks.map(v => <g key={v}><line x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeDasharray={v === lo ? "0" : "2 4"} /><text x="-6" y={y(v) + 3} fontSize="8" textAnchor="end" fill="var(--muted-foreground)">{fr(v, v % 1 ? 2 : 0)} %</text></g>)}
+    {[0, 0.05, 0.1].map(v => <text key={v} x={W + 6} y={yc(v) + 3} fontSize="7.5" fill="var(--neon-violet)">{fr(v)}%</text>)}
+    <line x1="0" x2={W} y1={yc(0.1)} y2={yc(0.1)} stroke="var(--neon-red)" strokeOpacity=".55" strokeDasharray="5 4" />
+    <text x="4" y={yc(0.1) - 3} fontSize="7" fill="var(--neon-red)">Seuil Google 0,10 %</text>
+    <path d={`${line} L${W} ${BOT} L0 ${BOT} Z`} fill="url(#gmailFill)" />
+    <path d={smoothPath(cpts)} fill="none" stroke="var(--neon-violet)" strokeWidth="1.5" strokeDasharray="4 3" strokeLinecap="round" />
+    <path d={line} fill="none" stroke="var(--neon-green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    {data.map((p, i) => i % labelEvery === 0 || i === data.length - 1 ? <text key={p.t} x={i * step} y="144" fontSize="8" textAnchor="middle" fill={i === a ? "var(--primary)" : "var(--muted-foreground)"} fontWeight={i === a ? 700 : 400}>{period === "24h" && i === data.length - 1 ? "Now" : p.t}</text> : null)}
+    <line x1={ap[0]} x2={ap[0]} y1={TOP} y2={BOT} stroke="var(--primary)" strokeOpacity=".35" strokeDasharray="2 3" />
+    <circle cx={cp[0]} cy={cp[1]} r="3" fill="var(--card)" stroke="var(--neon-violet)" strokeWidth="1.6" />
+    <circle cx={ap[0]} cy={ap[1]} r="4" fill="var(--card)" stroke="var(--neon-green)" strokeWidth="2.2" />
+    <g transform={`translate(${tipX} ${tipY})`} pointerEvents="none">
+      <rect width="104" height="38" rx="6" fill="var(--primary)" />
+      <text x="8" y="12" fontSize="7.5" fill="var(--primary-foreground)" opacity=".8">{period === "24h" ? `Aujourd’hui · ${cur.t}` : cur.t}</text>
+      <text x="8" y="23" fontSize="8.5" fontWeight="700" fill="var(--primary-foreground)">Délivrés {fr(cur.d)} %</text>
+      <text x="8" y="33" fontSize="8" fill="var(--primary-foreground)" opacity=".9">Plaintes {fr(cur.c, 3)} %</text>
+    </g>
+    <rect x="0" y="0" width={W} height={BOT} fill="transparent" />
   </svg>;
 }
 const metrics = [
-  { title: "Débit d’injection", value: "48 732", unit: "msg/s", sub: "+12%", icon: Send, tone: "blue" },
-  { title: "Volume 24h", value: "4 216 893", unit: "", sub: "/ 5 000 000 quota", icon: Mail, tone: "blue" },
-  { title: "Taux de livraison global", value: "99.42%", unit: "", sub: "+0.28%", icon: Target, tone: "violet" },
-  { title: "Taux de rebond (hard + soft)", value: "0.18%", unit: "", sub: "−0.07%", icon: Recycle, tone: "green" },
-  { title: "Taux de désabonnement", value: "0.13%", unit: "", sub: "−0.05%", icon: UserRound, tone: "blue" },
-  { title: "Score Mail-Tester", value: "9.8/10", unit: "", sub: "Excellent", icon: Star, tone: "green" },
+  { title: "Débit d’injection", value: "48 732", unit: "msg/s", sub: "↑ +12%", icon: Send, tone: "blue", series: [41.2, 42.8, 42.1, 44.6, 43.9, 45.8, 46.9, 46.2, 47.8, 47.1, 48.9, 48.7] },
+  { title: "Volume 24h", value: "4 216 893", unit: "", sub: "/ 5 000 000 quota", icon: Mail, tone: "blue", series: null },
+  { title: "Taux de livraison global", value: "99.42%", unit: "", sub: "↑ +0.28%", icon: Target, tone: "violet", series: [99.12, 99.15, 99.13, 99.2, 99.24, 99.22, 99.29, 99.33, 99.31, 99.37, 99.4, 99.42] },
+  { title: "Taux de rebond (hard + soft)", value: "0.18%", unit: "", sub: "↓ −0.07% (mieux)", icon: Recycle, tone: "green", series: [0.25, 0.26, 0.24, 0.24, 0.22, 0.23, 0.21, 0.2, 0.2, 0.19, 0.18, 0.18] },
+  { title: "Taux de désabonnement", value: "0.13%", unit: "", sub: "↓ −0.05% (mieux)", icon: UserRound, tone: "blue", series: [0.18, 0.19, 0.17, 0.17, 0.16, 0.16, 0.15, 0.15, 0.14, 0.14, 0.13, 0.13] },
+  { title: "Score Mail-Tester", value: "9.8/10", unit: "", sub: "Excellent", icon: Star, tone: "green", series: null },
 ] as const;
+const scoreWeek = [97.8, 98.1, 98.0, 98.6, 98.9, 99.1, 99.4];
+const revenueHours = [0.4, 0.9, 1.6, 2.1, 3.0, 4.2, 5.1, 6.4, 7.6, 8.9, 10.3, 11.4, 12.48];
+const gmailWeek = [99.31, 99.42, 99.38, 99.55, 99.62, 99.71, 99.8];
 const events = [
   ["14:28", "Adaptation du pacing Gmail (1 connexion)", "Infrastructure", "blue"],
   ["14:20", "142 adresses inactives mises en sunset", "Hygiène", "violet"],
@@ -61,7 +97,7 @@ const events = [
 ] as const;
 
 function Cockpit() {
-  const [period, setPeriod] = useState("24h");
+  const [period, setPeriod] = useState<Period>("24h");
   return <div className="cockpit-content">
     <div className="cockpit-hero-grid">
       <section className="cockpit-welcome">
@@ -70,15 +106,15 @@ function Cockpit() {
           <div className="mt-5 flex flex-wrap gap-2"><Button asChild size="sm" className="cockpit-hero-secondary"><Link to="/dashboard/postmaster"><CircleDot />Voir les rapports</Link></Button><Button asChild size="sm" variant="secondary" className="cockpit-hero-primary"><Link to="/dashboard/campaigns"><Boxes />Configurer une campagne</Link></Button></div>
         </div>
       </section>
-      <section className="cockpit-summary"><h2>Performance globale</h2><div className="flex items-center gap-2"><Ring value={99.4} size={112} stroke={10}><div><p className="text-xl font-extrabold text-primary">99.4<span className="text-xs">/100</span></p><p className="text-xs font-semibold text-neon-green">Excellent</p></div></Ring><Spark className="h-20 min-w-0 flex-1" tone="blue" /></div></section>
-      <section className="cockpit-summary cockpit-revenue"><h2>Revenu aujourd’hui</h2><p className="mt-3 text-2xl font-extrabold text-primary">12 482,35 €</p><p className="cockpit-positive mt-1">↑ +18.4% vs hier</p><Spark className="absolute right-3 top-7 h-14 w-20 opacity-70" tone="blue" /><div className="mt-4 grid grid-cols-2 divide-x divide-border text-[11px]"><div>Emails envoyés<p className="text-base font-bold text-primary">489 732</p><span className="text-neon-green">↑ +12%</span></div><div className="pl-3">Campagnes en cours<p className="text-base font-bold text-primary">12</p><span className="text-neon-green">↑ 0</span></div></div></section>
+      <section className="cockpit-summary"><h2>Performance globale</h2><div className="flex items-center gap-2"><Ring value={99.4} size={112} stroke={10}><div><p className="text-xl font-extrabold text-primary">99.4<span className="text-xs">/100</span></p><p className="text-xs font-semibold text-neon-green">Excellent</p></div></Ring><div className="min-w-0 flex-1"><Spark values={scoreWeek} className="h-16 w-full" tone="blue" /><div className="mt-1 flex justify-between text-[9px] text-muted-foreground">{["M","M","J","V","S","D","L"].map((d,i)=><span key={i}>{d}</span>)}</div><p className="text-[9px] text-muted-foreground">7 jours · <span className="text-neon-green">+1,6 pt</span></p></div></div></section>
+      <section className="cockpit-summary cockpit-revenue"><h2>Revenu aujourd’hui</h2><p className="mt-3 text-2xl font-extrabold text-primary">12 482,35 €</p><p className="cockpit-positive mt-1">↑ +18.4% vs hier</p><Spark values={revenueHours} className="absolute right-4 top-9 h-12 w-24" tone="green" /><div className="mt-4 grid grid-cols-2 divide-x divide-border text-[11px]"><div>Emails envoyés<p className="text-base font-bold text-primary">489 732</p><span className="text-neon-green">↑ +12%</span></div><div className="pl-3">Campagnes en cours<p className="text-base font-bold text-primary">12</p><span className="text-neon-green">↑ 0</span></div></div></section>
     </div>
-    <div className="cockpit-kpis">{metrics.map((m,i) => <section className="cockpit-metric" key={m.title}><span className={`cockpit-metric-icon cockpit-tone-${m.tone}`}><m.icon /></span><div className="min-w-0"><h2>{m.title}</h2><p className="cockpit-metric-value">{m.value} <span className="text-[10px]">{m.unit}</span></p><p className={`text-[10px] ${i===1 ? "text-muted-foreground" : "text-neon-green"}`}>{i!==1 && i!==5 ? "↑ " : ""}{m.sub}</p></div>{i===1 ? <div className="cockpit-quota"><progress value="84" max="100" aria-label="Quota 24 heures" /><span>84%</span></div> : i!==5 ? <Spark tone={i===4 ? "blue" : "green"} className="cockpit-metric-spark" /> : null}</section>)}</div>
+    <div className="cockpit-kpis">{metrics.map((m,i) => <section className="cockpit-metric" key={m.title}><span className={`cockpit-metric-icon cockpit-tone-${m.tone}`}><m.icon /></span><div className="min-w-0"><h2>{m.title}</h2><p className="cockpit-metric-value">{m.value} <span className="text-[10px]">{m.unit}</span></p><p className={`text-[10px] ${i===1 ? "text-muted-foreground" : "text-neon-green"}`}>{m.sub}</p></div>{i===1 ? <div className="cockpit-quota"><progress value="84" max="100" aria-label="Quota 24 heures" /><span>84%</span></div> : m.series ? <Spark values={[...m.series]} tone={m.tone === "violet" ? "violet" : m.tone === "blue" ? "blue" : "green"} className="cockpit-metric-spark" /> : null}</section>)}</div>
     <div className="cockpit-primary-grid">
       <Widget title="Performance Gmail" icon={<Mail />} action={<span className="cockpit-chip">Unique FAI</span>} className="cockpit-gmail">
         <div className="cockpit-gmail-inner"><div className="text-center"><Ring value={99.8} size={136} stroke={11}><div><p className="text-2xl font-extrabold text-primary">99.8%</p><p className="text-[10px]">Boîte principale</p></div></Ring><span className="cockpit-positive inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Excellent</span></div>
           <div className="cockpit-gmail-stats">{[["Taux de délivrabilité", "99.8%", "+0.2%"],["Taux de plaintes", "0.04%", "−0.01%"],["Taux de rebonds", "0.18%", "−0.03%"]].map(([l,v,d]) => <div key={l} className="flex gap-2"><ShieldCheck className="h-7 w-7 shrink-0 rounded-lg bg-primary/5 p-1.5 text-primary" /><div><p className="text-[10px] text-muted-foreground">{l}</p><b className="text-xs text-primary">{v}</b><span className="ml-2 text-[9px] text-neon-green">{d}</span></div></div>)}<Detail to="/dashboard/reputation" /></div>
-          <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2 text-[10px]"><b>Tendance de délivrabilité (Gmail)</b><div className="flex gap-2"><span className="text-neon-green">● Délivrés</span><span className="text-neon-violet">● Plaintes</span></div></div><Chart period={period} /><div className="flex justify-end gap-1">{["24h", "7j"].map(p => <Button key={p} variant={period===p ? "secondary" : "ghost"} size="sm" className="h-5 px-2 text-[9px]" onClick={() => setPeriod(p)} aria-pressed={period===p}>{p}</Button>)}</div></div>
+          <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2 text-[10px]"><b>Tendance de délivrabilité (Gmail)</b><div className="flex gap-2"><span className="text-neon-green">● Délivrés</span><span className="text-neon-violet">● Plaintes</span></div></div><Chart period={period} /><div className="flex justify-end gap-1">{(["24h", "7j"] as const).map(p => <Button key={p} variant={period===p ? "secondary" : "ghost"} size="sm" className="h-5 px-2 text-[9px]" onClick={() => setPeriod(p)} aria-pressed={period===p}>{p}</Button>)}</div></div>
         </div>
       </Widget>
       <Widget title="Activité Atlas IA" icon={<Bot />} action={<span className="cockpit-positive">● En direct</span>}>
@@ -87,7 +123,7 @@ function Cockpit() {
     </div>
     <div className="cockpit-secondary-grid">
       <Widget title="Répartition des ouvertures par pays" icon={<Globe />} action={<span className="cockpit-chip">● {period}</span>}><div className="cockpit-geography"><img src={worldMap.url} alt="Carte mondiale de répartition des ouvertures" /><ul>{[["🇫🇷", "France", "24.8%"],["🇺🇸", "États-Unis", "18.7%"],["🇩🇪", "Allemagne", "11.5%"],["🇨🇦", "Canada", "7.9%"],["🇬🇧", "Royaume-Uni", "6.2%"],["🌐", "Autres", "30.9%"]].map(([f,n,v]) => <li key={n}><span>{f} {n}</span><b>{v}</b></li>)}</ul></div><div className="flex items-end justify-between gap-2"><div className="text-[10px] text-muted-foreground">Total des ouvertures<p className="text-sm font-bold text-primary">2 486 231</p><span className="text-neon-green">↑ +14.2% vs hier</span></div><Detail to="/dashboard/postmaster" /></div></Widget>
-      <Widget title="État des services Gmail" icon={<Mail />} action={<span className="cockpit-positive">Tous opérationnels</span>}><div className="flex items-center gap-3"><ul className="flex-1 space-y-3 text-[10px]">{["API Gmail (Envoi / Réception)","SNDS (Microsoft)","BIMI (Affichage logo)","MTA-STS / TLS-RPT","SPF / DKIM / DMARC"].map(l => <li key={l} className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" /><span>{l}</span><span className="cockpit-positive ml-auto">OK</span></li>)}</ul><div className="w-28 shrink-0 text-center"><Ring value={99.8} size={105} stroke={9} tone="blue"><div><b className="text-lg text-primary">99.8%</b><p className="text-[9px]">Délivrabilité<br />globale</p></div></Ring><Spark className="mt-3 h-8 w-full" /></div></div></Widget>
+      <Widget title="État des services Gmail" icon={<Mail />} action={<span className="cockpit-positive">Tous opérationnels</span>}><div className="flex items-center gap-3"><ul className="flex-1 space-y-3 text-[10px]">{["API Gmail (Envoi / Réception)","SNDS (Microsoft)","BIMI (Affichage logo)","MTA-STS / TLS-RPT","SPF / DKIM / DMARC"].map(l => <li key={l} className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" /><span>{l}</span><span className="cockpit-positive ml-auto">OK</span></li>)}</ul><div className="w-28 shrink-0 text-center"><Ring value={99.8} size={105} stroke={9} tone="blue"><div><b className="text-lg text-primary">99.8%</b><p className="text-[9px]">Délivrabilité<br />globale</p></div></Ring><Spark values={gmailWeek} className="mt-3 h-8 w-full" /></div></div></Widget>
       <Widget title="Pools VMTA & IPs" icon={<Boxes />} action={<span className="cockpit-chip">Total : 16 IPs</span>}><div className="cockpit-pools">{[["Pool Gold","8 IPs actives","100","green"],["Pool Silver","4 IPs en warmup","75","blue"],["Pool Quarantaine","0 IP","0","violet"]].map(([n,s,v,t]) => <div key={n} className={`cockpit-pool cockpit-tone-${t}`}><p className="flex items-center gap-1 font-bold"><ShieldCheck className="h-3 w-3" />{n}</p><p className="mt-1 text-[9px] text-muted-foreground">{s}</p><Ring value={Number(v)} size={78} stroke={7} tone={t === "green" ? "green" : "blue"}><b className="text-primary">{v}%</b></Ring></div>)}</div><Detail to="/dashboard/pools">Gestion des IPs</Detail></Widget>
     </div>
     <div className="cockpit-bottom-grid">
