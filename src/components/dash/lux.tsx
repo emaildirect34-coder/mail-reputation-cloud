@@ -59,11 +59,12 @@ export function Kpi({ icon, label, value, sub, tone = "blue", spark }: { icon: R
 /** Smooth Catmull-Rom path through points */
 export function smoothPath(pts: [number, number][]) {
   if (pts.length < 2) return "";
-  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  const at = (i: number): [number, number] => pts[Math.max(0, Math.min(pts.length - 1, i))]!;
+  let d = `M${at(0)[0]} ${at(0)[1]}`;
   for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6] as const;
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6] as const;
     d += ` C${c1[0].toFixed(2)} ${c1[1].toFixed(2)} ${c2[0].toFixed(2)} ${c2[1].toFixed(2)} ${p2[0]} ${p2[1]}`;
   }
   return d;
@@ -77,7 +78,7 @@ export function Spark({ tone = "green", className = "", values = defaultSpark }:
   const step = 100 / (values.length - 1);
   const pts = values.map((v, i) => [+(i * step).toFixed(2), +(27 - ((v - min) / span) * 23).toFixed(2)] as [number, number]);
   const line = smoothPath(pts);
-  const last = pts[pts.length - 1];
+  const last = pts[pts.length - 1] ?? [100, 15];
   const positioned = /\b(absolute|fixed)\b/.test(className) || className.includes("cockpit-metric-spark");
   return (
     <div className={`${positioned ? "" : "relative"} ${className}`} aria-hidden>
