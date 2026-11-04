@@ -6,7 +6,6 @@ import {
   Link2, Pencil, Eye, Palette, Image, RefreshCw, Braces, Reply, AlertCircle, ChevronsRight, ChevronRight, ChevronLeft, ChevronsLeft, Play, TrendingUp,
 } from "lucide-react";
 import { Card, Kpi } from "@/components/dash/lux";
-import { campaignTabs } from "@/components/dash/campaign-tabs";
 import { LuxTabs } from "@/components/dash/lux";
 
 export const Route = createFileRoute("/dashboard/campaigns")({
@@ -243,7 +242,6 @@ function Builder() {
           <button onClick={() => { setRunning(true); setTimeout(() => setRunning(false), 1800); }} className="card-lux inline-flex items-center gap-2 px-4 py-2 text-[13px] font-bold text-primary"><Play className="h-4 w-4" />Lancer les tests</button>
         </div>
       </Card>
-      <span className="hidden">{campaignTabs.length}</span>
     </div>
   );
 }

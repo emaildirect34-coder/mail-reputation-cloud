@@ -29,7 +29,7 @@ const sections: { title: string; items: Item[] }[] = [
   { title: "Email Engine", items: [
     { to: "/dashboard/campaigns", icon: Send, label: "Campagnes" },
     { to: "/dashboard/api-keys", icon: Code2, label: "API & SMTP" },
-    { to: "/dashboard/campaigns", icon: FileText, label: "Templates" },
+    { to: "/dashboard/templates", icon: FileText, label: "Offres Sponsors" },
     { to: "/dashboard/logs", icon: ScrollText, label: "Logs & événements" },
   ]},
   { title: "Infrastructure", items: [
