@@ -33,6 +33,7 @@ import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settin
 import { Route as DashboardShapingRouteImport } from './routes/dashboard.shaping'
 import { Route as DashboardShieldRouteImport } from './routes/dashboard.shield'
 import { Route as DashboardSuppressionRouteImport } from './routes/dashboard.suppression'
+import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templates'
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
@@ -157,6 +158,11 @@ const DashboardSuppressionRoute = DashboardSuppressionRouteImport.update({
   path: '/suppression',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardTemplatesRoute = DashboardTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardValidationRoute = DashboardValidationRouteImport.update({
   id: '/validation',
   path: '/validation',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
@@ -525,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSuppressionRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/templates': {
+      id: '/dashboard/templates'
+      path: '/templates'
+      fullPath: '/dashboard/templates'
+      preLoaderRoute: typeof DashboardTemplatesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/validation': {
       id: '/dashboard/validation'
       path: '/validation'
@@ -570,6 +589,7 @@ interface DashboardRouteChildren {
   DashboardShapingRoute: typeof DashboardShapingRoute
   DashboardShieldRoute: typeof DashboardShieldRoute
   DashboardSuppressionRoute: typeof DashboardSuppressionRoute
+  DashboardTemplatesRoute: typeof DashboardTemplatesRoute
   DashboardValidationRoute: typeof DashboardValidationRoute
   DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
@@ -597,6 +617,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardShapingRoute: DashboardShapingRoute,
   DashboardShieldRoute: DashboardShieldRoute,
   DashboardSuppressionRoute: DashboardSuppressionRoute,
+  DashboardTemplatesRoute: DashboardTemplatesRoute,
   DashboardValidationRoute: DashboardValidationRoute,
   DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
