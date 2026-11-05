@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep the overview cockpit in its leaf route, with dashboard-scoped semantic CSS tokens and existing shared controls, to prevent presentation changes from altering delivery logic.
+- Keep campaign creation in its existing leaf route with shared form controls and one persistent draft state across steps, so presentation changes do not change delivery services.
