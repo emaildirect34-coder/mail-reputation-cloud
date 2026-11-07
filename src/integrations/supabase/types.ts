@@ -28,6 +28,7 @@ export type Database = {
           provider: string
           region: string | null
           status: string
+          synced_at: string | null
         }
         Insert: {
           account_id?: string | null
@@ -42,6 +43,7 @@ export type Database = {
           provider: string
           region?: string | null
           status?: string
+          synced_at?: string | null
         }
         Update: {
           account_id?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           provider?: string
           region?: string | null
           status?: string
+          synced_at?: string | null
         }
         Relationships: [
           {
@@ -198,6 +201,96 @@ export type Database = {
           },
         ]
       }
+      server_domain_bindings: {
+        Row: {
+          created_at: string
+          domain_id: string
+          id: string
+          installed_at: string | null
+          server_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          domain_id: string
+          id?: string
+          installed_at?: string | null
+          server_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          domain_id?: string
+          id?: string
+          installed_at?: string | null
+          server_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_domain_bindings_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "sending_domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_domain_bindings_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "managed_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_ips: {
+        Row: {
+          active: boolean
+          address: string
+          family: number
+          id: string
+          pool_id: string | null
+          rdns: string | null
+          server_id: string
+          synced_at: string
+        }
+        Insert: {
+          active?: boolean
+          address: string
+          family: number
+          id?: string
+          pool_id?: string | null
+          rdns?: string | null
+          server_id: string
+          synced_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string
+          family?: number
+          id?: string
+          pool_id?: string | null
+          rdns?: string | null
+          server_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_ips_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "vmta_pools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_ips_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "managed_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -218,6 +311,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vmta_pools: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          purpose: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          purpose?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          purpose?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      warmup_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_day: number
+          daily_limits: number[]
+          id: string
+          ip_id: string
+          isp: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_day?: number
+          daily_limits: number[]
+          id?: string
+          ip_id: string
+          isp: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_day?: number
+          daily_limits?: number[]
+          id?: string
+          ip_id?: string
+          isp?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warmup_plans_ip_id_fkey"
+            columns: ["ip_id"]
+            isOneToOne: false
+            referencedRelation: "server_ips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       worker_tasks: {
         Row: {
