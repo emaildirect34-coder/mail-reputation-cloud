@@ -72,7 +72,7 @@ function Offers() {
       </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <Link to="/dashboard/campaigns" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><Send className="h-4 w-4 text-primary" />Nouvelle campagne</Link>
+        <Link to="/dashboard/campaigns/new" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><Send className="h-4 w-4 text-primary" />Nouvelle campagne</Link>
         <span className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground"><Layers className="h-4 w-4" />Offres Sponsors</span>
         <Link to="/dashboard/preflight" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><ShieldCheck className="h-4 w-4 text-primary" />Tests & Préflight</Link>
       </div>
@@ -147,7 +147,7 @@ function Offers() {
             <div className="grid grid-cols-5 gap-2">
               {[[Send, "Campagne"], [Copy, "Dupliquer"], [Pencil, "Modifier"], [Download, "Exporter"], [Trash2, "Supprimer"]].map(([I, l]) => { const Ic = I as typeof Send; return (
                 l === "Campagne"
-                  ? <Link key="c" to="/dashboard/campaigns" className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><Ic className="h-5 w-5" />Lancer</Link>
+                  ? <Link key="c" to="/dashboard/campaigns/new" className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><Ic className="h-5 w-5" />Lancer</Link>
                   : <button key={l as string} className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold" style={l === "Supprimer" ? { color: "var(--neon-red)" } : undefined}><Ic className="h-5 w-5 text-current" />{l as string}</button>
               ); })}
             </div>

@@ -15,6 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
+import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
 import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
 import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
@@ -36,6 +37,7 @@ import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templ
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
+import { Route as DashboardCampaignsAbRouteImport } from './routes/dashboard.campaigns_.ab'
 import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.campaigns_.list'
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
 
@@ -67,6 +69,11 @@ const DashboardAgentRoute = DashboardAgentRouteImport.update({
 const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardCampaignsRoute = DashboardCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardDnsRoute = DashboardDnsRouteImport.update({
@@ -174,6 +181,11 @@ const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
   path: '/webhooks',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCampaignsAbRoute = DashboardCampaignsAbRouteImport.update({
+  id: '/campaigns_/ab',
+  path: '/campaigns/ab',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardCampaignsListRoute = DashboardCampaignsListRouteImport.update({
   id: '/campaigns_/list',
   path: '/campaigns/list',
@@ -191,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -213,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
@@ -221,6 +235,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -243,6 +258,7 @@ export interface FileRoutesByTo {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
@@ -253,6 +269,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
+  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -275,6 +292,7 @@ export interface FileRoutesById {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns_/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns_/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
 }
@@ -286,6 +304,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -308,6 +327,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
   fileRoutesByTo: FileRoutesByTo
@@ -316,6 +336,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -338,6 +359,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard'
+    | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
   id:
@@ -347,6 +369,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
+    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -369,6 +392,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns_/ab'
     | '/dashboard/campaigns_/list'
     | '/dashboard/campaigns_/new'
   fileRoutesById: FileRoutesById
@@ -421,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/dashboard/api-keys'
       preLoaderRoute: typeof DashboardApiKeysRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/campaigns': {
+      id: '/dashboard/campaigns'
+      path: '/campaigns'
+      fullPath: '/dashboard/campaigns'
+      preLoaderRoute: typeof DashboardCampaignsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/dns': {
@@ -570,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebhooksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/campaigns_/ab': {
+      id: '/dashboard/campaigns_/ab'
+      path: '/campaigns/ab'
+      fullPath: '/dashboard/campaigns/ab'
+      preLoaderRoute: typeof DashboardCampaignsAbRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/campaigns_/list': {
       id: '/dashboard/campaigns_/list'
       path: '/campaigns/list'
@@ -590,6 +628,7 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardAgentRoute: typeof DashboardAgentRoute
   DashboardApiKeysRoute: typeof DashboardApiKeysRoute
+  DashboardCampaignsRoute: typeof DashboardCampaignsRoute
   DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
   DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
@@ -612,6 +651,7 @@ interface DashboardRouteChildren {
   DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardCampaignsAbRoute: typeof DashboardCampaignsAbRoute
   DashboardCampaignsListRoute: typeof DashboardCampaignsListRoute
   DashboardCampaignsNewRoute: typeof DashboardCampaignsNewRoute
 }
@@ -619,6 +659,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgentRoute: DashboardAgentRoute,
   DashboardApiKeysRoute: DashboardApiKeysRoute,
+  DashboardCampaignsRoute: DashboardCampaignsRoute,
   DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
   DashboardInboxTesterRoute: DashboardInboxTesterRoute,
@@ -641,6 +682,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardCampaignsAbRoute: DashboardCampaignsAbRoute,
   DashboardCampaignsListRoute: DashboardCampaignsListRoute,
   DashboardCampaignsNewRoute: DashboardCampaignsNewRoute,
 }
