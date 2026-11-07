@@ -24,8 +24,15 @@ type Stats = Awaited<ReturnType<typeof getPostmasterStats>>["stats"];
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)} %`);
 const repTone = (r?: string | null) => (r === "HIGH" ? "ok" : r === "MEDIUM" ? "neutral" : r === "LOW" ? "warn" : r === "BAD" ? "bad" : "neutral") as any;
 const repFr: Record<string, string> = { HIGH: "Élevée", MEDIUM: "Moyenne", LOW: "Faible", BAD: "Mauvaise", REPUTATION_CATEGORY_UNSPECIFIED: "Inconnue" };
+const stFr = (s?: string | null) => (s === "COMPLIANT" ? "Conforme" : s === "NEEDS_WORK" ? "À corriger" : "—");
+const stTone = (s?: string | null) => (s === "COMPLIANT" ? "ok" : s === "NEEDS_WORK" ? "bad" : "neutral") as any;
+const reqFr: Record<string, string> = { SPF: "SPF", DKIM: "DKIM", SPF_AND_DKIM: "SPF et DKIM", DMARC_POLICY: "Politique DMARC", DMARC_ALIGNMENT: "Alignement DMARC",
+  MESSAGE_FORMATTING: "Format des messages (RFC 5322)", DNS_RECORDS: "DNS direct et inverse (PTR)", ENCRYPTION: "Chiffrement TLS", USER_REPORTED_SPAM_RATE: "Taux de spam", ONE_CLICK_UNSUBSCRIBE: "Désabonnement 1 clic", HONOR_UNSUBSCRIBE: "Respect des désinscriptions" };
+const reasonFr: Record<string, string> = { MESSAGE_VOLUME_LOW: "Volume trop faible", SMTP_ERRORS_HIGH: "Erreurs SMTP élevées", SENDER_NOT_COMPLIANT: "Expéditeur non conforme", SPAM_RATE_HIGH: "Spam élevé", USER_FEEDBACK_NEGATIVE: "Retours négatifs", USER_FEEDBACK_LOW: "Peu de retours", USER_FEEDBACK_POSITIVE: "Retours positifs" };
 const errFr: Record<string, string> = {
-  REJECTED: "Rejet", TEMP_FAILED: "Échec temporaire",
+  reject: "Rejet", temp_fail: "Échec temporaire", bad_attachment: "Pièce jointe refusée", bad_or_missing_ptr_record: "PTR absent/invalide",
+  ip_in_rbls: "IP en blacklist", low_domain_reputation: "Réputation domaine faible", low_ip_reputation: "Réputation IP faible", spammy_content: "Contenu spammy",
+  stamp_policy_error: "Erreur politique STAMP", other: "Autre", anomalous_traffic_pattern: "Trafic anormal",
   RATE_LIMIT_EXCEEDED: "Limite de débit dépassée", SUSPECTED_SPAM: "Spam suspecté", CONTENT_SPAMMY: "Contenu spammy",
   BAD_ATTACHMENT: "Pièce jointe refusée", BAD_DMARC_POLICY: "Politique DMARC", LOW_IP_REPUTATION: "Réputation IP faible",
   LOW_DOMAIN_REPUTATION: "Réputation domaine faible", IP_IN_RBL: "IP en blacklist", DOMAIN_IN_RBL: "Domaine en blacklist", BAD_PTR_RECORD: "PTR invalide",
@@ -49,6 +56,7 @@ function GmailPostmaster() {
   const [domain, setDomain] = useState("");
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState<Stats>([]);
+  const [comp, setComp] = useState<Awaited<ReturnType<typeof getPostmasterStats>>["compliance"]>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +65,7 @@ function GmailPostmaster() {
   const load = () => {
     if (!domain) return;
     setLoading(true);
-    fetchStats({ data: { domain, days } }).then((r) => { setStats(r.stats); setErr(r.error); }).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+    fetchStats({ data: { domain, days } }).then((r) => { setStats(r.stats); setComp(r.compliance); setErr(r.error); }).catch((e) => setErr(e.message)).finally(() => setLoading(false));
   };
   useEffect(load, [domain, days]);
   useEffect(() => { const t = setInterval(load, 5 * 60_000); return () => clearInterval(t); }, [domain, days]);
@@ -104,6 +112,7 @@ function GmailPostmaster() {
             {[7, 14, 30, 90, 120].map((d) => <Button key={d} size="sm" variant={d === days ? "default" : "outline"} onClick={() => setDays(d)}>{d} j</Button>)}
           </div>
         </div>
+        {info?.domains.some((d) => !d.verified) && <p className="mt-2 text-xs text-muted-foreground">Certains domaines ne sont pas encore vérifiés.</p>}
         {(info?.error || err) && <p className="mt-2 text-sm text-destructive">{info?.error ?? err}</p>}
         {info && !info.domains.length && (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -114,7 +123,7 @@ function GmailPostmaster() {
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Stat label="Taux de spam (dernier jour)" value={pct(spam, 2)} sub={spam == null ? "Volume trop faible" : spam > 0.003 ? "Critique > 0,3 %" : spam > 0.001 ? "Alerte > 0,1 %" : "Sain"} />
-        <Stat label="Réputation domaine" value={last?.domainReputation ? repFr[last.domainReputation] ?? last.domainReputation : "—"} sub={last?.date} />
+        <Stat label="Statut de délivrabilité" value={stFr(comp?.deliverability.state)} sub={comp?.deliverability.reason ? reasonFr[comp.deliverability.reason] ?? comp.deliverability.reason : last?.date ?? ""} />
         <Stat label="SPF" value={pct(avg("spf"))} sub="moyenne période" />
         <Stat label="DKIM" value={pct(avg("dkim"))} sub="moyenne période" />
         <Stat label="DMARC" value={pct(avg("dmarc"))} sub="moyenne période" />
@@ -126,24 +135,20 @@ function GmailPostmaster() {
           <Spark values={stats.map((s) => s.spamRate)} max={Math.max(0.003, ...stats.map((s) => s.spamRate ?? 0))} />
           <p className="mt-1 text-xs text-muted-foreground">Seuils Google : 0,1 % alerte · 0,3 % blocage. Intervalle du dernier jour : {pct(last?.spamLow, 2)} – {pct(last?.spamHigh, 2)}</p>
         </Panel>
-        <Panel title="Historique de réputation du domaine">
-          <div className="flex flex-wrap gap-1">
-            {stats.map((s) => <span key={s.date} title={s.date}><Pill tone={repTone(s.domainReputation)}>{s.date.slice(5)} {s.domainReputation ? repFr[s.domainReputation]?.[0] : "?"}</Pill></span>)}
-            {!stats.length && <p className="text-xs text-muted-foreground">Aucune donnée</p>}
+        <Panel title="Conformité expéditeurs Gmail (exigences 2024+)">
+          <div className="mb-2 flex flex-wrap gap-2 text-xs">
+            <Pill tone={stTone(comp?.oneClick.state)}>Désabonnement 1 clic : {stFr(comp?.oneClick.state)}</Pill>
+            <Pill tone={stTone(comp?.honorUnsub.state)}>Respect désinscriptions : {stFr(comp?.honorUnsub.state)}</Pill>
           </div>
+          <DataTable cols={["Exigence", "Domaine", "Sous-domaines"]}
+            rows={(comp?.rows ?? []).map((r) => [reqFr[r.requirement] ?? r.requirement, <Pill tone={stTone(r.status)}>{stFr(r.status)}</Pill>,
+              (() => { const x = comp?.subRows.find((y) => y.requirement === r.requirement); return x ? <Pill tone={stTone(x.status)}>{stFr(x.status)}</Pill> : "—"; })()])} />
         </Panel>
       </div>
 
-      <Panel title="Réputation des IP (dernier jour)">
-        <DataTable cols={["Réputation", "Nombre d'IP", "Exemples d'IP"]}
-          rows={(last?.ipReputations ?? []).filter((r) => r.ipCount > 0).map((r) => [
-            <Pill tone={repTone(r.reputation)}>{repFr[r.reputation] ?? r.reputation}</Pill>, String(r.ipCount), r.sampleIps.join(", ") || "—",
-          ])} />
-      </Panel>
-
       <Panel title="Authentification et chiffrement — détail quotidien">
-        <DataTable cols={["Date", "Spam", "Réputation", "SPF", "DKIM", "DMARC", "TLS in", "TLS out"]}
-          rows={[...stats].reverse().map((s) => [s.date, pct(s.spamRate, 2), <Pill tone={repTone(s.domainReputation)}>{s.domainReputation ? repFr[s.domainReputation] : "—"}</Pill>,
+        <DataTable cols={["Date", "Spam", "SPF", "DKIM", "DMARC", "TLS in", "TLS out"]}
+          rows={[...stats].reverse().map((s) => [s.date, pct(s.spamRate, 2),
             pct(s.spf), pct(s.dkim), pct(s.dmarc), pct(s.inboundTls, 0), pct(s.outboundTls, 0)])} />
       </Panel>
 

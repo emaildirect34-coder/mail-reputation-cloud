@@ -137,12 +137,12 @@ export async function trafficStats(domain: string, days: number): Promise<PmStat
     else if (r.metric === "tlsin") s.inboundTls = v;
     else if (r.metric === "tlsout") s.outboundTls = v;
     else if (r.metric === "fbl") for (const id of r.value.stringList?.values ?? (r.value.stringValue ? [r.value.stringValue] : [])) fblIds.add(id);
-    else if (r.metric.startsWith("err:") && v) { const [, t, why] = r.metric.split(":"); s.deliveryErrors.push({ errorClass: t, errorType: why, errorRatio: v }); }
+    else if (r.metric.startsWith("err:") && v) { const [, t, why] = r.metric.split(":"); s.deliveryErrors.push({ errorClass: t ?? "", errorType: why ?? "", errorRatio: v }); }
   }
   const ids = [...fblIds].slice(0, 20);
   if (ids.length) {
     const fr = await query(domain, days, ids.map((id, i) => ({ name: `fbl${i}`, m: "FEEDBACK_LOOP_SPAM_RATE", filter: `feedback_loop_id = "${id}"` })));
-    for (const r of fr) { const v = num(r.value); if (v != null) get(r.date).feedbackLoops.push({ id: ids[Number(r.metric.slice(3))], spamRatio: v }); }
+    for (const r of fr) { const v = num(r.value); if (v != null) get(r.date).feedbackLoops.push({ id: ids[Number(r.metric.slice(3))] ?? "", spamRatio: v }); }
   }
   return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
