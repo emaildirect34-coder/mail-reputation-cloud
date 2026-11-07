@@ -5,6 +5,7 @@ export const ACCESS_AREAS: { path: string; label: string }[] = [
   { path: "/dashboard/api-keys", label: "API & SMTP" },
   { path: "/dashboard/logs", label: "Logs & événements" },
   { path: "/dashboard/servers", label: "Serveurs VPS" },
+  { path: "/dashboard/marketplace", label: "Achat serveurs" },
   { path: "/dashboard/ips", label: "IP & Warmup" },
   { path: "/dashboard/warmup", label: "Warmup" },
   { path: "/dashboard/pools", label: "Pools VMTA" },
