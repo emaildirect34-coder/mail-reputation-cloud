@@ -9,7 +9,7 @@ import { issueAgentToken, previewAgentConfig } from '@/lib/infrastructure.functi
 
 type Agent = { status: string; agent_version: string | null; kumo_version: string | null; config_hash: string | null; applied_hash: string | null; metrics: any; last_error: string | null; last_seen: string | null };
 
-export function AgentPanel({ serverId, agent, admin }: { serverId: string; agent?: Agent; admin: boolean }) {
+export function AgentPanel({ serverId, agent, admin }: { serverId: string; agent?: Agent | undefined; admin: boolean }) {
   const qc = useQueryClient(), issue = useServerFn(issueAgentToken), preview = useServerFn(previewAgentConfig);
   const [cmd, setCmd] = useState(''), [lua, setLua] = useState(''), [busy, setBusy] = useState(false);
   const stale = agent?.last_seen ? Date.now() - new Date(agent.last_seen).getTime() > 5 * 60_000 : true;
