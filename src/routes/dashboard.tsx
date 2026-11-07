@@ -249,8 +249,8 @@ function DashboardLayout() {
 
   return (
     <div className="lux relative flex min-h-screen flex-col font-sans">
-      <header className="lux-top sticky top-0 z-30 border-b border-border">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+      <header className="lux-top lg:sticky top-0 z-30 border-b border-border">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
           <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={() => setMobile(true)} aria-label="Menu"><Menu className="h-5 w-5" /></Button>
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="relative grid h-10 w-10 shrink-0 place-items-center">
@@ -262,7 +262,7 @@ function DashboardLayout() {
               <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
             </div>
           </div>
-          <div className="card-lux order-last flex w-full min-w-0 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground sm:order-none sm:w-auto sm:max-w-[430px] sm:flex-1">
+          <div className="card-lux order-last hidden w-full sm:flex min-w-0 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground sm:order-none sm:w-auto sm:max-w-[430px] sm:flex-1">
             <Search className="h-4 w-4 shrink-0" />
             <input placeholder="Rechercher un domaine, une campagne, un IP..." aria-label="Rechercher" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
             <span className="hidden shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-semibold sm:block">⌘ K</span>
@@ -295,10 +295,10 @@ function DashboardLayout() {
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
           </div>
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="hidden shrink-0 sm:inline-flex" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
         </div>
 
-        <div ref={navRef} className="flex flex-wrap items-center gap-1 px-4 pb-2">
+        <div ref={navRef} className="hidden flex-wrap items-center gap-1 px-4 pb-2 lg:flex">
           {visCockpit.map((i) => <Pill key={i.label} i={i} />)}
           <span className="mx-1 hidden h-5 w-px shrink-0 bg-border lg:block" />
           {visSections.map((s) => <GroupMenu key={s.title} s={s} />)}
