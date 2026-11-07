@@ -43,19 +43,17 @@ function Postmaster() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Rouge = au-dessus de 0,10 % (zone d'alerte Google).</p>
       </Panel>
+      <Panel title="Conformité expéditeurs (Gmail/Yahoo 2024)">
+        {[["SPF + DKIM alignés", 100], ["DMARC publié", 100], ["One-click unsub RFC 8058", 96], ["FCrDNS valide", 100], ["TLS", 100]].map(([l, v]) => (
+          <div key={l as string} className="mb-3"><div className="mb-1 flex justify-between text-sm"><span>{l}</span><span>{v} %</span></div><Bar value={v as number} /></div>
+        ))}
+      </Panel>
       <Panel title="Domaines (Gmail)">
         <DataTable cols={["Domaine", "Réputation", "Plaintes", "SPF", "DKIM", "DMARC"]} rows={domains} />
       </Panel>
-      <div className="space-y-3">
-        <Panel title="Microsoft SNDS — IPs">
-          <DataTable cols={["IP", "Statut", "Plaintes", "Trap hits", "JMRP"]} rows={snds} />
-        </Panel>
-        <Panel title="Conformité expéditeurs (Gmail/Yahoo 2024)">
-          {[["SPF + DKIM alignés", 100], ["DMARC publié", 100], ["One-click unsub RFC 8058", 96], ["FCrDNS valide", 100], ["TLS", 100]].map(([l, v]) => (
-            <div key={l as string} className="mb-3"><div className="mb-1 flex justify-between text-sm"><span>{l}</span><span>{v} %</span></div><Bar value={v as number} /></div>
-          ))}
-        </Panel>
-      </div>
+      <Panel title="Microsoft SNDS — IPs">
+        <DataTable cols={["IP", "Statut", "Plaintes", "Trap hits", "JMRP"]} rows={snds} />
+      </Panel>
 
       <Panel title="Actions rapides">
         <div className="flex flex-wrap gap-2">
