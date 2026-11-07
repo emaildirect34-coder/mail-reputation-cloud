@@ -56,6 +56,7 @@ const sections: Section[] = [
     { to: "/dashboard/inbox-tester", icon: FlaskConical, label: "Testeur Inbox" },
     { to: "/dashboard/lab", icon: MailCheck, label: "Mail-Tester" },
     { to: "/dashboard/lab", icon: Search, label: "DNS Lab" },
+    { to: "/dashboard/gmail-postmaster", icon: BarChart3, label: "Gmail Postmaster" },
     { to: "/dashboard/reputation", icon: BarChart3, label: "Réputation FAI" },
     { to: "/dashboard/postmaster", icon: MailX, label: "Bounces & Plaintes" },
   ]},

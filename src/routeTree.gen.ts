@@ -19,6 +19,7 @@ import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-key
 import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
 import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
+import { Route as DashboardGmailPostmasterRouteImport } from './routes/dashboard.gmail-postmaster'
 import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLabRouteImport } from './routes/dashboard.lab'
@@ -95,6 +96,12 @@ const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
   path: '/domains',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardGmailPostmasterRoute =
+  DashboardGmailPostmasterRouteImport.update({
+    id: '/gmail-postmaster',
+    path: '/gmail-postmaster',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardInboxTesterRoute = DashboardInboxTesterRouteImport.update({
   id: '/inbox-tester',
   path: '/inbox-tester',
@@ -231,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
@@ -267,6 +275,7 @@ export interface FileRoutesByTo {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
@@ -305,6 +314,7 @@ export interface FileRoutesById {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/lab'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/lab'
@@ -417,6 +429,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
     | '/dashboard/lab'
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/domains'
       fullPath: '/dashboard/domains'
       preLoaderRoute: typeof DashboardDomainsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/gmail-postmaster': {
+      id: '/dashboard/gmail-postmaster'
+      path: '/gmail-postmaster'
+      fullPath: '/dashboard/gmail-postmaster'
+      preLoaderRoute: typeof DashboardGmailPostmasterRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/inbox-tester': {
@@ -708,6 +728,7 @@ interface DashboardRouteChildren {
   DashboardCampaignsRoute: typeof DashboardCampaignsRoute
   DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
+  DashboardGmailPostmasterRoute: typeof DashboardGmailPostmasterRoute
   DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLabRoute: typeof DashboardLabRoute
@@ -742,6 +763,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardCampaignsRoute: DashboardCampaignsRoute,
   DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
+  DashboardGmailPostmasterRoute: DashboardGmailPostmasterRoute,
   DashboardInboxTesterRoute: DashboardInboxTesterRoute,
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLabRoute: DashboardLabRoute,
