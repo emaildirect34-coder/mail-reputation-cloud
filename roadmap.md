@@ -55,4 +55,8 @@
 - [ ] Vérifier diagnostic DNS sur un domaine configuré et correction DNS chez Cloudflare — aucun domaine/compte configuré disponible pour cet essai.
 - [ ] Connexion OAuth des abonnements ChatGPT/Claude — nécessite une intégration officielle compatible; aucune connexion simulée.
 ## Phase 7 — Offres sponsors & revenus
-- [ ] Import d'offres via API, suivi eCPM.
+- [x] Comptes sponsors multi-comptes, offres persistantes, création/import JSON, connecteur offres Everflow affilié US et liaison au Campaign Builder.
+- [x] Journal financier par compte et campagne : revenus en attente/validés/payés/rejetés, dépenses, devises séparées, filtres et export.
+- [x] Tableau financier avec résultat, encaissements déclarés, échéances, soldes à recevoir et eCPM basé sur livraisons mesurées; sept tests réussis, parcours connecté (offre, compte, campagne, revenu, dépense, paiement, doublon, devises et CSV), téléphone 390/538 px; données d’essai nettoyées.
+- [ ] Vérifier synchronisation Everflow externe — nécessite un compte sponsor et sa clé affilié; les rémunérations multiples/non reconnues sont ignorées explicitement.
+- [ ] Import automatique des conversions et rapprochement des paiements sponsors — nécessite le contrat API du réseau et un compte réel; actuellement saisie/import financier, pas de connexion bancaire.

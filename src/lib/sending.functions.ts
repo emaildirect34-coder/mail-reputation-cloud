@@ -52,6 +52,7 @@ export const importSuppressions = createServerFn({ method: 'POST' }).middleware(
 export const launchCampaign = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(i => launchInput.parse(i))
   .handler(async ({ data, context }) => {
     const db = await admin(context);
+    if(data.sponsorOfferId){const offer=await db.from('sponsor_offers').select('id,status').eq('id',data.sponsorOfferId).single();check(offer.error);if(offer.data?.status!=='active')throw new Error('Cette offre sponsor n’est plus active.');}
     const srv = await db.from('server_agents').select('server_id').in('server_id', data.serverIds); check(srv.error);
     if ((srv.data ?? []).length !== data.serverIds.length) throw new Error('Chaque serveur choisi doit avoir son agent KumoMTA installé.');
     const contacts: { id: string; email: string; first_name: string | null; email_md5: string | null }[] = [];
@@ -60,12 +61,14 @@ export const launchCampaign = createServerFn({ method: 'POST' }).middleware([req
     for (let i = 0; i < contacts.length; i += 500) { const r = await db.from('suppressions').select('email_md5').in('email_md5', contacts.slice(i, i + 500).map(c => c.email_md5 ?? '')); check(r.error); (r.data ?? []).forEach(s => blocked.add(s.email_md5)); }
     const keep = contacts.filter(c => !blocked.has(c.email_md5 ?? ''));
     if (!keep.length) throw new Error('Aucun destinataire envoyable dans cette liste.');
-    const camp = await db.from('campaigns').insert({ name: data.name, from_name: data.fromName, from_email: data.fromEmail, reply_to: data.replyTo || null, subject: data.subject, html: data.html, list_id: data.listId, server_ids: data.serverIds, status: 'paused', total: keep.length, suppressed: contacts.length - keep.length, created_by: context.userId }).select('id').single();
+    const camp = await db.from('campaigns').insert({ sponsor_offer_id:data.sponsorOfferId??null, name: data.name, from_name: data.fromName, from_email: data.fromEmail, reply_to: data.replyTo || null, subject: data.subject, html: data.html, list_id: data.listId, server_ids: data.serverIds, status: 'paused', total: keep.length, suppressed: contacts.length - keep.length, created_by: context.userId }).select('id').single();
     check(camp.error);
-    const rows = assignServers(keep, data.serverIds).map(({ item, server }) => ({ campaign_id: camp.data!.id, contact_id: item.id, email: item.email, first_name: item.first_name, server_id: server }));
+    if(!camp.data)throw new Error('Campagne non créée');
+    const campaignId=camp.data.id;
+    const rows = assignServers(keep, data.serverIds).map(({ item, server }) => ({ campaign_id: campaignId, contact_id: item.id, email: item.email, first_name: item.first_name, server_id: server }));
     for (let i = 0; i < rows.length; i += 1000) check((await db.from('campaign_messages').insert(rows.slice(i, i + 1000))).error);
-    check((await db.from('campaigns').update({ status: 'queued' }).eq('id', camp.data!.id)).error);
-    return { id: camp.data!.id, total: keep.length, suppressed: contacts.length - keep.length };
+    check((await db.from('campaigns').update({ status: 'queued' }).eq('id', campaignId)).error);
+    return { id: campaignId, total: keep.length, suppressed: contacts.length - keep.length };
   });
 
 export const setCampaignStatus = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(i => campaignStatusInput.parse(i))

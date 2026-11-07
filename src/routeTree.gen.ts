@@ -19,6 +19,7 @@ import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-key
 import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
 import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
+import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance'
 import { Route as DashboardGmailPostmasterRouteImport } from './routes/dashboard.gmail-postmaster'
 import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
@@ -100,6 +101,11 @@ const DashboardDnsRoute = DashboardDnsRouteImport.update({
 const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardFinanceRoute = DashboardFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardGmailPostmasterRoute =
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/finance': typeof DashboardFinanceRoute
   '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/finance': typeof DashboardFinanceRoute
   '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
@@ -363,6 +371,7 @@ export interface FileRoutesById {
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/finance': typeof DashboardFinanceRoute
   '/dashboard/gmail-postmaster': typeof DashboardGmailPostmasterRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
   '/dashboard/ips': typeof DashboardIpsRoute
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/finance'
     | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/finance'
     | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
+    | '/dashboard/finance'
     | '/dashboard/gmail-postmaster'
     | '/dashboard/inbox-tester'
     | '/dashboard/ips'
@@ -614,6 +626,13 @@ declare module '@tanstack/react-router' {
       path: '/domains'
       fullPath: '/dashboard/domains'
       preLoaderRoute: typeof DashboardDomainsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/finance': {
+      id: '/dashboard/finance'
+      path: '/finance'
+      fullPath: '/dashboard/finance'
+      preLoaderRoute: typeof DashboardFinanceRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/gmail-postmaster': {
@@ -849,6 +868,7 @@ interface DashboardRouteChildren {
   DashboardCampaignsRoute: typeof DashboardCampaignsRoute
   DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
+  DashboardFinanceRoute: typeof DashboardFinanceRoute
   DashboardGmailPostmasterRoute: typeof DashboardGmailPostmasterRoute
   DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
   DashboardIpsRoute: typeof DashboardIpsRoute
@@ -884,6 +904,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardCampaignsRoute: DashboardCampaignsRoute,
   DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
+  DashboardFinanceRoute: DashboardFinanceRoute,
   DashboardGmailPostmasterRoute: DashboardGmailPostmasterRoute,
   DashboardInboxTesterRoute: DashboardInboxTesterRoute,
   DashboardIpsRoute: DashboardIpsRoute,

@@ -2,6 +2,7 @@
 export const ACCESS_AREAS: { path: string; label: string }[] = [
   { path: "/dashboard/campaigns", label: "Campagnes" },
   { path: "/dashboard/templates", label: "Offres Sponsors" },
+  { path: "/dashboard/finance", label: "Finances & revenus" },
   { path: "/dashboard/api-keys", label: "API & SMTP" },
   { path: "/dashboard/logs", label: "Logs & événements" },
   { path: "/dashboard/servers", label: "Serveurs VPS" },
