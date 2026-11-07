@@ -8,7 +8,7 @@ export async function genDkim() {
   )) as CryptoKeyPair;
   const pub = b64((await crypto.subtle.exportKey("spki", kp.publicKey)) as ArrayBuffer);
   const priv = b64((await crypto.subtle.exportKey("pkcs8", kp.privateKey)) as ArrayBuffer);
-  return { pub, priv: `-----BEGIN PRIVATE KEY-----\n${priv.match(/.{1,64}/g)!.join("\n")}\n-----END PRIVATE KEY-----` };
+  return { pub, priv: `-----BEGIN PRIVATE KEY-----\n${(priv.match(/.{1,64}/g) ?? []).join("\n")}\n-----END PRIVATE KEY-----` };
 }
 
 export type Rec = { key: string; type: string; name: string; content: string; priority?: number };

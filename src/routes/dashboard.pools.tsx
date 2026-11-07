@@ -1,64 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
-import { Button } from "@/components/ui/button";
-import { StatusBar } from "@/components/dash/campaign-tabs";
-import { toast } from "sonner";
-
-export const Route = createFileRoute("/dashboard/pools")({
+import { createFileRoute } from '@tanstack/react-router';
+import { InfrastructurePage } from '@/components/dash/infrastructure';
+export const Route = createFileRoute('/dashboard/pools')({
   head: () => ({ meta: [
-    { title: "Pools VMTA & Auto-Tiering — Email Direct" },
-    { name: "description", content: "Pools d'IP Gold, Silver et Quarantaine avec bascule automatique selon la réputation." },
-    { property: "og:title", content: "Pools VMTA & Auto-Tiering — Email Direct" },
-    { property: "og:description", content: "Gestion des pools d'IP par niveau de réputation." },
+    { title: 'Pools VMTA — Email Direct' },
+    { name: 'description', content: 'Création de pools VMTA et affectation persistante des IPs.' },
+    { property: 'og:title', content: 'Pools VMTA — Email Direct' },
+    { property: 'og:description', content: 'Création de pools VMTA et affectation persistante des IPs.' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary' },
   ] }),
-  component: Pools,
+  component: () => <InfrastructurePage view="pools" />,
 });
-
-const pools = [
-  { n: "Gold", d: "Transactionnel & engagés", ips: 8, score: 96, tone: "ok" as const },
-  { n: "Silver", d: "Marketing régulier", ips: 14, score: 81, tone: "warn" as const },
-  { n: "Quarantaine", d: "IPs en réhabilitation", ips: 3, score: 42, tone: "bad" as const },
-];
-const moves = [
-  ["51.79.12.14", "Silver → Quarantaine", "Listée Spamhaus SBL", "Hermes · 13:47"],
-  ["51.79.12.22", "Silver → Gold", "30 j sans plainte, réputation élevée", "Hermes · 09:12"],
-  ["51.79.12.09", "Quarantaine → Silver", "Délistée + warmup terminé", "Manuel · hier"],
-];
-
-function Pools() {
-  return (
-    <>
-      <PageHeader title="Pools VMTA & Auto-Tiering" desc="Les IPs montent ou descendent de niveau automatiquement selon leur réputation." action={<Button>Nouveau pool</Button>} />
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {pools.map((p) => (
-          <Panel key={p.n} title={p.n} action={<Pill tone={p.tone}>{p.ips} IPs</Pill>}>
-            <p className="mb-3 text-sm text-muted-foreground">{p.d}</p>
-            <div className="mb-1 flex justify-between text-sm"><span>Santé</span><span>{p.score}</span></div>
-            <Bar value={p.score} />
-          </Panel>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat label="IPs totales" value="25" /><Stat label="Bascules 7j" value="6" /><Stat label="Isolation tenant" value="Stricte" /><Stat label="Rotation" value="Pondérée" />
-      </div>
-      <Panel title="Règles de bascule">
-        <DataTable cols={["Condition", "Action", "Statut"]} rows={[
-          ["Plaintes > 0,3 % sur 24 h", "Descendre d'un niveau", <Pill tone="ok">Active</Pill>],
-          ["Listée RBL majeure", "Quarantaine immédiate", <Pill tone="ok">Active</Pill>],
-          ["30 jours propres + réputation élevée", "Monter d'un niveau", <Pill tone="ok">Active</Pill>],
-        ]} />
-      </Panel>
-      <Panel title="Historique des bascules">
-        <DataTable cols={["IP", "Mouvement", "Raison", "Par"]} rows={moves} />
-      </Panel>
-      <Panel title="Actions rapides">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Nouveau pool créé en mode brouillon.")}>Nouveau pool</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Bascule manuelle : 1 IP promue en Gold.")}>Promouvoir une IP</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Scan des listes noires lancé sur 25 IPs.")}>Scanner les listes noires</Button>
-        </div>
-      </Panel>
-      <StatusBar>Auto-Tiering actif · 25 IPs · 6 bascules sur 7 jours</StatusBar>
-    </>
-  );
-}

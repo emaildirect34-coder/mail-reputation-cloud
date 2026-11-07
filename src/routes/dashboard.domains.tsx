@@ -2,14 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, RefreshCw, CloudUpload, Download, Trash2, Copy } from "lucide-react";
+import { Plus, RefreshCw, CloudUpload, Link2, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
 import { toast } from "sonner";
-import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain, exportDkimKey } from "@/lib/domains.functions";
-import { listAccounts, listZones } from "@/lib/providers.functions";
+import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain } from "@/lib/domains.functions";
+import { listAccounts, listZones, listManagedServers } from "@/lib/providers.functions";
+import { bindDomainServer, listDomainBindings } from '@/lib/infrastructure.functions';
 
 export const Route = createFileRoute("/dashboard/domains")({
   head: () => ({ meta: [
@@ -29,7 +30,11 @@ function Domains() {
   const qc = useQueryClient();
   const fList = useServerFn(listDomains), fAdd = useServerFn(addDomain), fUpd = useServerFn(updateDomain);
   const fCheck = useServerFn(checkDomainDns), fSync = useServerFn(syncDomainDns), fDel = useServerFn(deleteDomain);
-  const fKey = useServerFn(exportDkimKey), fAcc = useServerFn(listAccounts), fZones = useServerFn(listZones);
+  const fAcc = useServerFn(listAccounts), fZones = useServerFn(listZones);
+  const fServers = useServerFn(listManagedServers), fBind = useServerFn(bindDomainServer), fBindings = useServerFn(listDomainBindings);
+  const servers = useQuery({queryKey:['domain-servers'],queryFn:()=>fServers()});
+  const bindings = useQuery({queryKey:['domain-bindings'],queryFn:()=>fBindings()});
+  const [serverId,setServerId] = useState('');
 
   const q = useQuery({ queryKey: ["domains"], queryFn: () => fList() });
   const acc = useQuery({ queryKey: ["provider-accounts"], queryFn: () => fAcc() });
@@ -95,11 +100,20 @@ function Domains() {
               rows={cur.records.map((r) => {
                 const c = cur.checks[r.key];
                 return [<b>{LABELS[r.key]}</b>, <Pill>{r.type}</Pill>, <span className="block max-w-[220px] truncate" title={r.name}>{r.name}</span>,
-                  <button className="flex max-w-[320px] items-center gap-1 text-left" title="Copier" onClick={() => { navigator.clipboard.writeText(r.content); toast("Copié"); }}><code className="truncate text-xs">{r.priority != null ? `${r.priority} ` : ""}{r.content}</code><Copy className="h-3 w-3 shrink-0" /></button>,
+                  <Button variant="ghost" className="flex max-w-[320px] items-center gap-1 text-left" title="Copier" onClick={() => { navigator.clipboard.writeText(r.content); toast("Copié"); }}><code className="truncate text-xs">{r.priority != null ? `${r.priority} ` : ""}{r.content}</code><Copy className="h-3 w-3 shrink-0" /></Button>,
                   !c ? <Pill>Non vérifié</Pill> : <Pill tone={c.ok ? "ok" : "bad"}>{c.ok ? "OK" : "Absent"}</Pill>];
               })} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Sélecteurs DKIM : {cur.selector_a} / {cur.selector_b} · Dernier contrôle : {cur.checked_at ? new Date(cur.checked_at).toLocaleString("fr-FR") : "jamais"} · Dernière publication : {cur.synced_at ? new Date(cur.synced_at).toLocaleString("fr-FR") : "jamais"}</p>
+          <div className="mt-4 grid items-end gap-2 sm:grid-cols-[1fr_auto]">
+            <label className="text-xs font-semibold text-muted-foreground">Serveur pour installation DKIM automatique
+              <select aria-label="Serveur DKIM" className={sel} value={serverId} onChange={e=>setServerId(e.target.value)}><option value="">Choisir un serveur</option>{(servers.data ?? []).filter(s=>s.status!=='absent').map(s=><option key={s.id} value={s.id}>{s.label} · {s.ipv4 ?? 'IP en attente'}</option>)}</select>
+            </label>
+            <Button variant="outline" disabled={!serverId||!!busy} onClick={()=>run('bind',async()=>{await fBind({data:{serverId,domainId:cur.id}});await qc.invalidateQueries({queryKey:['domain-bindings']});},'Serveur associé — installation en attente de l’agent KumoMTA')}><Link2 className="h-4 w-4"/> Associer</Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Les clés restent côté serveur. Installation automatique dès connexion de l’agent KumoMTA (phase 3).</p>
+          {(bindings.data ?? []).filter(b=>b.domain_id===cur.id).map(b=><p key={b.id} className="mt-2 text-sm">{servers.data?.find(s=>s.id===b.server_id)?.label ?? 'Serveur'} · <Pill tone={b.status==='installed'?'ok':b.status==='error'?'bad':'warn'}>{b.status==='installed'?'Installé':b.status==='error'?'Erreur':'En attente de l’agent'}</Pill></p>)}
+          {servers.error && <p role="alert" className="mt-2 text-sm text-destructive">{servers.error.message}</p>}
         </Panel>
       )}
 
@@ -124,12 +138,6 @@ function Domains() {
               if (bad.length) throw new Error(`${bad.length} enregistrement(s) refusé(s) : ${first?.error ?? ""}`);
             }, "Enregistrements publiés sur Cloudflare")}><CloudUpload className="h-4 w-4" /> Publier sur Cloudflare</Button>
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("check", () => fCheck({ data: { id: cur.id } }), "Contrôle DNS terminé")}><RefreshCw className={`h-4 w-4 ${busy === "check" ? "animate-spin" : ""}`} /> Vérifier en direct</Button>
-            {(["a", "b"] as const).map((w) => (
-              <Button key={w} size="sm" variant="outline" onClick={async () => {
-                try { const k = await fKey({ data: { id: cur.id, which: w } }); const u = URL.createObjectURL(new Blob([k.pem], { type: "text/plain" })); const l = document.createElement("a"); l.href = u; l.download = k.filename; l.click(); URL.revokeObjectURL(u); }
-                catch (e) { toast.error((e as Error).message); }
-              }}><Download className="h-4 w-4" /> Clé privée DKIM {w === "a" ? 1 : 2}</Button>
-            ))}
             <Button size="sm" variant="destructive" disabled={!!busy} onClick={() => { if (confirm(`Supprimer ${cur.domain} et ses clés DKIM ? (les DNS Cloudflare ne sont pas touchés)`)) run("del", () => fDel({ data: { id: cur.id } }), "Domaine supprimé"); }}><Trash2 className="h-4 w-4" /> Supprimer</Button>
           </div>
         </Panel>

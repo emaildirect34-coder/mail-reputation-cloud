@@ -89,12 +89,3 @@ export const deleteDomain = createServerFn({ method: "POST" }).middleware([requi
     return { ok: true };
   });
 
-// Private DKIM key for KumoMTA signing config (superadmin only).
-export const exportDkimKey = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
-  .inputValidator((i: { id: string; which: "a" | "b" }) => ({ id: String(i.id), which: i.which === "b" ? "b" : "a" }))
-  .handler(async ({ data, context }) => {
-    const db = await admin(context);
-    const { data: d } = await db.from("sending_domains").select("domain, selector_a, selector_b, dkim_priv_a, dkim_priv_b").eq("id", data.id).single();
-    if (!d) throw new Error("Domaine introuvable");
-    return { filename: `${d.domain}.${data.which === "a" ? d.selector_a : d.selector_b}.key`, pem: data.which === "a" ? d.dkim_priv_a : d.dkim_priv_b };
-  });
