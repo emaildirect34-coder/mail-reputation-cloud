@@ -19,3 +19,9 @@
 
 # Open
 - [ ] Wire the demo buttons and demo data to real delivery services (sending, DNS sync, sponsor APIs).
+
+# Real providers (multi-account)
+- [ ] Multi-account for every provider: Cloudflare (token or global key), Linode, Vultr, Hetzner, DigitalOcean, Google Postmaster.
+- [ ] Live server catalogue with prices + direct purchase/deploy of KumoMTA servers.
+- [ ] Cloudflare zones + one-click mail DNS deployment.
+- [ ] Google Postmaster: real data needs a Google OAuth app (blocked on user's Google Cloud credentials).
