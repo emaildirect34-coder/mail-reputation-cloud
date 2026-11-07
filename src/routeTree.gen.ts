@@ -36,6 +36,7 @@ import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templ
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
+import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.campaigns_.list'
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -173,6 +174,11 @@ const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
   path: '/webhooks',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCampaignsListRoute = DashboardCampaignsListRouteImport.update({
+  id: '/campaigns_/list',
+  path: '/campaigns/list',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardCampaignsNewRoute = DashboardCampaignsNewRouteImport.update({
   id: '/campaigns_/new',
   path: '/campaigns/new',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRoutesByTo {
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRoutesById {
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns_/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRouteTypes {
@@ -299,6 +308,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard'
+    | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
   id:
     | '__root__'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns_/list'
     | '/dashboard/campaigns_/new'
   fileRoutesById: FileRoutesById
 }
@@ -558,6 +570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebhooksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/campaigns_/list': {
+      id: '/dashboard/campaigns_/list'
+      path: '/campaigns/list'
+      fullPath: '/dashboard/campaigns/list'
+      preLoaderRoute: typeof DashboardCampaignsListRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/campaigns_/new': {
       id: '/dashboard/campaigns_/new'
       path: '/campaigns/new'
@@ -593,6 +612,7 @@ interface DashboardRouteChildren {
   DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardCampaignsListRoute: typeof DashboardCampaignsListRoute
   DashboardCampaignsNewRoute: typeof DashboardCampaignsNewRoute
 }
 
@@ -621,6 +641,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardCampaignsListRoute: DashboardCampaignsListRoute,
   DashboardCampaignsNewRoute: DashboardCampaignsNewRoute,
 }
 
