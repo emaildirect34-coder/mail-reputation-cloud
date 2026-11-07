@@ -45,7 +45,7 @@ function Spark({ values, max }: { values: (number | null)[]; max?: number }) {
 function GmailPostmaster() {
   const fetchDomains = useServerFn(getPostmasterDomains);
   const fetchStats = useServerFn(getPostmasterStats);
-  const [info, setInfo] = useState<{ serviceEmail: string; domains: { name: string; permission: string | null }[]; error: string | null } | null>(null);
+  const [info, setInfo] = useState<{ serviceEmail: string; domains: { name: string; permission: string | null; verified: boolean }[]; error: string | null } | null>(null);
   const [domain, setDomain] = useState("");
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState<Stats>([]);
