@@ -12,7 +12,7 @@ type Search = { mode?: "login" | "signup" };
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): Search => ({
-    mode: s["mode"] === "signup" ? "signup" : "login",
+    mode: "login",
   }),
   head: () => ({
     meta: [
@@ -116,16 +116,7 @@ function AuthPage() {
                   {loading ? "…" : isSignup ? "Créer mon compte" : "Se connecter"}
                 </Button>
               </form>
-              <p className="mt-6 text-center text-sm text-muted-foreground">
-                {isSignup ? "Déjà un compte ? " : "Pas encore de compte ? "}
-                <button
-                  type="button"
-                  className="font-medium text-primary hover:underline"
-                  onClick={() => navigate({ to: "/auth", search: { mode: isSignup ? "login" : "signup" } })}
-                >
-                  {isSignup ? "Se connecter" : "S'inscrire"}
-                </button>
-              </p>
+              <p className="mt-6 text-center text-xs text-muted-foreground">Accès sur invitation uniquement.</p>
             </>
           )}
         </div>
