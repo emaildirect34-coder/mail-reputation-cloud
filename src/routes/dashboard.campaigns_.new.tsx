@@ -33,7 +33,7 @@ const allServers = ["SERV001 [Serveurs Principaux]", "SERV002 [Warmup]", "SERV00
 const inCls = "h-8 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
 
 function Col({ id, title, icon, children, right }: { id?: string; title: string; icon: ReactNode; children: ReactNode; right?: ReactNode }) {
-  return <section id={id} className="card-lux scroll-mt-24 p-3.5">
+  return <section id={id} className="card-lux mb-3 break-inside-avoid scroll-mt-24 p-3.5">
     <header className="mb-3 flex items-center gap-2"><span className="text-primary [&_svg]:size-5">{icon}</span><h2 className="font-display text-[16px] font-bold text-primary">{title}</h2>{right && <div className="ml-auto">{right}</div>}</header>
     <div className="space-y-2">{children}</div>
   </section>;
@@ -124,7 +124,7 @@ function Builder() {
     <CampaignTabs active="new" />
 
     {/* KPIs */}
-    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       <Kpi icon={<Target />} label="Délivrabilité estimée" value="99.8%" sub="↑ +0.2% vs dernière campagne" tone="blue" />
       <Kpi icon={<Server />} label="Serveurs actifs" value="12" sub="100% opérationnels" tone="blue" />
       <Kpi icon={<Network />} label="Interfaces sélectionnées" value={String(chosen.length)} sub="VMTA / SMTP" tone="blue" />
@@ -133,9 +133,9 @@ function Builder() {
     </div>
 
     {/* 4 columns */}
-    <div className="grid items-start gap-3 lg:grid-cols-2 xl:grid-cols-4">
+    <div className="columns-1 gap-3 md:columns-2 2xl:columns-3 min-[1700px]:columns-4">
       {/* Offre */}
-      <div className="space-y-3">
+      <div className="contents">
         <Col id="offre" title="Offre" icon={<Tag />}>
           <Row label="Nom de la campagne" w="w-32">{inp("name")}</Row>
           <Row label="Planifier le" w="w-32"><div className="relative"><CalendarDays className="pointer-events-none absolute left-2 top-1.5 size-4 text-muted-foreground" /><input aria-label="Planifier le" type="datetime-local" value={d.schedule} onChange={e => u("schedule", e.target.value)} className={`${inCls} pl-8`} /></div></Row>
@@ -159,7 +159,7 @@ function Builder() {
       </div>
 
       {/* Structure */}
-      <div className="space-y-3">
+      <div className="contents">
         <Col id="structure" title="Structure Email" icon={<Mail />}>
           <Row label="Return Path">{inp("returnPath")}</Row>
           <Row label="From Name">{inp("fromName")}</Row>
@@ -184,7 +184,7 @@ function Builder() {
       </div>
 
       {/* Corps */}
-      <div className="space-y-3">
+      <div className="contents">
         <Col id="corps" title="Corps de l'Email (HTML)" icon={<Code2 />}>
           <div className="flex justify-center gap-1">
             <label className="grid size-7 cursor-pointer place-items-center rounded-md border border-border bg-card" title="Importer"><Upload className="size-3.5" /><input type="file" accept=".html,.htm" className="sr-only" onChange={async e => { const f = e.target.files?.[0]; if (f) { u("body", await f.text()); toast.success("HTML importé."); } }} /></label>
@@ -213,7 +213,7 @@ function Builder() {
       </div>
 
       {/* Délivrabilité */}
-      <div className="space-y-3">
+      <div className="contents">
         <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
           <p className="flex items-center gap-1.5 text-[13px] font-bold text-primary"><Server className="size-4" />Serveurs de livraison :</p>
           <div className="grid gap-2">
@@ -250,7 +250,7 @@ function Builder() {
     </div>
 
     {/* Préflight */}
-    <section id="preflight" className="card-lux scroll-mt-24 p-3.5">
+    <section id="preflight" className="card-lux mb-3 break-inside-avoid scroll-mt-24 p-3.5">
       <h2 className="mb-2 flex items-center gap-2 font-display text-[16px] font-bold text-primary"><FlaskConical className="size-5" />Résultats des tests & Préflight</h2>
       <div className="grid items-center gap-3 lg:grid-cols-[1fr_1.4fr_1fr_auto]">
         <div className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5"><span className={`grid size-9 place-items-center rounded-full ${ready ? "bg-neon-green text-primary-foreground" : "bg-neon-amber/20 text-neon-amber"}`}><Check className="size-5" /></span><div><p className="text-[13px] font-bold">{lastTest ? (ready ? "Préflight réussi" : "Corrections nécessaires") : "Tests en attente..."}</p><p className="text-[11.5px] text-muted-foreground">Préflight : validation des paramètres, serveurs et contenu.</p></div></div>
