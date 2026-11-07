@@ -131,7 +131,7 @@ function DashboardLayout() {
       <Link
         to={i.to}
         onClick={() => { setGroup(null); setMobile(false); }}
-        className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_var(--primary)]" : "text-sidebar-foreground hover:bg-sidebar-accent/60"}`}
+        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_var(--primary)]" : "text-sidebar-foreground hover:bg-sidebar-accent/60"}`}
       >
         <i.icon className={`h-[15px] w-[15px] shrink-0 ${active ? "" : "text-sidebar-primary"}`} strokeWidth={2} />
         <span className="whitespace-nowrap">{i.label}</span>
@@ -166,7 +166,7 @@ function DashboardLayout() {
           variant="ghost"
           aria-expanded={isOpen}
           onClick={() => setGroup(isOpen ? null : s.title)}
-          className={`h-[30px] gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-sidebar-accent/60 ${isActive ? "bg-sidebar-accent/50 text-sidebar-primary" : "text-sidebar-foreground"}`}
+          className={`h-[28px] gap-1 rounded-full px-2.5 text-[11.5px] font-semibold hover:bg-sidebar-accent/60 ${isActive ? "bg-sidebar-accent/50 text-sidebar-primary" : "text-sidebar-foreground"}`}
         >
           <span className="whitespace-nowrap">{label}</span>
           <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-70 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -238,10 +238,10 @@ function DashboardLayout() {
               <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
             </div>
           </div>
-          <div className="card-lux flex min-w-[170px] max-w-[430px] flex-1 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground">
+          <div className="card-lux order-last flex w-full min-w-0 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground sm:order-none sm:w-auto sm:max-w-[430px] sm:flex-1">
             <Search className="h-4 w-4 shrink-0" />
             <input placeholder="Rechercher un domaine, une campagne, un IP..." aria-label="Rechercher" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
-            <span className="shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-semibold">⌘ K</span>
+            <span className="hidden shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-semibold sm:block">⌘ K</span>
           </div>
           <div className="ml-auto hidden items-center gap-3 rounded-xl px-4 py-1.5 md:flex" style={{ background: "color-mix(in oklab, var(--neon-green) 15%, transparent)" }}>
             <span className="h-3 w-3 shrink-0 rounded-full bg-neon-green shadow-[0_0_10px_var(--neon-green)]" />
@@ -254,6 +254,11 @@ function DashboardLayout() {
             <p className="capitalize">{now ? now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "—"}</p>
             <p>{now ? now.toLocaleTimeString("fr-FR", { timeZone: "UTC" }) : "--:--:--"} (UTC)</p>
           </div>
+          <Link to="/dashboard/agent" className="cockpit-expert hidden items-center gap-2 rounded-full border px-3 py-1.5 xl:flex">
+            <Bot className="h-4 w-4 shrink-0" />
+            <span className="text-[11.5px] font-bold">Mode Expert</span>
+            <span className="text-[10px] opacity-80">Atlas IA · +12 outils</span>
+          </Link>
           <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="Notifications">
             <Bell className="h-6 w-6 text-neon-2" />
             <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-neon-red text-[9px] font-bold text-primary-foreground">3</span>
@@ -269,15 +274,10 @@ function DashboardLayout() {
           <Button variant="ghost" size="icon" className="shrink-0" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
         </div>
 
-        <div ref={navRef} className="flex flex-wrap items-center gap-1.5 px-4 pb-2">
+        <div ref={navRef} className="flex flex-wrap items-center gap-1 px-4 pb-2">
           {cockpit.map((i) => <Pill key={i.label} i={i} />)}
           <span className="mx-1 hidden h-5 w-px shrink-0 bg-border lg:block" />
           {sections.map((s) => <GroupMenu key={s.title} s={s} />)}
-          <Link to="/dashboard/agent" className="cockpit-expert ml-auto hidden items-center gap-2 rounded-full border px-3 py-1.5 xl:flex">
-            <Bot className="h-4 w-4 shrink-0" />
-            <span className="text-[11.5px] font-bold">Mode Expert</span>
-            <span className="text-[10px] opacity-80">Atlas IA · +12 outils</span>
-          </Link>
         </div>
       </header>
 
