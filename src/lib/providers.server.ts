@@ -137,7 +137,7 @@ export async function cfUpsert(a: Account, zoneId: string, recs: { key: string; 
       const body = { type: rec.type, name: rec.name, content: rec.content, ttl: 3600, proxied: false, ...(rec.priority != null ? { priority: rec.priority } : {}) };
       const ex = await call(a, `/zones/${zoneId}/dns_records?type=${rec.type}&name=${encodeURIComponent(rec.name)}`);
       let match = (ex.result as any[])[0];
-      if (rec.type === "TXT") match = (ex.result as any[]).find((r) => String(r.content).replace(/"/g, "").startsWith(rec.content.split(";")[0].split(" ")[0]));
+      if (rec.type === "TXT") match = (ex.result as any[]).find((r) => String(r.content).replace(/"/g, "").startsWith(rec.content.split(";")[0]?.split(" ")[0] ?? rec.content));
       if (match) await call(a, `/zones/${zoneId}/dns_records/${match.id}`, { method: "PUT", body: JSON.stringify(body) });
       else await call(a, `/zones/${zoneId}/dns_records`, { method: "POST", body: JSON.stringify(body) });
       out.push({ key: rec.key, name: rec.name, type: rec.type, ok: true });
