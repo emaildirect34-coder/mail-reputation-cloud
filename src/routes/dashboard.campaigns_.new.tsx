@@ -152,7 +152,7 @@ function Builder() {
           </div>
         </Col>
         <Col title="Audience & Ciblage" icon={<Users />}>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[{ i: Users, l: "Contacts ciblés", v: "250,000", c: "text-neon-green" }, { i: Ban, l: "Exclusions", v: "12,400", c: "text-neon-red" }, { i: Globe2, l: "Domaines", v: "18,320", c: "text-primary" }, { i: MapPin, l: "Pays", v: "35", c: "text-neon-green" }].map(s => <div key={s.l} className="rounded-xl border border-border/60 bg-card p-2 text-center"><s.i className={`mx-auto size-6 ${s.c}`} /><p className="mt-1 text-[10.5px] font-semibold">{s.l}</p><p className="font-display text-[15px] font-extrabold text-primary">{s.v}</p></div>)}
           </div>
         </Col>
@@ -216,15 +216,15 @@ function Builder() {
       <div className="space-y-3">
         <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
           <p className="flex items-center gap-1.5 text-[13px] font-bold text-primary"><Server className="size-4" />Serveurs de livraison :</p>
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-            <div className="space-y-1"><input value={qL} onChange={e => setQL(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-20 overflow-auto rounded-md border border-border bg-card p-1">{left.map(s => <li key={s}><button onClick={() => setSelL(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selL === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
-            <div className="flex flex-col justify-center gap-1">
-              <IconBtn label="Tout ajouter" tone="primary" onClick={() => setChosen([...allServers])}><ChevronsRight /></IconBtn>
-              <IconBtn label="Ajouter" tone="primary" onClick={() => selL && !chosen.includes(selL) && setChosen(p => [...p, selL])}><ChevronRight /></IconBtn>
-              <IconBtn label="Retirer" tone="primary" onClick={() => selR && setChosen(p => p.filter(x => x !== selR))}><ChevronLeft /></IconBtn>
-              <IconBtn label="Tout retirer" tone="primary" onClick={() => setChosen([])}><ChevronsLeft /></IconBtn>
+          <div className="grid gap-2">
+            <div className="space-y-1"><input value={qL} onChange={e => setQL(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-16 overflow-auto rounded-md border border-border bg-card p-1">{left.map(s => <li key={s}><button onClick={() => setSelL(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selL === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
+            <div className="flex justify-center gap-1">
+              <IconBtn label="Tout ajouter" tone="primary" onClick={() => setChosen([...allServers])}><ChevronsRight className="rotate-90" /></IconBtn>
+              <IconBtn label="Ajouter" tone="primary" onClick={() => selL && !chosen.includes(selL) && setChosen(p => [...p, selL])}><ChevronRight className="rotate-90" /></IconBtn>
+              <IconBtn label="Retirer" tone="primary" onClick={() => selR && setChosen(p => p.filter(x => x !== selR))}><ChevronLeft className="rotate-90" /></IconBtn>
+              <IconBtn label="Tout retirer" tone="primary" onClick={() => setChosen([])}><ChevronsLeft className="rotate-90" /></IconBtn>
             </div>
-            <div className="space-y-1"><input value={qR} onChange={e => setQR(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-20 overflow-auto rounded-md border border-border bg-card p-1">{right.map(s => <li key={s}><button onClick={() => setSelR(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selR === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
+            <div className="space-y-1"><input value={qR} onChange={e => setQR(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-16 overflow-auto rounded-md border border-border bg-card p-1">{right.map(s => <li key={s}><button onClick={() => setSelR(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selR === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
           </div>
           <div className="flex flex-wrap gap-1">{["IPv4", "IPv6", "SMTP", "Route", "Custom", "Tous"].map(p => <button key={p} onClick={() => setProto(p)} className={`flex-1 rounded-md px-2 py-1 text-[11px] font-bold ${proto === p ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary"}`}>{p}</button>)}</div>
           <p className="flex items-center gap-1.5 pt-1 text-[13px] font-bold text-primary"><Network className="size-4" />Interfaces (VMTA & SMTP) :</p>
