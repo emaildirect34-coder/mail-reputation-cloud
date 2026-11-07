@@ -166,14 +166,14 @@ function DashboardLayout() {
           variant="ghost"
           aria-expanded={isOpen}
           onClick={() => setGroup(isOpen ? null : s.title)}
-          className={`h-[30px] gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-sidebar-accent/60 ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground"}`}
+          className={`h-[30px] gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-sidebar-accent/60 ${isActive ? "bg-sidebar-accent/50 text-sidebar-primary" : "text-sidebar-foreground"}`}
         >
           <span className="whitespace-nowrap">{label}</span>
           <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-70 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </Button>
         {isOpen && (
-          <div className="absolute left-0 top-full z-40 mt-2 w-[286px] rounded-xl border border-border bg-card p-1.5 shadow-xl">
-            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <div className="lux-panel absolute left-0 top-full z-40 mt-2 w-[286px] rounded-xl p-1.5">
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-sidebar-primary">{label}</p>
             <div className="space-y-0.5">{s.items.map((i) => <Row key={i.label} i={i} />)}</div>
           </div>
         )}
