@@ -102,7 +102,7 @@ function Builder() {
 
   return <div id="top" className="scroll-mt-24 space-y-3 pb-4">
     {/* Header */}
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3 xl:flex-nowrap">
       <div className="flex items-center gap-3">
         <span className="grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_var(--primary)]"><Mail className="size-8" /></span>
         <div><h1 className="font-display text-[26px] font-extrabold leading-tight text-primary">Campaign Builder</h1><p className="text-[12.5px] font-semibold">Créez, testez et pilotez vos campagnes avec une précision maximale</p></div>
@@ -114,17 +114,17 @@ function Builder() {
         <TrendingUp className="size-8 text-neon-green" />
       </div>
       <div className="ml-auto flex flex-wrap gap-2">
-        <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
-        <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-3 py-2 text-[12.5px] font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
-        <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
-        <button disabled={!hasDraft} onClick={restore} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold disabled:opacity-50"><Folder className="size-4 text-primary" />Configs enregistrées</button>
+        <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
+        <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
+        <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
+        <button disabled={!hasDraft} onClick={restore} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold disabled:opacity-50"><Folder className="size-4 text-primary" />Configs enregistrées</button>
       </div>
     </div>
 
     <CampaignTabs active="new" />
 
     {/* KPIs */}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <Kpi icon={<Target />} label="Délivrabilité estimée" value="99.8%" sub="↑ +0.2% vs dernière campagne" tone="blue" />
       <Kpi icon={<Server />} label="Serveurs actifs" value="12" sub="100% opérationnels" tone="blue" />
       <Kpi icon={<Network />} label="Interfaces sélectionnées" value={String(chosen.length)} sub="VMTA / SMTP" tone="blue" />
@@ -133,7 +133,7 @@ function Builder() {
     </div>
 
     {/* 4 columns */}
-    <div className="grid items-start gap-3 lg:grid-cols-2 2xl:grid-cols-4">
+    <div className="grid items-start gap-3 lg:grid-cols-2 xl:grid-cols-4">
       {/* Offre */}
       <div className="space-y-3">
         <Col id="offre" title="Offre" icon={<Tag />}>

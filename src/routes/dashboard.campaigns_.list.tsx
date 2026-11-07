@@ -60,7 +60,7 @@ function ListPage() {
       <button className={btn} onClick={() => toast("Cliquez une ligne pour voir ses détails à droite.")}><CircleHelp className="size-4" />Aide</button>
     </>} />
     <CampaignTabs active="list" />
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5 xl:grid-cols-9">
       <MiniKpi icon={<Layers />} label="Total campagnes" value={String(rows.length)} delta="+18.8%" />
       <MiniKpi icon={<Play />} label="Actives" value={String(count("Active"))} delta="+12.0%" />
       <MiniKpi icon={<CalendarDays />} label="Planifiées" value={String(count("Planifiée"))} delta="+50.0%" />

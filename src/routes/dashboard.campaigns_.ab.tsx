@@ -54,7 +54,7 @@ function AbPage() {
       <button className={btn} onClick={() => toast("Cliquez un test pour voir son analyse à droite.")}><CircleHelp className="size-4" />Aide</button>
     </>} />
     <CampaignTabs active="ab" />
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 2xl:grid-cols-8">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
       <MiniKpi icon={<FlaskConical />} label="Tests A/B actifs" value={String(rows.filter(r => r.st === "Actif").length)} delta="+20.0%" />
       <MiniKpi icon={<Server />} label="Serveurs SMTP" value={String(servers.length)} delta="100% opérationnels" />
       <MiniKpi icon={<Trophy />} label="Variantes gagnantes" value="27" delta="+14.3%" />
