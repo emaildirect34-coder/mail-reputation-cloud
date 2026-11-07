@@ -17,7 +17,7 @@ function headers(a: Account): Record<string, string> {
   if (a.provider === "cloudflare" && a.auth_type === "global") {
     h["X-Auth-Email"] = a.email ?? "";
     h["X-Auth-Key"] = a.secret;
-  } else h.Authorization = `Bearer ${a.secret}`;
+  } else h["Authorization"] = `Bearer ${a.secret}`;
   return h;
 }
 

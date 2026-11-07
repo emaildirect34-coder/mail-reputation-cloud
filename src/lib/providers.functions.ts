@@ -50,7 +50,7 @@ export const addAccount = createServerFn({ method: "POST" })
     const info = await verifyAccount({ provider: data.provider, auth_type: data.authType, secret: data.secret, email: data.email });
     const { error } = await db.from("provider_accounts").insert({
       provider: data.provider, label: data.label, auth_type: data.authType, secret: data.secret, email: data.email,
-      status: data.provider === "google_postmaster" ? "pending" : "ok", info, created_by: context.userId, checked_at: new Date().toISOString(),
+      status: data.provider === "google_postmaster" ? "pending" : "ok", info: info as any, created_by: context.userId, checked_at: new Date().toISOString(),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
