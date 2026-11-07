@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/pools")({
   head: () => ({ meta: [
@@ -27,7 +29,7 @@ function Pools() {
   return (
     <>
       <PageHeader title="Pools VMTA & Auto-Tiering" desc="Les IPs montent ou descendent de niveau automatiquement selon leur réputation." action={<Button>Nouveau pool</Button>} />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {pools.map((p) => (
           <Panel key={p.n} title={p.n} action={<Pill tone={p.tone}>{p.ips} IPs</Pill>}>
             <p className="mb-3 text-sm text-muted-foreground">{p.d}</p>
@@ -36,7 +38,7 @@ function Pools() {
           </Panel>
         ))}
       </div>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="IPs totales" value="25" /><Stat label="Bascules 7j" value="6" /><Stat label="Isolation tenant" value="Stricte" /><Stat label="Rotation" value="Pondérée" />
       </div>
       <Panel title="Règles de bascule">
@@ -49,6 +51,14 @@ function Pools() {
       <Panel title="Historique des bascules">
         <DataTable cols={["IP", "Mouvement", "Raison", "Par"]} rows={moves} />
       </Panel>
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Nouveau pool créé en mode brouillon.")}>Nouveau pool</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Bascule manuelle : 1 IP promue en Gold.")}>Promouvoir une IP</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Scan des listes noires lancé sur 25 IPs.")}>Scanner les listes noires</Button>
+        </div>
+      </Panel>
+      <StatusBar>Auto-Tiering actif · 25 IPs · 6 bascules sur 7 jours</StatusBar>
     </>
   );
 }

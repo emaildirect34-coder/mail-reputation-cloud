@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/shaping")({
   head: () => ({ meta: [
@@ -29,7 +31,7 @@ function Shaping() {
   return (
     <>
       <PageHeader title="Traffic Shaping par FAI" desc="Politiques KumoMTA adaptatives : le débit s'ajuste selon les réponses SMTP de chaque FAI." action={<Button>Publier les règles</Button>} />
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Débit global" value="8 100/h" /><Stat label="Throttles 24h" value="37" sub="-12 %" /><Stat label="Circuits ouverts" value="1" /><Stat label="Mode" value="Adaptatif" />
       </div>
       <Panel title="Règles par FAI">
@@ -37,7 +39,7 @@ function Shaping() {
           rows={rules.map((r) => [r.isp, r.conn, r.rate, r.mpc, r.back, r.tls, r.ipv6, <div className="w-24"><Bar value={r.load} /></div>,
             <Pill tone={r.st}>{r.st === "ok" ? "Fluide" : r.st === "warn" ? "Ralenti" : "Bloqué"}</Pill>])} />
       </Panel>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-3">
         <Panel title="Réactions automatiques (codes SMTP)">
           <DataTable cols={["Heure", "FAI", "Réponse", "Action", "Type"]} rows={signals} />
         </Panel>
@@ -51,6 +53,14 @@ function Shaping() {
 }`}</pre>
         </Panel>
       </div>
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Règles publiées sur les 3 nœuds KumoMTA.")}>Publier les règles</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Circuit de Orange rouvert pour test.")}>Rouvrir un circuit</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Simulation de débit lancée sur 5 FAI.")}>Simuler le débit</Button>
+        </div>
+      </Panel>
+      <StatusBar>Traffic shaping adaptatif · 8 100 emails/h · 1 circuit ouvert</StatusBar>
     </>
   );
 }
