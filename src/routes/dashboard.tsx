@@ -39,6 +39,7 @@ const sections: Section[] = [
   ]},
   { title: "Infrastructure", items: [
     { to: "/dashboard/servers", icon: Server, label: "Serveurs VPS" },
+    { to: "/dashboard/marketplace", icon: ShoppingCart, label: "Achat serveurs" },
     { to: "/dashboard/ips", icon: Network, label: "IP & Warmup" },
     { to: "/dashboard/pools", icon: Boxes, label: "Pools VMTA" },
     { to: "/dashboard/queues", icon: Layers, label: "Files KumoMTA" },
