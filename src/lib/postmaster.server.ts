@@ -25,7 +25,7 @@ async function token() {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = b64url(JSON.stringify({
-    iss: sa.client_email, scope: "https://www.googleapis.com/auth/postmaster.readonly",
+    iss: sa.client_email, scope: "https://www.googleapis.com/auth/postmaster.traffic.readonly https://www.googleapis.com/auth/postmaster.domain",
     aud: sa.token_uri ?? "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600,
   }));
   const pem = sa.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
