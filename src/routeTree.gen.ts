@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
@@ -54,6 +55,11 @@ const AuthRoute = AuthRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  SetPasswordRoute: typeof SetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -695,6 +715,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  SetPasswordRoute: SetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
