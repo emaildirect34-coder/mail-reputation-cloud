@@ -60,7 +60,7 @@ function Domains() {
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Stat label="Domaines" value={String(domains.length)} />
         <Stat label="SPF" value={`${cnt("spf")} / ${domains.length}`} />
-        <Stat label="Double DKIM" value={`${domains.filter((d) => d.checks.dkim_a?.ok && d.checks.dkim_b?.ok).length} / ${domains.length}`} />
+        <Stat label="Double DKIM" value={`${domains.filter((d) => d.checks["dkim_a"]?.ok && d.checks["dkim_b"]?.ok).length} / ${domains.length}`} />
         <Stat label="DMARC" value={`${cnt("dmarc")} / ${domains.length}`} />
         <Stat label="MTA-STS" value={`${cnt("mta_sts")} / ${domains.length}`} />
         <Stat label="Prêts à envoyer" value={`${ready} / ${domains.length}`} />
@@ -109,7 +109,7 @@ function Domains() {
             rows={domains.map((d) => {
               const p = (k: string) => !d.checks[k] ? <Pill>—</Pill> : <Pill tone={d.checks[k].ok ? "ok" : "bad"}>{d.checks[k].ok ? "OK" : "Manquant"}</Pill>;
               return [<span className="block min-w-0 truncate font-medium">{d.domain}</span>, d.ip ?? "—", p("spf"),
-                <Pill tone={d.checks.dkim_a?.ok && d.checks.dkim_b?.ok ? "ok" : d.checks.dkim_a ? "bad" : "neutral"}>{d.checks.dkim_a ? `${Number(!!d.checks.dkim_a?.ok) + Number(!!d.checks.dkim_b?.ok)}/2` : "—"}</Pill>,
+                <Pill tone={d.checks["dkim_a"]?.ok && d.checks["dkim_b"]?.ok ? "ok" : d.checks["dkim_a"] ? "bad" : "neutral"}>{d.checks["dkim_a"] ? `${Number(!!d.checks["dkim_a"]?.ok) + Number(!!d.checks["dkim_b"]?.ok)}/2` : "—"}</Pill>,
                 p("dmarc"), `${score(d)} / ${d.records.length}`,
                 <Button size="sm" variant={cur?.id === d.id ? "default" : "outline"} onClick={() => setSelId(d.id)}>Détails</Button>];
             })} />}
