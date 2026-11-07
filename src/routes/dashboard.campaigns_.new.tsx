@@ -4,8 +4,9 @@ import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
+import { CampaignTabs } from "@/components/dash/campaign-tabs";
 
-export const Route = createFileRoute("/dashboard/campaigns")({
+export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
     { title: "Campaign Builder — Email Direct" },
     { name: "description", content: "Créez, testez et pilotez vos campagnes : offre, structure email, corps HTML, délivrabilité et préflight sur une seule page." },
@@ -29,11 +30,6 @@ const initial = {
 type Draft = typeof initial;
 const storageKey = "email-direct-campaign-draft";
 const allServers = ["SERV001 [Serveurs Principaux]", "SERV002 [Warmup]", "SERV003 [Test Inbox]", "SERV004 [Secondaire]"];
-const tabs = [
-  { l: "Vue d'ensemble", i: LayoutDashboard, id: "top" }, { l: "Offre & Ciblage", i: Target, id: "offre" }, { l: "Structure Email", i: Mail, id: "structure" },
-  { l: "Contenu & HTML", i: Code2, id: "corps" }, { l: "Délivrabilité", i: ShieldCheck, id: "deliv" }, { l: "Tests & Préflight", i: FlaskConical, id: "preflight" },
-  { l: "Automatisations", i: Workflow, id: "deliv" }, { l: "Configuration avancée", i: Cog, id: "structure" },
-];
 const inCls = "h-7 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
 
 function Col({ id, title, icon, children, right }: { id?: string; title: string; icon: ReactNode; children: ReactNode; right?: ReactNode }) {
@@ -126,10 +122,7 @@ function Builder() {
       </div>
     </div>
 
-    {/* Tabs */}
-    <nav className="flex gap-2 overflow-x-auto pb-1">
-      {tabs.map((t, i) => <button key={t.l} onClick={() => go(t.id)} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-semibold ${i === 0 ? "bg-primary text-primary-foreground shadow-[0_6px_18px_-6px_var(--primary)]" : "card-lux text-primary"}`}><t.i className="size-4" />{t.l}</button>)}
-    </nav>
+    <CampaignTabs active="new" />
 
     {/* KPIs */}
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
