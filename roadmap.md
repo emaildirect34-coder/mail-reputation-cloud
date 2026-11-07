@@ -33,7 +33,10 @@
 - [x] Publication en un clic sur Cloudflare (multi-comptes) + contrôle DNS public en direct.
 - [ ] rDNS/PTR automatique via Linode sur les IP des serveurs.
 ## Phase 2 — Serveurs, IP & pools
-- [ ] Synchroniser serveurs/IP réels depuis les fournisseurs; pools VMTA en base; plan de warmup.
+- [x] Implémenter la synchronisation multi-comptes Linode/Vultr/Hetzner/DigitalOcean, les IPs et plages IPv6, les pools VMTA persistants et les brouillons warmup par FAI.
+- [x] Associer domaines et serveurs pour installation DKIM automatique, avec état réel en attente d’agent (phase 3).
+- [x] Vérifier connecté les quatre pages, création et relecture d’un pool, tests d’accès et quotas, téléphone sans débordement.
+- [ ] Vérifier synchronisation réelle, affectation IP et plan warmup de bout en bout — aucun compte fournisseur ni serveur enregistré.
 ## Phase 3 — Moteur d'envoi KumoMTA
 - [ ] Agent/API sur chaque serveur (config Lua générée: DKIM, pools, shaping); push de config.
 ## Phase 4 — Campagnes réelles

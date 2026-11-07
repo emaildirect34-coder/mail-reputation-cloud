@@ -29,6 +29,13 @@
       "when": 1794041962906,
       "tag": "0003_sending_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794052813162,
+      "tag": "0004_infrastructure_inventory_pools_warmup",
+      "breakpoints": true
     }
   ]
 }

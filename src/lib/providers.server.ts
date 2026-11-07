@@ -160,3 +160,42 @@ export async function cfMailDns(a: Account, zoneId: string, domain: string, ip: 
   }
   return out;
 }
+
+export type InventoryServer = { external_id: string; label: string; region: string | null; plan: string | null; status: string; ipv4: string | null; ips: { address: string; family: number; rdns: string | null }[] };
+export async function inventory(a: Account): Promise<InventoryServer[]> {
+  const out: InventoryServer[] = [];
+  let cursor = '';
+  for (let page = 1; page <= 100; page++) {
+    let rows: any[] = [], next = false;
+    if (a.provider === 'linode') {
+      const r = await call(a, `/linode/instances?page=${page}&page_size=100`);
+      rows = r.data; next = page < r.pages;
+    } else if (a.provider === 'vultr') {
+      const r = await call(a, `/instances?per_page=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      rows = r.instances;
+      const raw = r.meta?.links?.next;
+      cursor = raw ? new URL(raw, BASES['vultr']).searchParams.get('cursor') ?? '' : '';
+      next = !!cursor;
+    } else if (a.provider === 'hetzner') {
+      const r = await call(a, `/servers?page=${page}&per_page=50`);
+      rows = r.servers; next = !!r.meta?.pagination?.next_page;
+    } else if (a.provider === 'digitalocean') {
+      const r = await call(a, `/droplets?page=${page}&per_page=200`);
+      rows = r.droplets; next = !!r.links?.pages?.next;
+    } else throw new Error('Ce fournisseur ne possède pas de serveurs');
+    for (const s of rows) {
+      const ips: InventoryServer['ips'] = [];
+      const add = (address: unknown, family: number, rdns: string | null = null) => {
+        if (typeof address === 'string' && address && address !== '0.0.0.0') ips.push({ address, family, rdns });
+      };
+      let label = s.label ?? s.name ?? String(s.id), region = s.region, plan = s.plan ?? s.type;
+      if (a.provider === 'linode') { for (const ip of s.ipv4 ?? []) { if (!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) add(ip,4); } add(s.ipv6,6); }
+      if (a.provider === 'vultr') { add(s.main_ip,4); add(s.v6_main_ip,6); }
+      if (a.provider === 'hetzner') { add(s.public_net?.ipv4?.ip,4,s.public_net?.ipv4?.dns_ptr); add(s.public_net?.ipv6?.ip,6); region = s.datacenter?.location?.name; plan = s.server_type?.name; }
+      if (a.provider === 'digitalocean') { for (const n of s.networks?.v4 ?? []) if (n.type === 'public') add(n.ip_address,4); for (const n of s.networks?.v6 ?? []) if (n.type === 'public') add(n.ip_address,6); region = s.region?.slug; plan = s.size_slug; }
+      out.push({ external_id:String(s.id), label, region:region ?? null, plan:plan ?? null, status:s.status ?? 'unknown', ipv4:ips.find(i=>i.family===4)?.address ?? null, ips });
+    }
+    if (!next) return out;
+  }
+  throw new Error('Inventaire trop volumineux : synchronisation interrompue sans suppression');
+}
