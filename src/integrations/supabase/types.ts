@@ -1068,6 +1068,15 @@ export type Database = {
           delivered: number
         }[]
       }
+      finance_campaign_metrics: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          account_id: string
+          campaign_id: string
+          campaign_name: string
+          delivered: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
