@@ -69,4 +69,11 @@ export const launchCampaign = createServerFn({ method: 'POST' }).middleware([req
   });
 
 export const setCampaignStatus = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(i => campaignStatusInput.parse(i))
-  .handler(async ({ data, context }) => { const db = await admin(context); check((await db.from('campaigns').update({ status: data.status }).eq('id', data.id).neq('status', 'done')).error); return { ok: true }; });
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const campaign = await db.from('campaigns').select('auto_pause_reason').eq('id',data.id).single();
+    check(campaign.error);
+    if (data.status==='queued' && campaign.data?.auto_pause_reason) throw new Error('Campagne bloquée par la protection automatique : '+campaign.data.auto_pause_reason);
+    check((await db.from('campaigns').update({ status: data.status }).eq('id', data.id).neq('status', 'done')).error);
+    return { ok: true };
+  });
