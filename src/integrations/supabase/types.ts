@@ -14,6 +14,191 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_messages: {
+        Row: {
+          campaign_id: string
+          claimed_at: string | null
+          contact_id: string | null
+          created_at: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          sent_at: string | null
+          server_id: string
+          status: string
+          unsub_token: string
+        }
+        Insert: {
+          campaign_id: string
+          claimed_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          email: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          sent_at?: string | null
+          server_id: string
+          status?: string
+          unsub_token?: string
+        }
+        Update: {
+          campaign_id?: string
+          claimed_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          email?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          sent_at?: string | null
+          server_id?: string
+          status?: string
+          unsub_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_messages_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "managed_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          from_email: string
+          from_name: string
+          html: string
+          id: string
+          list_id: string | null
+          name: string
+          reply_to: string | null
+          server_ids: string[]
+          status: string
+          subject: string
+          suppressed: number
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          from_email: string
+          from_name: string
+          html: string
+          id?: string
+          list_id?: string | null
+          name: string
+          reply_to?: string | null
+          server_ids?: string[]
+          status?: string
+          subject: string
+          suppressed?: number
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          from_email?: string
+          from_name?: string
+          html?: string
+          id?: string
+          list_id?: string | null
+          name?: string
+          reply_to?: string | null
+          server_ids?: string[]
+          status?: string
+          subject?: string
+          suppressed?: number
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_lists: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          created_at: string
+          email: string
+          email_md5: string | null
+          first_name: string | null
+          id: string
+          list_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_md5?: string | null
+          first_name?: string | null
+          id?: string
+          list_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_md5?: string | null
+          first_name?: string | null
+          id?: string
+          list_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       managed_servers: {
         Row: {
           account_id: string | null
@@ -344,6 +529,27 @@ export type Database = {
           },
         ]
       }
+      suppressions: {
+        Row: {
+          created_at: string
+          email_md5: string
+          reason: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_md5: string
+          reason?: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_md5?: string
+          reason?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -471,6 +677,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      campaign_stats: {
+        Args: never
+        Returns: {
+          campaign_id: string
+          failed: number
+          queued: number
+          sent: number
+        }[]
+      }
+      claim_campaign_messages: {
+        Args: { _limit: number; _server: string }
+        Returns: {
+          campaign_id: string
+          claimed_at: string | null
+          contact_id: string | null
+          created_at: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          sent_at: string | null
+          server_id: string
+          status: string
+          unsub_token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "campaign_messages"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

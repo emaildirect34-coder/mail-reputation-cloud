@@ -50,6 +50,13 @@
       "when": 1794062202930,
       "tag": "0006_agents_column_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794062473073,
+      "tag": "0007_campaign_sending",
+      "breakpoints": true
     }
   ]
 }
