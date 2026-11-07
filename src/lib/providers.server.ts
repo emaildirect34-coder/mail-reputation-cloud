@@ -129,6 +129,23 @@ export async function cfZones(a: Account) {
   return (r.result as any[]).map((z) => ({ id: z.id, name: z.name, status: z.status }));
 }
 
+// Upsert records into a Cloudflare zone (update if same type+name exists, else create).
+export async function cfUpsert(a: Account, zoneId: string, recs: { key: string; type: string; name: string; content: string; priority?: number }[]) {
+  const out: { key: string; name: string; type: string; ok: boolean; error?: string }[] = [];
+  for (const rec of recs) {
+    try {
+      const body = { type: rec.type, name: rec.name, content: rec.content, ttl: 3600, proxied: false, ...(rec.priority != null ? { priority: rec.priority } : {}) };
+      const ex = await call(a, `/zones/${zoneId}/dns_records?type=${rec.type}&name=${encodeURIComponent(rec.name)}`);
+      let match = (ex.result as any[])[0];
+      if (rec.type === "TXT") match = (ex.result as any[]).find((r) => String(r.content).replace(/"/g, "").startsWith(rec.content.split(";")[0]?.split(" ")[0] ?? rec.content));
+      if (match) await call(a, `/zones/${zoneId}/dns_records/${match.id}`, { method: "PUT", body: JSON.stringify(body) });
+      else await call(a, `/zones/${zoneId}/dns_records`, { method: "POST", body: JSON.stringify(body) });
+      out.push({ key: rec.key, name: rec.name, type: rec.type, ok: true });
+    } catch (e) { out.push({ key: rec.key, name: rec.name, type: rec.type, ok: false, error: (e as Error).message }); }
+  }
+  return out;
+}
+
 export async function cfMailDns(a: Account, zoneId: string, domain: string, ip: string) {
   const recs = [
     { type: "A", name: `mail.${domain}`, content: ip, ttl: 3600, proxied: false },
