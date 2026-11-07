@@ -677,6 +677,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_suppressions: {
+        Args: { _reason: string; _source: string; _values: string[] }
+        Returns: number
+      }
       campaign_stats: {
         Args: never
         Returns: {

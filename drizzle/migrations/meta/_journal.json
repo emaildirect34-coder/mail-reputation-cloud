@@ -57,6 +57,13 @@
       "when": 1794062473073,
       "tag": "0007_campaign_sending",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794062489429,
+      "tag": "0008_suppression_import_fn",
+      "breakpoints": true
     }
   ]
 }
