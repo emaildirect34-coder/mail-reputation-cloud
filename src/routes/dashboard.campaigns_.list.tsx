@@ -67,7 +67,7 @@ function ListPage() {
       <MiniKpi icon={<Pause />} label="En pause" value={String(count("En pause"))} delta="-14.3%" down />
       <MiniKpi icon={<CheckCircle2 />} label="Terminées" value={String(count("Terminée"))} delta="+7.7%" />
       <MiniKpi icon={<AlertTriangle />} label="En erreur" value="0" delta="-100%" down />
-      <MiniKpi icon={<Mail />} label="Emails envoyés" value={fmt(rows.reduce((a, r) => a + r.sent, 0))} delta="+3.8 pts" />
+      <MiniKpi icon={<Mail />} label="Emails envoyés" value={`${(rows.reduce((a, r) => a + r.sent, 0) / 1e6).toFixed(2)} M`} delta="+3.8 pts" />
       <MiniKpi icon={<MousePointer2 />} label="Taux d'ouverture" value="8.9%" delta="+1.4 pts" />
       <MiniKpi icon={<Filter />} label="Taux de clic" value="3.1%" delta="+0.5 pts" />
     </div>

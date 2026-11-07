@@ -56,11 +56,11 @@ export function LineChart({ series, labels }: { series: { name: string; color: s
   return (
     <div>
       <div className="mb-1 flex justify-center gap-4 text-[11px] font-semibold">{series.map(s => <span key={s.name} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: s.color }} />{s.name}</span>)}</div>
-      <svg viewBox="0 0 300 120" className="h-40 w-full">
-        {[0, 1, 2, 3].map(i => <line key={i} x1="0" x2="300" y1={10 + i * 33} y2={10 + i * 33} stroke="var(--border)" strokeDasharray="3 3" />)}
+      <svg viewBox="0 0 300 120" preserveAspectRatio="none" className="h-40 w-full">
+        {[0, 1, 2, 3].map(i => <line key={i} x1="0" x2="300" y1={10 + i * 33} y2={10 + i * 33} stroke="var(--border)" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />)}
         {series.map(s => {
           const pts = s.values.map((v, i) => `${(i / (s.values.length - 1)) * 290 + 5},${110 - (v / max) * 100}`);
-          return <g key={s.name}><polyline points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth="2" />{pts.map(p => { const [x, y] = p.split(","); return <circle key={p} cx={x} cy={y} r="2.5" fill="var(--card)" stroke={s.color} strokeWidth="1.5" />; })}</g>;
+          return <g key={s.name}><polyline points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" />{pts.map(p => { const [x, y] = p.split(","); return <circle key={p} cx={x} cy={y} r="2.5" fill="var(--card)" stroke={s.color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />; })}</g>;
         })}
       </svg>
       <div className="flex justify-between text-[10.5px] text-muted-foreground">{labels.map(l => <span key={l}>{l}</span>)}</div>
