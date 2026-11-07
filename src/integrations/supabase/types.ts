@@ -201,12 +201,63 @@ export type Database = {
           },
         ]
       }
+      server_agents: {
+        Row: {
+          agent_version: string | null
+          applied_hash: string | null
+          config_hash: string | null
+          created_at: string
+          kumo_version: string | null
+          last_error: string | null
+          last_seen: string | null
+          metrics: Json
+          server_id: string
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          agent_version?: string | null
+          applied_hash?: string | null
+          config_hash?: string | null
+          created_at?: string
+          kumo_version?: string | null
+          last_error?: string | null
+          last_seen?: string | null
+          metrics?: Json
+          server_id: string
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          agent_version?: string | null
+          applied_hash?: string | null
+          config_hash?: string | null
+          created_at?: string
+          kumo_version?: string | null
+          last_error?: string | null
+          last_seen?: string | null
+          metrics?: Json
+          server_id?: string
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_agents_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: true
+            referencedRelation: "managed_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_domain_bindings: {
         Row: {
           created_at: string
           domain_id: string
           id: string
           installed_at: string | null
+          last_error: string | null
           server_id: string
           status: string
         }
@@ -215,6 +266,7 @@ export type Database = {
           domain_id: string
           id?: string
           installed_at?: string | null
+          last_error?: string | null
           server_id: string
           status?: string
         }
@@ -223,6 +275,7 @@ export type Database = {
           domain_id?: string
           id?: string
           installed_at?: string | null
+          last_error?: string | null
           server_id?: string
           status?: string
         }

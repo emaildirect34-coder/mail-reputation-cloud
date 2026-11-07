@@ -36,6 +36,13 @@
       "when": 1794052813162,
       "tag": "0004_infrastructure_inventory_pools_warmup",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794062194899,
+      "tag": "0005_kumomta_agents",
+      "breakpoints": true
     }
   ]
 }
