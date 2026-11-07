@@ -47,7 +47,9 @@ import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.c
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
 import { Route as ApiPublicAgentConfigRouteImport } from './routes/api/public/agent/config'
 import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
+import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
+import { Route as ApiPublicUnsubTokenRouteImport } from './routes/api/public/unsub/$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -241,9 +243,19 @@ const ApiPublicAgentInstallDotshRoute =
     path: '/api/public/agent/install.sh',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAgentJobsRoute = ApiPublicAgentJobsRouteImport.update({
+  id: '/api/public/agent/jobs',
+  path: '/api/public/agent/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
   id: '/api/public/agent/report',
   path: '/api/public/agent/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnsubTokenRoute = ApiPublicUnsubTokenRouteImport.update({
+  id: '/api/public/unsub/$token',
+  path: '/api/public/unsub/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -286,7 +298,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -326,7 +340,9 @@ export interface FileRoutesByTo {
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -368,7 +384,9 @@ export interface FileRoutesById {
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -411,7 +429,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/new'
     | '/api/public/agent/config'
     | '/api/public/agent/install.sh'
+    | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/unsub/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -451,7 +471,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/new'
     | '/api/public/agent/config'
     | '/api/public/agent/install.sh'
+    | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/unsub/$token'
   id:
     | '__root__'
     | '/'
@@ -492,7 +514,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns_/new'
     | '/api/public/agent/config'
     | '/api/public/agent/install.sh'
+    | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/unsub/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -502,7 +526,9 @@ export interface RootRouteChildren {
   SetPasswordRoute: typeof SetPasswordRoute
   ApiPublicAgentConfigRoute: typeof ApiPublicAgentConfigRoute
   ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
+  ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
+  ApiPublicUnsubTokenRoute: typeof ApiPublicUnsubTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -773,11 +799,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentInstallDotshRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/jobs': {
+      id: '/api/public/agent/jobs'
+      path: '/api/public/agent/jobs'
+      fullPath: '/api/public/agent/jobs'
+      preLoaderRoute: typeof ApiPublicAgentJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/report': {
       id: '/api/public/agent/report'
       path: '/api/public/agent/report'
       fullPath: '/api/public/agent/report'
       preLoaderRoute: typeof ApiPublicAgentReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unsub/$token': {
+      id: '/api/public/unsub/$token'
+      path: '/api/public/unsub/$token'
+      fullPath: '/api/public/unsub/$token'
+      preLoaderRoute: typeof ApiPublicUnsubTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -864,7 +904,9 @@ const rootRouteChildren: RootRouteChildren = {
   SetPasswordRoute: SetPasswordRoute,
   ApiPublicAgentConfigRoute: ApiPublicAgentConfigRoute,
   ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
+  ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
+  ApiPublicUnsubTokenRoute: ApiPublicUnsubTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

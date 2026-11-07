@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
+import { LaunchPanel } from "@/components/dash/launch-panel";
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -248,6 +249,8 @@ function Builder() {
         </details>
       </div>
     </div>
+
+    <LaunchPanel d={d} testMode={testMode} />
 
     {/* Préflight */}
     <section id="preflight" className="card-lux mb-3 break-inside-avoid scroll-mt-24 p-3.5">

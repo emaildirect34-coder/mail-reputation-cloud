@@ -36,6 +36,15 @@ if [ "$HASH" != "$OLD" ]; then
 else
   INSTALLED=$(echo "$B" | jq '[.dkim[].bindingId] | unique')
 fi
+J=$(curl -fsS -H "$H" "$API/jobs" || echo '{"jobs":[]}')
+if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
+  RES=$(echo "$J" | jq -c '.jobs[]' | while read -r job; do
+    id=$(echo "$job" | jq -r .id)
+    out=$(echo "$job" | jq -c '{envelope_sender:.sender,content:.content,recipients:[{email:.rcpt}]}' | curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data @- http://127.0.0.1:8000/api/inject/v1)
+    if [ "$out" = "200" ]; then jq -nc --arg i "$id" '{id:$i,ok:true}'; else jq -nc --arg i "$id" --arg e "KumoMTA HTTP $out" '{id:$i,ok:false,error:$e}'; fi
+  done | jq -sc '{results:.}')
+  echo "$RES" | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/jobs" >/dev/null || true
+fi
 CPU=$(top -bn1 | awk '/Cpu/ {print 100-$8; exit}'); RAM=$(free | awk '/Mem/ {printf "%.0f", $3/$2*100}')
 APPLIED=$(cat $DIR/.hash 2>/dev/null || echo "")
 jq -n --arg a "1.0" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "\${CPU:-0}" --argjson r "\${RAM:-0}" \\
