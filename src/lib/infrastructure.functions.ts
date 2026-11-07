@@ -26,9 +26,10 @@ export const readInfrastructure = createServerFn({method:'POST'}).middleware([re
       db.from('server_ips').select('*').order('address'),
       db.from('vmta_pools').select('*').order('name'),
       db.from('warmup_plans').select('*').order('created_at'),
+      db.from('server_agents').select('server_id,status,agent_version,kumo_version,config_hash,applied_hash,metrics,last_error,last_seen'),
     ]);
     for (const r of results) check(r.error);
-    return {servers:results[0].data ?? [] as Tables<'managed_servers'>[], ips:results[1].data ?? [] as Tables<'server_ips'>[], pools:results[2].data ?? [] as Tables<'vmta_pools'>[], warmups:results[3].data ?? [] as Tables<'warmup_plans'>[], isAdmin:!!superadmin};
+    return {servers:results[0].data ?? [] as Tables<'managed_servers'>[], ips:results[1].data ?? [] as Tables<'server_ips'>[], pools:results[2].data ?? [] as Tables<'vmta_pools'>[], warmups:results[3].data ?? [] as Tables<'warmup_plans'>[], agents:results[4].data ?? [], isAdmin:!!superadmin};
   });
 
 export const syncInventory = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
@@ -73,3 +74,13 @@ export const bindDomainServer = createServerFn({method:'POST'}).middleware([requ
   });
 export const listDomainBindings = createServerFn({method:'POST'}).middleware([requireSupabaseAuth])
   .handler(async ({context}) => {const db=await admin(context); const r=await db.from('server_domain_bindings').select('id,server_id,domain_id,status,installed_at').order('created_at'); check(r.error); return r.data ?? [];});
+export const issueAgentToken = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
+  .handler(async ({data,context}) => {
+    const db=await admin(context);
+    const {newToken,sha256}=await import('./kumo.server');
+    const token=newToken();
+    check((await db.from('server_agents').upsert({server_id:data.id,token_hash:await sha256(token),status:'awaiting',last_error:null},{onConflict:'server_id'})).error);
+    return {token};
+  });
+export const previewAgentConfig = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
+  .handler(async ({data,context}) => {const db=await admin(context); const {buildBundle}=await import('./kumo.server'); const b=await buildBundle(db,data.id,false); return {lua:b.lua,hash:b.hash};});

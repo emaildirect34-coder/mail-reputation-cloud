@@ -45,6 +45,9 @@ import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhoo
 import { Route as DashboardCampaignsAbRouteImport } from './routes/dashboard.campaigns_.ab'
 import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.campaigns_.list'
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
+import { Route as ApiPublicAgentConfigRouteImport } from './routes/api/public/agent/config'
+import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
+import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -227,6 +230,22 @@ const DashboardCampaignsNewRoute = DashboardCampaignsNewRouteImport.update({
   path: '/campaigns/new',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ApiPublicAgentConfigRoute = ApiPublicAgentConfigRouteImport.update({
+  id: '/api/public/agent/config',
+  path: '/api/public/agent/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentInstallDotshRoute =
+  ApiPublicAgentInstallDotshRouteImport.update({
+    id: '/api/public/agent/install.sh',
+    path: '/api/public/agent/install.sh',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
+  id: '/api/public/agent/report',
+  path: '/api/public/agent/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -265,6 +284,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
+  '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/report': typeof ApiPublicAgentReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -302,6 +324,9 @@ export interface FileRoutesByTo {
   '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
+  '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/report': typeof ApiPublicAgentReportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -341,6 +366,9 @@ export interface FileRoutesById {
   '/dashboard/campaigns_/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns_/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
+  '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
+  '/api/public/agent/report': typeof ApiPublicAgentReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -381,6 +409,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
+    | '/api/public/agent/config'
+    | '/api/public/agent/install.sh'
+    | '/api/public/agent/report'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -418,6 +449,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
+    | '/api/public/agent/config'
+    | '/api/public/agent/install.sh'
+    | '/api/public/agent/report'
   id:
     | '__root__'
     | '/'
@@ -456,6 +490,9 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns_/ab'
     | '/dashboard/campaigns_/list'
     | '/dashboard/campaigns_/new'
+    | '/api/public/agent/config'
+    | '/api/public/agent/install.sh'
+    | '/api/public/agent/report'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -463,6 +500,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   SetPasswordRoute: typeof SetPasswordRoute
+  ApiPublicAgentConfigRoute: typeof ApiPublicAgentConfigRoute
+  ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
+  ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -719,6 +759,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCampaignsNewRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/api/public/agent/config': {
+      id: '/api/public/agent/config'
+      path: '/api/public/agent/config'
+      fullPath: '/api/public/agent/config'
+      preLoaderRoute: typeof ApiPublicAgentConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/install.sh': {
+      id: '/api/public/agent/install.sh'
+      path: '/api/public/agent/install.sh'
+      fullPath: '/api/public/agent/install.sh'
+      preLoaderRoute: typeof ApiPublicAgentInstallDotshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/report': {
+      id: '/api/public/agent/report'
+      path: '/api/public/agent/report'
+      fullPath: '/api/public/agent/report'
+      preLoaderRoute: typeof ApiPublicAgentReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -801,6 +862,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
   SetPasswordRoute: SetPasswordRoute,
+  ApiPublicAgentConfigRoute: ApiPublicAgentConfigRoute,
+  ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
+  ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
