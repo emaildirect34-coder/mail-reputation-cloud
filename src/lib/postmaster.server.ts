@@ -53,13 +53,13 @@ async function gget(path: string) {
   return j;
 }
 
-export type PmDomain = { name: string; createTime: string | null; permission: string | null };
+export type PmDomain = { name: string; createTime: string | null; permission: string | null; verified: boolean };
 export async function listDomains(): Promise<PmDomain[]> {
   const out: PmDomain[] = [];
   let page = "";
   do {
     const j = await gget(`/domains?pageSize=200${page ? `&pageToken=${page}` : ""}`);
-    for (const d of j.domains ?? []) out.push({ name: String(d.name).replace(/^domains\//, ""), createTime: d.createTime ?? null, permission: d.permission ?? null });
+    for (const d of j.domains ?? []) out.push({ name: String(d.name).replace(/^domains\//, ""), createTime: d.createTime ?? null, permission: d.permission ?? null, verified: d.verificationState === "VERIFIED" });
     page = j.nextPageToken ?? "";
   } while (page);
   return out;
@@ -76,28 +76,92 @@ export type PmStat = {
   deliveryErrors: { errorClass: string; errorType: string; errorRatio: number }[];
 };
 
-export async function trafficStats(domain: string, days: number): Promise<PmStat[]> {
-  const end = new Date(); const start = new Date(Date.now() - days * 86400_000);
-  const q = (p: string, d: Date) => `${p}.year=${d.getUTCFullYear()}&${p}.month=${d.getUTCMonth() + 1}&${p}.day=${d.getUTCDate()}`;
-  const out: PmStat[] = [];
-  let page = "";
+const ERR: [string, string][] = [
+  ["reject", "bad_attachment"], ["reject", "bad_or_missing_ptr_record"], ["reject", "ip_in_rbls"], ["reject", "low_domain_reputation"],
+  ["reject", "low_ip_reputation"], ["reject", "spammy_content"], ["reject", "stamp_policy_error"], ["reject", "other"],
+  ["temp_fail", "anomalous_traffic_pattern"], ["temp_fail", "other"],
+];
+const dt = (d: Date) => ({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() });
+const num = (v: any) => v == null ? null : Number(v.doubleValue ?? v.floatValue ?? v.intValue ?? NaN);
+
+async function gpost(path: string, body: unknown) {
+  const res = await fetch(`${API}${path}`, { method: "POST", headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j: any = await res.json().catch(() => ({}));
+  if (!res.ok) { console.error("postmaster", res.status, JSON.stringify(j)); throw new Error(res.status === 403 ? "Accès refusé : ajoutez le compte de service sur ce domaine dans Postmaster Tools" : j?.error?.message ?? "Erreur Google Postmaster"); }
+  return j;
+}
+
+async function query(domain: string, days: number, metrics: { name: string; m: string; filter?: string }[]) {
+  const out: { date: string; metric: string; value: any }[] = [];
+  let pageToken = "";
   do {
-    const j = await gget(`/domains/${encodeURIComponent(domain)}/trafficStats?${q("startDate", start)}&${q("endDate", end)}&pageSize=200${page ? `&pageToken=${page}` : ""}`);
-    for (const s of j.trafficStats ?? []) {
-      const id = String(s.name).split("/").pop() ?? "";
-      out.push({
-        date: id.length === 8 ? `${id.slice(0, 4)}-${id.slice(4, 6)}-${id.slice(6)}` : id,
-        spamRate: s.userReportedSpamRatio ?? null,
-        spamLow: s.userReportedSpamRatioLowerBound ?? null, spamHigh: s.userReportedSpamRatioUpperBound ?? null,
-        domainReputation: s.domainReputation ?? null,
-        ipReputations: (s.ipReputations ?? []).map((r: any) => ({ reputation: r.reputation, ipCount: Number(r.ipCount ?? 0), sampleIps: r.sampleIps ?? [] })),
-        feedbackLoops: (s.spammyFeedbackLoops ?? []).map((f: any) => ({ id: f.id, spamRatio: f.spamRatio ?? 0 })),
-        spf: s.spfSuccessRatio ?? null, dkim: s.dkimSuccessRatio ?? null, dmarc: s.dmarcSuccessRatio ?? null,
-        inboundTls: s.inboundEncryptionRatio ?? null, outboundTls: s.outboundEncryptionRatio ?? null,
-        deliveryErrors: (s.deliveryErrors ?? []).map((e: any) => ({ errorClass: e.errorClass, errorType: e.errorType, errorRatio: e.errorRatio ?? 0 })),
-      });
+    const j = await gpost(`/domains/${encodeURIComponent(domain)}/domainStats:query`, {
+      timeQuery: { dateRanges: { dateRanges: [{ start: dt(new Date(Date.now() - days * 86400_000)), end: dt(new Date()) }] } },
+      aggregationGranularity: "DAILY", pageSize: 1000, ...(pageToken ? { pageToken } : {}),
+      metricDefinitions: metrics.map((x) => ({ name: x.name, baseMetric: { standardMetric: x.m }, ...(x.filter ? { filter: x.filter } : {}) })),
+    });
+    for (const s of j.domainStats ?? []) {
+      const d = s.date ? `${s.date.year}-${String(s.date.month).padStart(2, "0")}-${String(s.date.day).padStart(2, "0")}` : "total";
+      out.push({ date: d, metric: s.metric, value: s.value ?? {} });
     }
-    page = j.nextPageToken ?? "";
-  } while (page);
-  return out.sort((a, b) => a.date.localeCompare(b.date));
+    pageToken = j.nextPageToken ?? "";
+  } while (pageToken);
+  return out;
+}
+
+export async function trafficStats(domain: string, days: number): Promise<PmStat[]> {
+  const metrics = [
+    { name: "spam", m: "SPAM_RATE" },
+    { name: "spf", m: "AUTH_SUCCESS_RATE", filter: 'auth_type = "spf"' },
+    { name: "dkim", m: "AUTH_SUCCESS_RATE", filter: 'auth_type = "dkim"' },
+    { name: "dmarc", m: "AUTH_SUCCESS_RATE", filter: 'auth_type = "dmarc"' },
+    { name: "tlsin", m: "TLS_ENCRYPTION_RATE", filter: 'traffic_direction = "inbound"' },
+    { name: "tlsout", m: "TLS_ENCRYPTION_RATE", filter: 'traffic_direction = "outbound"' },
+    { name: "fbl", m: "FEEDBACK_LOOP_ID" },
+    ...ERR.map(([t, r]) => ({ name: `err:${t}:${r}`, m: "DELIVERY_ERROR_RATE", filter: `error_type = "${t}" AND error_reason = "${r}"` })),
+  ];
+  const rows = await query(domain, days, metrics);
+  const by = new Map<string, PmStat>();
+  const get = (date: string) => {
+    let s = by.get(date);
+    if (!s) { s = { date, spamRate: null, spamLow: null, spamHigh: null, domainReputation: null, ipReputations: [], feedbackLoops: [], spf: null, dkim: null, dmarc: null, inboundTls: null, outboundTls: null, deliveryErrors: [] }; by.set(date, s); }
+    return s;
+  };
+  const fblIds = new Set<string>();
+  for (const r of rows) {
+    const s = get(r.date); const v = num(r.value);
+    if (r.metric === "spam") s.spamRate = v;
+    else if (r.metric === "spf") s.spf = v;
+    else if (r.metric === "dkim") s.dkim = v;
+    else if (r.metric === "dmarc") s.dmarc = v;
+    else if (r.metric === "tlsin") s.inboundTls = v;
+    else if (r.metric === "tlsout") s.outboundTls = v;
+    else if (r.metric === "fbl") for (const id of r.value.stringList?.values ?? (r.value.stringValue ? [r.value.stringValue] : [])) fblIds.add(id);
+    else if (r.metric.startsWith("err:") && v) { const [, t, why] = r.metric.split(":"); s.deliveryErrors.push({ errorClass: t, errorType: why, errorRatio: v }); }
+  }
+  const ids = [...fblIds].slice(0, 20);
+  if (ids.length) {
+    const fr = await query(domain, days, ids.map((id, i) => ({ name: `fbl${i}`, m: "FEEDBACK_LOOP_SPAM_RATE", filter: `feedback_loop_id = "${id}"` })));
+    for (const r of fr) { const v = num(r.value); if (v != null) get(r.date).feedbackLoops.push({ id: ids[Number(r.metric.slice(3))], spamRatio: v }); }
+  }
+  return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export type PmCompliance = {
+  deliverability: { state: string | null; reason: string | null };
+  oneClick: { state: string | null; reason: string | null };
+  honorUnsub: { state: string | null; reason: string | null };
+  rows: { requirement: string; status: string }[];
+  subRows: { requirement: string; status: string }[];
+};
+export async function compliance(domain: string): Promise<PmCompliance> {
+  const j = await gget(`/domains/${encodeURIComponent(domain)}/complianceStatus`);
+  const c = j.complianceData ?? {};
+  const rows = (x: any) => (x?.rowData ?? []).map((r: any) => ({ requirement: r.requirement, status: r.status?.status ?? "STATE_UNSPECIFIED" }));
+  return {
+    deliverability: { state: c.deliverabilityStatusVerdict?.state?.status ?? null, reason: c.deliverabilityStatusVerdict?.reason ?? null },
+    oneClick: { state: c.oneClickUnsubscribeVerdict?.status?.status ?? null, reason: c.oneClickUnsubscribeVerdict?.reason ?? null },
+    honorUnsub: { state: c.honorUnsubscribeVerdict?.status?.status ?? null, reason: c.honorUnsubscribeVerdict?.reason ?? null },
+    rows: rows(c), subRows: rows(j.subdomainComplianceData),
+  };
 }

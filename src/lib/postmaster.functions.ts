@@ -30,10 +30,11 @@ export const getPostmasterStats = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await guard(context);
-    const { trafficStats } = await import("./postmaster.server");
-    try {
-      return { stats: await trafficStats(data.domain, data.days), error: null as string | null };
-    } catch (e) {
-      return { stats: [], error: (e as Error).message };
-    }
+    const { trafficStats, compliance } = await import("./postmaster.server");
+    const [st, co] = await Promise.allSettled([trafficStats(data.domain, data.days), compliance(data.domain)]);
+    return {
+      stats: st.status === "fulfilled" ? st.value : [],
+      compliance: co.status === "fulfilled" ? co.value : null,
+      error: st.status === "rejected" ? (st.reason as Error).message : null as string | null,
+    };
   });
