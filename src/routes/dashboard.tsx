@@ -247,7 +247,7 @@ function DashboardLayout() {
             <span className="h-3 w-3 shrink-0 rounded-full bg-neon-green shadow-[0_0_10px_var(--neon-green)]" />
             <div>
               <p className="text-[12px] font-semibold">Système opérationnel</p>
-              <p className="text-[10px] text-muted-foreground">Score réseau : 99.4/100</p>
+              <p className="text-[10px] text-sidebar-foreground/70">Score réseau : 99.4/100</p>
             </div>
           </div>
           <div className="hidden text-[12px] leading-5 md:block">
@@ -262,9 +262,9 @@ function DashboardLayout() {
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{(user.email || "A").charAt(0).toUpperCase()}</div>
             <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[13px] font-semibold">Admin</p>
-              <p className="truncate text-[10px] text-muted-foreground">Compte principal</p>
+              <p className="truncate text-[10px] text-sidebar-foreground/70">Compte principal</p>
             </div>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
           </div>
           <Button variant="ghost" size="icon" className="shrink-0" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
         </div>
