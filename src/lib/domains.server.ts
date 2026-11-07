@@ -46,7 +46,7 @@ export async function checkDomain(d: Dom) {
     let hit: string | undefined;
     if (r.key === "spf") hit = ans.find((a) => a.startsWith("v=spf1"));
     else if (r.key === "dmarc") hit = ans.find((a) => a.startsWith("v=DMARC1"));
-    else if (r.key.startsWith("dkim")) hit = ans.find((a) => a.replace(/\s/g, "").includes(r.content.split("p=")[1]));
+    else if (r.key.startsWith("dkim")) hit = ans.find((a) => a.replace(/\s/g, "").includes(r.content.split("p=")[1] ?? "__"));
     else if (r.key === "mx") hit = ans.find((a) => a.includes(`mail.${d.domain}`));
     else if (r.key === "a") hit = ans.find((a) => a === d.ip);
     else hit = ans[0];

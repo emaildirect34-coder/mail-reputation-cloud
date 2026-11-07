@@ -16,11 +16,12 @@ export const listDomains = createServerFn({ method: "POST" }).middleware([requir
     const db = await admin(context);
     const { data } = await db.from("sending_domains").select(PUBLIC).order("created_at");
     const { expectedRecords } = await import("./domains.server");
-    return (data ?? []).map((d: any) => ({ ...d, checks: (d.checks ?? {}) as Record<string, { ok: boolean; found: string | null }>, records: expectedRecords(d) }));
+    type Row = { id: string; domain: string; account_id: string | null; zone_id: string | null; ip: string | null; selector_a: string; selector_b: string; dkim_pub_a: string; dkim_pub_b: string; checked_at: string | null; synced_at: string | null; created_at: string };
+    return ((data ?? []) as any[]).map((d): Row & { checks: Record<string, { ok: boolean; found: string | null }>; records: ReturnType<typeof expectedRecords> } => ({ ...d, checks: (d.checks ?? {}) as Record<string, { ok: boolean; found: string | null }>, records: expectedRecords(d) }));
   });
 
 export const addDomain = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
-  .inputValidator((i: { domain: string; ip?: string; accountId?: string; zoneId?: string }) => {
+  .inputValidator((i: { domain: string; ip?: string | undefined; accountId?: string | undefined; zoneId?: string | undefined }) => {
     const domain = String(i.domain).trim().toLowerCase();
     if (!DOMAIN_RE.test(domain)) throw new Error("Nom de domaine invalide");
     const ip = i.ip ? String(i.ip).trim() : null;

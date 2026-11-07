@@ -120,7 +120,8 @@ function Domains() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={!!busy} onClick={() => run("sync", async () => {
               const r = await fSync({ data: { id: cur.id } }); const bad = r.filter((x) => !x.ok);
-              if (bad.length) throw new Error(`${bad.length} enregistrement(s) refusé(s) : ${bad[0].error}`);
+              const first = bad[0];
+              if (bad.length) throw new Error(`${bad.length} enregistrement(s) refusé(s) : ${first?.error ?? ""}`);
             }, "Enregistrements publiés sur Cloudflare")}><CloudUpload className="h-4 w-4" /> Publier sur Cloudflare</Button>
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("check", () => fCheck({ data: { id: cur.id } }), "Contrôle DNS terminé")}><RefreshCw className={`h-4 w-4 ${busy === "check" ? "animate-spin" : ""}`} /> Vérifier en direct</Button>
             {(["a", "b"] as const).map((w) => (
