@@ -20,6 +20,7 @@ export type Database = {
           claimed_at: string | null
           contact_id: string | null
           created_at: string
+          delivery_state: string
           email: string
           error: string | null
           first_name: string | null
@@ -34,6 +35,7 @@ export type Database = {
           claimed_at?: string | null
           contact_id?: string | null
           created_at?: string
+          delivery_state?: string
           email: string
           error?: string | null
           first_name?: string | null
@@ -48,6 +50,7 @@ export type Database = {
           claimed_at?: string | null
           contact_id?: string | null
           created_at?: string
+          delivery_state?: string
           email?: string
           error?: string | null
           first_name?: string | null
@@ -83,6 +86,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          auto_pause_reason: string | null
           created_at: string
           created_by: string | null
           from_email: string
@@ -99,6 +103,7 @@ export type Database = {
           total: number
         }
         Insert: {
+          auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
           from_email: string
@@ -115,6 +120,7 @@ export type Database = {
           total?: number
         }
         Update: {
+          auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
           from_email?: string
@@ -195,6 +201,117 @@ export type Database = {
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_alerts: {
+        Row: {
+          campaign_id: string
+          campaign_name: string
+          created_at: string
+          id: string
+          isp: string
+          rate: number
+          rule: string
+          sample_size: number
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name: string
+          created_at?: string
+          id?: string
+          isp: string
+          rate: number
+          rule: string
+          sample_size: number
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string
+          created_at?: string
+          id?: string
+          isp?: string
+          rate?: number
+          rule?: string
+          sample_size?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_alerts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_events: {
+        Row: {
+          campaign_id: string
+          campaign_name: string
+          detail: string
+          event_key: string
+          event_type: string
+          id: string
+          isp: string
+          message_id: string
+          occurred_at: string
+          received_at: string
+          recipient: string
+          server_id: string
+          smtp_code: number | null
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name: string
+          detail?: string
+          event_key: string
+          event_type: string
+          id?: string
+          isp: string
+          message_id: string
+          occurred_at: string
+          received_at?: string
+          recipient: string
+          server_id: string
+          smtp_code?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string
+          detail?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          isp?: string
+          message_id?: string
+          occurred_at?: string
+          received_at?: string
+          recipient?: string
+          server_id?: string
+          smtp_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_events_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_events_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "managed_servers"
             referencedColumns: ["id"]
           },
         ]
@@ -697,6 +814,7 @@ export type Database = {
           claimed_at: string | null
           contact_id: string | null
           created_at: string
+          delivery_state: string
           email: string
           error: string | null
           first_name: string | null
@@ -713,12 +831,26 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      delivery_log_summary: {
+        Args: never
+        Returns: {
+          bounced: number
+          complaints: number
+          deferred: number
+          delivered: number
+          events: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      ingest_delivery_events: {
+        Args: { _events: Json; _server: string }
+        Returns: number
       }
     }
     Enums: {

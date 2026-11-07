@@ -46,6 +46,7 @@ import { Route as DashboardCampaignsAbRouteImport } from './routes/dashboard.cam
 import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.campaigns_.list'
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
 import { Route as ApiPublicAgentConfigRouteImport } from './routes/api/public/agent/config'
+import { Route as ApiPublicAgentEventsRouteImport } from './routes/api/public/agent/events'
 import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
@@ -237,6 +238,11 @@ const ApiPublicAgentConfigRoute = ApiPublicAgentConfigRouteImport.update({
   path: '/api/public/agent/config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentEventsRoute = ApiPublicAgentEventsRouteImport.update({
+  id: '/api/public/agent/events',
+  path: '/api/public/agent/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentInstallDotshRoute =
   ApiPublicAgentInstallDotshRouteImport.update({
     id: '/api/public/agent/install.sh',
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
@@ -383,6 +391,7 @@ export interface FileRoutesById {
   '/dashboard/campaigns_/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
@@ -428,6 +437,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
     | '/api/public/agent/config'
+    | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
     | '/api/public/agent/config'
+    | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
@@ -513,6 +524,7 @@ export interface FileRouteTypes {
     | '/dashboard/campaigns_/list'
     | '/dashboard/campaigns_/new'
     | '/api/public/agent/config'
+    | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   SetPasswordRoute: typeof SetPasswordRoute
   ApiPublicAgentConfigRoute: typeof ApiPublicAgentConfigRoute
+  ApiPublicAgentEventsRoute: typeof ApiPublicAgentEventsRoute
   ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
@@ -792,6 +805,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/events': {
+      id: '/api/public/agent/events'
+      path: '/api/public/agent/events'
+      fullPath: '/api/public/agent/events'
+      preLoaderRoute: typeof ApiPublicAgentEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/install.sh': {
       id: '/api/public/agent/install.sh'
       path: '/api/public/agent/install.sh'
@@ -903,6 +923,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   SetPasswordRoute: SetPasswordRoute,
   ApiPublicAgentConfigRoute: ApiPublicAgentConfigRoute,
+  ApiPublicAgentEventsRoute: ApiPublicAgentEventsRoute,
   ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,

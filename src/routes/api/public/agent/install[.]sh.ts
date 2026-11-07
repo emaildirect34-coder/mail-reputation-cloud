@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 // Public installer script (contains no secrets). The token is passed by the operator via KAG_TOKEN.
-const script = (origin: string) => `#!/usr/bin/env bash
+const script = (origin: string, events: string) => `#!/usr/bin/env bash
 set -euo pipefail
 : "\${KAG_TOKEN:?KAG_TOKEN manquant}"
 API="${origin}/api/public/agent"
@@ -15,8 +15,13 @@ if ! command -v kumod >/dev/null 2>&1 && [ ! -x /opt/kumomta/sbin/kumod ]; then
     dnf install -y dnf-plugins-core jq && dnf config-manager --add-repo https://openrepo.kumomta.com/files/kumomta-rocky.repo && dnf install -y kumomta
   fi
 fi
+if command -v apt-get >/dev/null; then apt-get install -y python3 python3-zstandard; else dnf install -y python3 python3-zstandard; fi
 install -d -m 700 /etc/kumo-agent
 echo "KAG_TOKEN=$KAG_TOKEN" > /etc/kumo-agent/env && chmod 600 /etc/kumo-agent/env
+cat > /usr/local/bin/kumo-events.py <<'EVENTS'
+${events}
+EVENTS
+chmod 700 /usr/local/bin/kumo-events.py
 cat > /usr/local/bin/kumo-agent <<'AGENT'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -36,6 +41,7 @@ if [ "$HASH" != "$OLD" ]; then
 else
   INSTALLED=$(echo "$B" | jq '[.dkim[].bindingId] | unique')
 fi
+KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-events.py || exit 1
 J=$(curl -fsS -H "$H" "$API/jobs" || echo '{"jobs":[]}')
 if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
   RES=$(echo "$J" | jq -c '.jobs[]' | while read -r job; do
@@ -52,7 +58,7 @@ jq -n --arg a "1.0" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | h
   | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/report" >/dev/null
 AGENT
 sed -i "s#__API__#$API#" /usr/local/bin/kumo-agent && chmod 755 /usr/local/bin/kumo-agent
-install -d $DIR 2>/dev/null || true; install -d /opt/kumomta/etc/policy
+install -d /opt/kumomta/etc/policy
 cat > /etc/systemd/system/kumo-agent.service <<'U'
 [Unit]
 Description=KumoMTA config agent
@@ -76,7 +82,10 @@ systemctl daemon-reload && systemctl enable --now kumomta kumo-agent.timer
 export const Route = createFileRoute('/api/public/agent/install.sh')({
   server: {
     handlers: {
-      GET: async ({ request }) => new Response(script(new URL(request.url).origin), { headers: { 'Content-Type': 'text/x-shellscript; charset=utf-8' } }),
+      GET: async ({ request }) => {
+        const { eventsScript } = await import('@/lib/kumo-events.server');
+        return new Response(script(new URL(request.url).origin, eventsScript), { headers: { 'Content-Type': 'text/x-shellscript; charset=utf-8' } });
+      },
     },
   },
 });

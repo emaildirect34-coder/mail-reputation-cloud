@@ -44,7 +44,10 @@
 - [x] Listes/contacts (import CSV), suppression MD5, envoi réel via les agents KumoMTA, désinscription en 1 clic (RFC 8058).
 - [ ] Vérifier un envoi réel de bout en bout — aucun serveur avec agent pour l’instant.
 ## Phase 5 — Événements & logs
-- [ ] Webhooks KumoMTA (delivered/bounce/FBL) → logs, stats, coupe-circuits.
+- [x] Enregistrer les événements KumoMTA authentifiés et dédupliqués, distinguer injection et livraison, supprimer les adresses en rebond dur/plainte.
+- [x] Afficher les vrais journaux filtrables, export CSV et alertes; suspendre les nouvelles injections automatiquement selon les seuils de protection (messages déjà dans KumoMTA non rappelés).
+- [x] Vérifier l’API avec 18 événements temporaires, déduplication, rejet d’un message étranger, suspension, 17 suppressions, filtres/CSV connecté et téléphone; données de test nettoyées.
+- [ ] Vérifier collecte locale et livraisons sur un vrai serveur; brancher les flux ARF des FAI — aucun serveur actif ni abonnement FBL disponible.
 ## Phase 6 — IA Gateway & Skills
 - [ ] Boutons IA par page (diagnostic objet/contenu/DNS) avec correction appliquée.
 ## Phase 7 — Offres sponsors & revenus
