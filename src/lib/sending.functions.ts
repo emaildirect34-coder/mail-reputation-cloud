@@ -57,8 +57,8 @@ export const launchCampaign = createServerFn({ method: 'POST' }).middleware([req
     const contacts: { id: string; email: string; first_name: string | null; email_md5: string | null }[] = [];
     for (let from = 0; ; from += 1000) { const r = await db.from('contacts').select('id,email,first_name,email_md5').eq('list_id', data.listId).eq('status', 'active').range(from, from + 999); check(r.error); contacts.push(...(r.data ?? [])); if ((r.data ?? []).length < 1000) break; }
     const blocked = new Set<string>();
-    for (let i = 0; i < contacts.length; i += 500) { const r = await db.from('suppressions').select('email_md5').in('email_md5', contacts.slice(i, i + 500).map(c => c.email_md5)); check(r.error); (r.data ?? []).forEach(s => blocked.add(s.email_md5)); }
-    const keep = contacts.filter(c => !blocked.has(c.email_md5));
+    for (let i = 0; i < contacts.length; i += 500) { const r = await db.from('suppressions').select('email_md5').in('email_md5', contacts.slice(i, i + 500).map(c => c.email_md5 ?? '')); check(r.error); (r.data ?? []).forEach(s => blocked.add(s.email_md5)); }
+    const keep = contacts.filter(c => !blocked.has(c.email_md5 ?? ''));
     if (!keep.length) throw new Error('Aucun destinataire envoyable dans cette liste.');
     const camp = await db.from('campaigns').insert({ name: data.name, from_name: data.fromName, from_email: data.fromEmail, reply_to: data.replyTo || null, subject: data.subject, html: data.html, list_id: data.listId, server_ids: data.serverIds, status: 'paused', total: keep.length, suppressed: contacts.length - keep.length, created_by: context.userId }).select('id').single();
     check(camp.error);
