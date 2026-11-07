@@ -72,7 +72,21 @@ function ListPage() {
       <MiniKpi icon={<Filter />} label="Taux de clic" value="3.1%" delta="+0.5 pts" />
     </div>
 
-    <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="card-lux p-3.5">
+          <div className="mb-3 flex items-center gap-2"><Layers className="size-5 text-primary" /><h2 className="font-display text-[16px] font-bold text-primary">Détails de la campagne</h2><div className="ml-auto flex gap-1 text-primary"><List className="size-4" /><LayoutGrid className="size-4" /></div></div>
+          <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]"><div><div className="mb-3 flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Mail className="size-6" /></span><div className="min-w-0 flex-1"><p className="truncate font-display text-[15px] font-bold text-primary">{c.name}</p><p className="text-[11.5px] text-muted-foreground">{c.offer} · {c.date}</p></div><span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusCls[c.status]}`}>{c.status}</span></div>
+          <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">{(["Performance", "Configuration", "Logs"] as const).map(t => <button key={t} onClick={() => setTab(t)} className={`rounded-lg py-1.5 text-[12px] font-bold ${tab === t ? "bg-primary text-primary-foreground" : "text-primary"}`}>{t}</button>)}</div></div>
+          <div className="min-w-0">{tab === "Performance" && <>
+            <div className="mb-2 grid grid-cols-5 gap-1 rounded-xl border border-border/60 p-2 text-center">{[["Envoyés", fmt(c.sent)], ["Ouvertures", `${c.open}%`], ["Clics", `${c.click}%`], ["Conversions", `${c.conv}%`], ["Revenus", `${fmt(c.rev)} €`]].map(([l, v]) => <div key={l}><p className="text-[10px] text-muted-foreground">{l}</p><p className="font-display text-[13px] font-extrabold text-primary">{v}</p></div>)}</div>
+            <LineChart labels={["24", "25", "26", "27", "28", "29", "30 avr."]} series={[
+              { name: "Ouvertures", color: "var(--neon-2)", values: [30, 32, 34, 33, 37, 39, c.open] },
+              { name: "Clics", color: "var(--neon-green)", values: [8, 9, 8, 9, 10, 9, c.click] },
+              { name: "Conversions", color: "var(--neon-violet)", values: [3, 3, 3, 3.5, 3, 3.2, c.conv] },
+            ]} />
+          </>}
+          {tab === "Configuration" && <dl className="divide-y divide-border/50 text-[12.5px]">{[["Offre", c.offer], ["Audience", fmt(c.aud)], ["Pool VMTA", "Pool Gold (VIP)"], ["Vitesse", "Automatique"], ["Désabonnement", "RFC 8058 activé"]].map(([k, v]) => <div key={k} className="flex justify-between py-1.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-semibold">{v}</dd></div>)}</dl>}
+          {tab === "Logs" && <ul className="space-y-1 font-mono text-[11px]">{["14:00:02 Démarrage de l'envoi", "14:00:05 250 OK gmail.com", "14:02:11 421 ralentissement outlook.com — pacing ajusté", "14:10:44 Lot 12/40 livré"].map(l => <li key={l} className="rounded bg-muted px-2 py-1">{l}</li>)}</ul>}</div></div>
+        </section>
       <section className="card-lux space-y-3 p-3">
         <div className="flex flex-wrap gap-2">
           <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher une campagne (nom, offre, domaine...)" className={`${sel} w-full pl-9 font-normal`} /></label>
@@ -105,31 +119,12 @@ function ListPage() {
         </div>
         <p className="text-[12px] text-muted-foreground">Afficher <b>{list.length}</b> sur {rows.length} campagnes{checked.length > 0 && ` · ${checked.length} sélectionnée(s)`}</p>
       </section>
-
-      <aside className="space-y-3">
-        <section className="card-lux p-3.5">
-          <div className="mb-3 flex items-center gap-2"><Layers className="size-5 text-primary" /><h2 className="font-display text-[16px] font-bold text-primary">Détails de la campagne</h2><div className="ml-auto flex gap-1 text-primary"><List className="size-4" /><LayoutGrid className="size-4" /></div></div>
-          <div className="mb-3 flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Mail className="size-6" /></span><div className="min-w-0 flex-1"><p className="truncate font-display text-[15px] font-bold text-primary">{c.name}</p><p className="text-[11.5px] text-muted-foreground">{c.offer} · {c.date}</p></div><span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusCls[c.status]}`}>{c.status}</span></div>
-          <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">{(["Performance", "Configuration", "Logs"] as const).map(t => <button key={t} onClick={() => setTab(t)} className={`rounded-lg py-1.5 text-[12px] font-bold ${tab === t ? "bg-primary text-primary-foreground" : "text-primary"}`}>{t}</button>)}</div>
-          {tab === "Performance" && <>
-            <div className="mb-2 grid grid-cols-5 gap-1 rounded-xl border border-border/60 p-2 text-center">{[["Envoyés", fmt(c.sent)], ["Ouvertures", `${c.open}%`], ["Clics", `${c.click}%`], ["Conversions", `${c.conv}%`], ["Revenus", `${fmt(c.rev)} €`]].map(([l, v]) => <div key={l}><p className="text-[10px] text-muted-foreground">{l}</p><p className="font-display text-[13px] font-extrabold text-primary">{v}</p></div>)}</div>
-            <LineChart labels={["24", "25", "26", "27", "28", "29", "30 avr."]} series={[
-              { name: "Ouvertures", color: "var(--neon-2)", values: [30, 32, 34, 33, 37, 39, c.open] },
-              { name: "Clics", color: "var(--neon-green)", values: [8, 9, 8, 9, 10, 9, c.click] },
-              { name: "Conversions", color: "var(--neon-violet)", values: [3, 3, 3, 3.5, 3, 3.2, c.conv] },
-            ]} />
-          </>}
-          {tab === "Configuration" && <dl className="divide-y divide-border/50 text-[12.5px]">{[["Offre", c.offer], ["Audience", fmt(c.aud)], ["Pool VMTA", "Pool Gold (VIP)"], ["Vitesse", "Automatique"], ["Désabonnement", "RFC 8058 activé"]].map(([k, v]) => <div key={k} className="flex justify-between py-1.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-semibold">{v}</dd></div>)}</dl>}
-          {tab === "Logs" && <ul className="space-y-1 font-mono text-[11px]">{["14:00:02 Démarrage de l'envoi", "14:00:05 250 OK gmail.com", "14:02:11 421 ralentissement outlook.com — pacing ajusté", "14:10:44 Lot 12/40 livré"].map(l => <li key={l} className="rounded bg-muted px-2 py-1">{l}</li>)}</ul>}
-        </section>
         <section className="card-lux p-3.5">
           <h2 className="mb-2 font-display text-[15px] font-bold text-primary">⚡ Actions rapides</h2>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[{ i: Pause, l: c.status === "En pause" ? "Reprendre" : "Mettre en pause", f: () => toggle(cur) }, { i: Copy, l: "Dupliquer", f: () => dup(cur) }, { i: Pencil, l: "Modifier", f: () => toast("Ouvrez Nouvelle campagne pour modifier.") }, { i: FileText, l: "Rapport PDF", f: () => window.print() }].map(a => <button key={a.l} onClick={a.f} className="card-lux flex flex-col items-center gap-1 p-2 text-[11px] font-semibold text-primary"><a.i className="size-5" />{a.l}</button>)}
           </div>
         </section>
-      </aside>
-    </div>
     <StatusBar>Module Campagnes opérationnel : {count("Active")} campagnes actives · Délivrabilité moyenne 99.8% · Aucune alerte critique</StatusBar>
   </div>;
 }
