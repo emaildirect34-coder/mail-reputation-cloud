@@ -7,6 +7,9 @@ import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
 import { LaunchPanel } from "@/components/dash/launch-panel";
 import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
+import { useServerFn } from '@tanstack/react-start';
+import { useQuery } from '@tanstack/react-query';
+import { campaignOffers } from '@/lib/finance.functions';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -20,7 +23,7 @@ export const Route = createFileRoute("/dashboard/campaigns_/new")({
 });
 
 const initial = {
-  name: "__NO_NAME__", schedule: "", offer: "", geo: "Tous les pays (par défaut)", sendTests: "Oui", testPeriod: "1000", tests: "mail.cortexapp@gmail.com", testRotation: "1", clickProtect: "Activée",
+  name: "__NO_NAME__", schedule: "", offer: "", sponsorOfferId:"", geo: "Tous les pays (par défaut)", sendTests: "Oui", testPeriod: "1000", tests: "mail.cortexapp@gmail.com", testRotation: "1", clickProtect: "Activée",
   returnPath: "contact@domain.com", fromName: "Email Direct", fromEmail: "contact@domain.com", replyTo: "reply@domain.com", subject: "{subject} - Offre spéciale",
   contentType: "Text/Html", charset: "UTF-8", encoding: "8Bit Encoding", processing: "Default Process",
   header: "Date: {smtp_date}\nSender: contact@domain.com\nMessage-Id: <{n,15}.{n,1}.{A,3}{n,10}@{domain}>\nTo: {to}\nFrom: \"{from_name}\" <{from_email}>\nSubject: {subject}\nContent-Type: {content_type}; charset=\"{charset}\"",
@@ -55,6 +58,8 @@ function Chip({ children, onClick }: { children: ReactNode; onClick?: () => void
 }
 
 function Builder() {
+  const readOffers=useServerFn(campaignOffers);
+  const sponsorOffers=useQuery({queryKey:['campaign-offers'],queryFn:()=>readOffers()});
   const [d, setD] = useState<Draft>(initial);
   const [chosen, setChosen] = useState<string[]>([]);
   const [selL, setSelL] = useState<string | null>(allServers[0] ?? null);
@@ -142,7 +147,8 @@ function Builder() {
           <Row label="Nom de la campagne" w="w-32">{inp("name")}</Row>
           <Row label="Planifier le" w="w-32"><div className="relative"><CalendarDays className="pointer-events-none absolute left-2 top-1.5 size-4 text-muted-foreground" /><input aria-label="Planifier le" type="datetime-local" value={d.schedule} onChange={e => u("schedule", e.target.value)} className={`${inCls} pl-8`} /></div></Row>
           <Sub title="Sélectionner l'offre" icon={<Pointer />}>
-            {sel("offer", ["", "Assurance Auto Économique", "Énergie Verte Maison", "Crédit Conso Express", "Mutuelle Santé Senior"])}
+            <select aria-label="Offre sponsor" className={inCls} value={d.sponsorOfferId} onChange={e=>{const o=sponsorOffers.data?.find(o=>o.id===e.target.value);setD(p=>({...p,sponsorOfferId:o?.id??'',offer:o?.name??'',subject:o?.subject||p.subject,body:o?.html||p.body}));}}><option value="">Sélectionner une offre...</option>{(sponsorOffers.data??[]).map(o=><option key={o.id} value={o.id}>{o.name} · {o.payout} {o.currency}</option>)}</select>
+            {sponsorOffers.error&&<p role="alert" className="text-xs text-destructive">{sponsorOffers.error.message}</p>}
             <p className="text-[12px] font-bold text-primary">GEO autorisés :</p>
             <div className="flex gap-2"><div className="flex-1"><select aria-label="geo" value={d.geo} onChange={e => u("geo", e.target.value)} className={inCls}>{["Tous les pays (par défaut)", "France", "Belgique", "Suisse", "Canada"].map(o => <option key={o}>{o}</option>)}</select></div><Chip onClick={() => toast.success(d.offer ? `Offre « ${d.offer} » sélectionnée.` : "Choisissez une offre.")}><BadgeCheck />Sélectionner offre</Chip></div>
           </Sub>
