@@ -51,7 +51,7 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`  kumo.define_spool { name = 'meta', path = '/var/spool/kumomta/meta' }`);
   L.push(`  kumo.start_esmtp_listener { listen = '0.0.0.0:25', relay_hosts = { '127.0.0.1' } }`);
   L.push(`  kumo.start_http_listener { listen = '127.0.0.1:8000' }`);
-  L.push(`  kumo.configure_local_logs { log_dir = '/var/log/kumomta' }`, `end)`, '');
+  L.push(`  kumo.configure_local_logs { log_dir = '/var/log/kumomta', max_segment_duration = '1 minute' }`, `end)`, '');
   L.push(`local SOURCES = {`);
   for (const ip of v4) L.push(`  [${q(src(ip.address))}] = { source_address = ${q(ip.address)}, ehlo_domain = ${q(ip.rdns ?? srv.data.label)} },`);
   L.push(`}`, `kumo.on('get_egress_source', function(name) return kumo.make_egress_source(SOURCES[name]) end)`, '');
