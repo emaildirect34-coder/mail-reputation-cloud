@@ -31,6 +31,10 @@ def main():
                     record = json.loads(line)
                     kind = kinds.get(record.get('type'))
                     sender = str(record.get('sender',''))
+                    if record.get('type') == 'Feedback':
+                        report = record.get('feedback_report') or {}
+                        if report.get('feedback_type') != 'abuse': continue
+                        sender = str(report.get('original_mail_from',''))
                     match = re.search(r'bounce\+([0-9a-fA-F-]{36})@',sender)
                     if not kind or not match: continue
                     ts = record.get('timestamp',record.get('created'))
