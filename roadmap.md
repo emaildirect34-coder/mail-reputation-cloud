@@ -55,4 +55,7 @@
 - [ ] Vérifier diagnostic DNS sur un domaine configuré et correction DNS chez Cloudflare — aucun domaine/compte configuré disponible pour cet essai.
 - [ ] Connexion OAuth des abonnements ChatGPT/Claude — nécessite une intégration officielle compatible; aucune connexion simulée.
 ## Phase 7 — Offres sponsors & revenus
-- [ ] Import d'offres via API, suivi eCPM.
+- [ ] Comptes sponsors multi-comptes, offres persistantes, création/import, liaison au Campaign Builder.
+- [ ] Journal financier par compte et campagne : revenus en attente/validés/payés/rejetés, dépenses, devises séparées, filtres et export.
+- [ ] Tableau financier avec résultat, encaissements, soldes à recevoir et eCPM basé sur livraisons mesurées; tests et vérification connecté/mobile.
+- [ ] Synchronisation API réelle — nécessite un compte sponsor et ses droits API pour vérification externe.
