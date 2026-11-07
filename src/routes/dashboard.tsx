@@ -35,6 +35,7 @@ const sections: Section[] = [
     { to: "/dashboard/campaigns", icon: Send, label: "Campagnes" },
     { to: "/dashboard/api-keys", icon: Code2, label: "API & SMTP" },
     { to: "/dashboard/templates", icon: FileText, label: "Offres Sponsors" },
+    { to: "/dashboard/finance", icon: CreditCard, label: "Finances & revenus" },
     { to: "/dashboard/logs", icon: ScrollText, label: "Logs & événements" },
   ]},
   { title: "Infrastructure", items: [

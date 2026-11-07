@@ -12,6 +12,7 @@ export const launchInput = z.object({
   html: z.string().min(20).max(500_000),
   listId: z.string().uuid(),
   serverIds: z.array(z.string().uuid()).min(1).max(100),
+  sponsorOfferId: z.string().uuid().optional(),
 });
 export const campaignStatusInput = z.object({ id: z.string().uuid(), status: z.enum(['queued', 'paused', 'cancelled']) });
 
