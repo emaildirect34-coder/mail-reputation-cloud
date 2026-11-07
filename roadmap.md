@@ -25,3 +25,4 @@
 - [x] Live server catalogue with prices + direct purchase/deploy of KumoMTA servers.
 - [x] Cloudflare zones + one-click mail DNS deployment.
 - [ ] Google Postmaster: real data needs a Google OAuth app (blocked on user's Google Cloud credentials).
+- [x] Gmail Postmaster live page (API v2, service account)
