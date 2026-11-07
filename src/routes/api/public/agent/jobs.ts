@@ -29,10 +29,17 @@ export const Route = createFileRoute('/api/public/agent/jobs')({
         if (!p.success) return new Response('Bad request', { status: 400 });
         const now = new Date().toISOString();
         const ok = p.data.results.filter(r => r.ok).map(r => r.id);
-        if (ok.length) await a.db.from('campaign_messages').update({ status: 'sent', sent_at: now }).in('id', ok).eq('server_id', a.serverId);
-        for (const r of p.data.results.filter(r => !r.ok)) await a.db.from('campaign_messages').update({ status: 'failed', error: r.error ?? 'injection refusée' }).eq('id', r.id).eq('server_id', a.serverId);
+        if (ok.length) {
+          const updated = await a.db.from('campaign_messages').update({ status: 'sent', sent_at: now }).in('id', ok).eq('server_id', a.serverId).eq('status','claimed');
+          if (updated.error) return new Response('Error',{status:500});
+        }
+        for (const r of p.data.results.filter(r => !r.ok)) {
+          const updated = await a.db.from('campaign_messages').update({ status: 'failed', error: r.error ?? 'injection refusée' }).eq('id', r.id).eq('server_id', a.serverId).eq('status','claimed');
+          if (updated.error) return new Response('Error',{status:500});
+        }
         // Close campaigns with nothing left to send
-        const touched = await a.db.from('campaign_messages').select('campaign_id').in('id', p.data.results.map(r => r.id));
+        const touched = await a.db.from('campaign_messages').select('campaign_id').in('id', p.data.results.map(r => r.id)).eq('server_id',a.serverId);
+        if (touched.error) return new Response('Error',{status:500});
         for (const cid of new Set((touched.data ?? []).map(t => t.campaign_id))) {
           const left = await a.db.from('campaign_messages').select('id', { count: 'exact', head: true }).eq('campaign_id', cid).in('status', ['queued', 'claimed']);
           if (left.count === 0) await a.db.from('campaigns').update({ status: 'done' }).eq('id', cid).eq('status', 'queued');
