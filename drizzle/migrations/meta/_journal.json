@@ -71,6 +71,13 @@
       "when": 1794063455398,
       "tag": "0009_delivery_events_and_circuit_breakers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794064199646,
+      "tag": "0010_sponsor_offers_and_financial_ledger",
+      "breakpoints": true
     }
   ]
 }

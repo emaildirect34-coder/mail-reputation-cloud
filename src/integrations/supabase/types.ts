@@ -97,6 +97,7 @@ export type Database = {
           name: string
           reply_to: string | null
           server_ids: string[]
+          sponsor_offer_id: string | null
           status: string
           subject: string
           suppressed: number
@@ -114,6 +115,7 @@ export type Database = {
           name: string
           reply_to?: string | null
           server_ids?: string[]
+          sponsor_offer_id?: string | null
           status?: string
           subject: string
           suppressed?: number
@@ -131,6 +133,7 @@ export type Database = {
           name?: string
           reply_to?: string | null
           server_ids?: string[]
+          sponsor_offer_id?: string | null
           status?: string
           subject?: string
           suppressed?: number
@@ -142,6 +145,13 @@ export type Database = {
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_sponsor_offer_id_fkey"
+            columns: ["sponsor_offer_id"]
+            isOneToOne: false
+            referencedRelation: "sponsor_offers"
             referencedColumns: ["id"]
           },
         ]
@@ -312,6 +322,85 @@ export type Database = {
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "managed_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_entries: {
+        Row: {
+          account_id: string
+          amount_cents: number
+          campaign_id: string | null
+          category: string
+          created_at: string
+          created_by: string
+          currency: string
+          description: string
+          due_on: string | null
+          external_id: string
+          id: string
+          kind: string
+          occurred_on: string
+          offer_id: string | null
+          source: string
+          status: string
+        }
+        Insert: {
+          account_id: string
+          amount_cents: number
+          campaign_id?: string | null
+          category?: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          description?: string
+          due_on?: string | null
+          external_id: string
+          id?: string
+          kind: string
+          occurred_on: string
+          offer_id?: string | null
+          source?: string
+          status?: string
+        }
+        Update: {
+          account_id?: string
+          amount_cents?: number
+          campaign_id?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string
+          due_on?: string | null
+          external_id?: string
+          id?: string
+          kind?: string
+          occurred_on?: string
+          offer_id?: string | null
+          source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "sponsor_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entries_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "sponsor_offers"
             referencedColumns: ["id"]
           },
         ]
@@ -646,6 +735,136 @@ export type Database = {
           },
         ]
       }
+      sponsor_accounts: {
+        Row: {
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          last_error: string | null
+          name: string
+          provider: string
+          status: string
+          synced_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          currency?: string
+          id?: string
+          last_error?: string | null
+          name: string
+          provider?: string
+          status?: string
+          synced_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          last_error?: string | null
+          name?: string
+          provider?: string
+          status?: string
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
+      sponsor_credentials: {
+        Row: {
+          account_id: string
+          api_key: string
+        }
+        Insert: {
+          account_id: string
+          api_key: string
+        }
+        Update: {
+          account_id?: string
+          api_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_credentials_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "sponsor_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsor_offers: {
+        Row: {
+          account_id: string
+          category: string
+          created_at: string
+          currency: string
+          daily_cap: number | null
+          external_id: string | null
+          geo: string[]
+          html: string
+          id: string
+          model: string
+          monthly_cap: number | null
+          name: string
+          payout: number
+          rules: string
+          status: string
+          subject: string
+          synced_at: string | null
+          tracking_url: string
+        }
+        Insert: {
+          account_id: string
+          category?: string
+          created_at?: string
+          currency?: string
+          daily_cap?: number | null
+          external_id?: string | null
+          geo?: string[]
+          html?: string
+          id?: string
+          model?: string
+          monthly_cap?: number | null
+          name: string
+          payout?: number
+          rules?: string
+          status?: string
+          subject?: string
+          synced_at?: string | null
+          tracking_url?: string
+        }
+        Update: {
+          account_id?: string
+          category?: string
+          created_at?: string
+          currency?: string
+          daily_cap?: number | null
+          external_id?: string | null
+          geo?: string[]
+          html?: string
+          id?: string
+          model?: string
+          monthly_cap?: number | null
+          name?: string
+          payout?: number
+          rules?: string
+          status?: string
+          subject?: string
+          synced_at?: string | null
+          tracking_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_offers_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "sponsor_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressions: {
         Row: {
           created_at: string
@@ -839,6 +1058,14 @@ export type Database = {
           deferred: number
           delivered: number
           events: number
+        }[]
+      }
+      finance_campaign_deliveries: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          delivered: number
         }[]
       }
       has_role: {
