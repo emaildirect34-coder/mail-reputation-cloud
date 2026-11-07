@@ -54,7 +54,7 @@ export const launchCampaign = createServerFn({ method: 'POST' }).middleware([req
     const db = await admin(context);
     const srv = await db.from('server_agents').select('server_id').in('server_id', data.serverIds); check(srv.error);
     if ((srv.data ?? []).length !== data.serverIds.length) throw new Error('Chaque serveur choisi doit avoir son agent KumoMTA installé.');
-    const contacts: { id: string; email: string; first_name: string | null; email_md5: string }[] = [];
+    const contacts: { id: string; email: string; first_name: string | null; email_md5: string | null }[] = [];
     for (let from = 0; ; from += 1000) { const r = await db.from('contacts').select('id,email,first_name,email_md5').eq('list_id', data.listId).eq('status', 'active').range(from, from + 999); check(r.error); contacts.push(...(r.data ?? [])); if ((r.data ?? []).length < 1000) break; }
     const blocked = new Set<string>();
     for (let i = 0; i < contacts.length; i += 500) { const r = await db.from('suppressions').select('email_md5').in('email_md5', contacts.slice(i, i + 500).map(c => c.email_md5)); check(r.error); (r.data ?? []).forEach(s => blocked.add(s.email_md5)); }

@@ -41,7 +41,8 @@
 - [x] Agent sur chaque serveur (installation en une commande), config Lua générée (pools, IPs, quotas warmup, double DKIM), clés DKIM installées automatiquement, état et métriques remontés.
 - [ ] Vérifier sur un vrai serveur — aucun serveur enregistré pour l’instant.
 ## Phase 4 — Campagnes réelles
-- [ ] Listes/contacts, suppression MD5, envoi des campagnes via KumoMTA, désabonnement 1-clic.
+- [x] Listes/contacts (import CSV), suppression MD5, envoi réel via les agents KumoMTA, désinscription en 1 clic (RFC 8058).
+- [ ] Vérifier un envoi réel de bout en bout — aucun serveur avec agent pour l’instant.
 ## Phase 5 — Événements & logs
 - [ ] Webhooks KumoMTA (delivered/bounce/FBL) → logs, stats, coupe-circuits.
 ## Phase 6 — IA Gateway & Skills
