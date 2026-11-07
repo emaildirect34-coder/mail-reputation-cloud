@@ -39,7 +39,7 @@ function Ips() {
       <Panel title="Plan de warmup (emails / jour)">
         <div className="flex h-48 items-end gap-2">
           {curve.map((v, i) => (
-            <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
               <div className="w-full rounded-t bg-primary" style={{ height: `${Math.max(4, (v / max) * 100)}%` }} />
               <span className="text-[10px] text-muted-foreground">J{i * 3 + 1}</span>
             </div>

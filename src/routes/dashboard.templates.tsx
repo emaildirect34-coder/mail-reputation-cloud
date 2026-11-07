@@ -6,6 +6,7 @@ import {
   ShieldCheck, Zap, Home, Car, HeartPulse, Plane, Wallet, GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { StatusBar } from "@/components/dash/campaign-tabs";
 import { Card, Kpi, Pill, type Tone } from "@/components/dash/lux";
 
 export const Route = createFileRoute("/dashboard/templates")({
@@ -154,6 +155,7 @@ function Offers() {
           </div>
         </Card>
       </div>
+      <StatusBar>8 offres affichées · 27 sponsors synchronisés · EPC moyen 0,62 €</StatusBar>
     </div>
   );
 }
