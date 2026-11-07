@@ -219,7 +219,7 @@ function DashboardLayout() {
       </div>
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
         <div className="space-y-0.5">{visCockpit.map((i) => <Row key={i.label} i={i} />)}</div>
-        {visSections.filter((s) => s.title !== "Settings").map((s) => {
+        {visSections.map((s) => {
           const collapsed = open[s.title] === false;
           return (
             <div key={s.title} className="mt-3">
