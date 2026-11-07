@@ -44,7 +44,7 @@ const types = [
   { v: "Sponsor", d: "Offres partenaires, leads", icon: Gift },
 ];
 
-function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string | undefined }) {
   const id = useId();
   return <div className="min-w-0 space-y-1.5"><label id={`${id}-l`} className="block text-[12.5px] font-semibold">{label}</label><div aria-labelledby={`${id}-l`}>{children}</div>{hint && <p className="text-[11.5px] text-muted-foreground">{hint}</p>}</div>;
 }
