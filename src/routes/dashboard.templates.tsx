@@ -77,7 +77,7 @@ function Offers() {
         <Link to="/dashboard/preflight" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><ShieldCheck className="h-4 w-4 text-primary" />Tests & Préflight</Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Kpi icon={<Layers />} label="Total offres" value="412" sub="↑ +12.8%" />
         <Kpi icon={<Star />} label="Actives" value="284" sub="↑ +14.3%" tone="violet" />
         <Kpi icon={<Grid2x2 />} label="Catégories" value="18" sub="↑ +5.9%" />
@@ -88,8 +88,8 @@ function Offers() {
         <Kpi icon={<Gauge />} label="Score qualité" value="98.7%" sub="↑ +0.9 pts" tone="green" />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[230px_1fr_360px]">
-        <Card title="Catégories" icon={<Layers />}>
+      <div className="space-y-3">
+        <Card title="Détails de l'offre" icon={<Layers />}>
           <div className="space-y-1">
             {cats.map((c) => (
               <button key={c.n} onClick={() => setCat(c.n)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ${cat === c.n ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
