@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleHelp, Code2, Cog, FileCode2, FlaskConical, Folder, Gauge, Globe2, HandPointer, Image, LayoutDashboard, Link2, Mail, MapPin, Network, Palette, Play, RefreshCw, Reply, Rocket, Save, Search, Send, Server, ShieldCheck, Tag, Target, Trash2, TrendingUp, Upload, Users, Workflow, X, Zap } from "lucide-react";
+import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleHelp, Code2, Cog, FileCode2, FlaskConical, Folder, Gauge, Globe2, Pointer, Image, LayoutDashboard, Link2, Mail, MapPin, Network, Palette, Play, RefreshCw, Reply, Rocket, Save, Search, Send, Server, ShieldCheck, Tag, Target, Trash2, TrendingUp, Upload, Users, Workflow, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
@@ -147,7 +147,7 @@ function Builder() {
         <Col id="offre" title="Offre" icon={<Tag />}>
           <Row label="Nom de la campagne" w="w-32">{inp("name")}</Row>
           <Row label="Planifier le" w="w-32"><div className="relative"><CalendarDays className="pointer-events-none absolute left-2 top-1.5 size-4 text-muted-foreground" /><input aria-label="Planifier le" type="datetime-local" value={d.schedule} onChange={e => u("schedule", e.target.value)} className={`${inCls} pl-8`} /></div></Row>
-          <Sub title="Sélectionner l'offre" icon={<HandPointer />}>
+          <Sub title="Sélectionner l'offre" icon={<Pointer />}>
             {sel("offer", ["", "Assurance Auto Économique", "Énergie Verte Maison", "Crédit Conso Express", "Mutuelle Santé Senior"])}
             <p className="text-[12px] font-bold text-primary">GEO autorisés :</p>
             <div className="flex gap-2"><div className="flex-1"><select aria-label="geo" value={d.geo} onChange={e => u("geo", e.target.value)} className={inCls}>{["Tous les pays (par défaut)", "France", "Belgique", "Suisse", "Canada"].map(o => <option key={o}>{o}</option>)}</select></div><Chip onClick={() => toast.success(d.offer ? `Offre « ${d.offer} » sélectionnée.` : "Choisissez une offre.")}><BadgeCheck />Sélectionner offre</Chip></div>
