@@ -16,7 +16,7 @@ async function unsubscribe(token: string) {
 export const Route = createFileRoute('/api/public/unsub/$token')({
   server: {
     handlers: {
-      GET: async ({ params }) => page('Se désinscrire', 'Confirmez pour ne plus recevoir nos emails.', `<form method="post"><button style="padding:10px 20px;font-size:16px;cursor:pointer">Confirmer la désinscription</button></form>`) && (/^[0-9a-f]{36}$/.test(params.token) ? page('Se désinscrire', 'Confirmez pour ne plus recevoir nos emails.', `<form method="post"><button style="padding:10px 20px;font-size:16px;cursor:pointer">Confirmer la désinscription</button></form>`) : page('Lien invalide', 'Ce lien de désinscription n’est pas valide.')),
+      GET: async ({ params }) => (/^[0-9a-f]{36}$/.test(params.token) ? page('Se désinscrire', 'Confirmez pour ne plus recevoir nos emails.', `<form method="post"><button style="padding:10px 20px;font-size:16px;cursor:pointer">Confirmer la désinscription</button></form>`) : page('Lien invalide', 'Ce lien de désinscription n’est pas valide.')),
       POST: async ({ params }) => (await unsubscribe(params.token)) ? page('Désinscription confirmée', 'Vous ne recevrez plus nos emails.') : page('Lien invalide', 'Ce lien de désinscription n’est pas valide.'),
     },
   },
