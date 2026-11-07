@@ -1,5 +1,5 @@
 // Google Postmaster Tools v1 via service account (WebCrypto JWT, workerd-safe).
-const API = "https://gmailpostmastertools.googleapis.com/v1";
+const API = "https://gmailpostmastertools.googleapis.com/v2";
 let cached: { token: string; exp: number } | null = null;
 
 function b64url(input: ArrayBuffer | string) {
