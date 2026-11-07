@@ -4,6 +4,8 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, Stat } from "@/components/dash/kit";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/validation")({
   head: () => ({ meta: [{ title: "Validation d'emails — Email Direct" }] }),
@@ -27,11 +29,12 @@ function Validation() {
   return (
     <>
       <PageHeader title="Validation d'emails" desc="Nettoyez vos listes avant l'envoi." />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Stat label="Validations ce mois" value="0 / 100" />
         <Stat label="Taux valides" value="—" />
         <Stat label="Listes traitées" value="0" />
       </div>
+
       <Panel title="Vérifier une adresse">
         <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); setRes(check(email)); }}>
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@exemple.com" />
@@ -39,14 +42,24 @@ function Validation() {
         </form>
         {res && <div className="mt-3"><Pill tone={res.tone}>{res.label}</Pill></div>}
       </Panel>
+
       <Panel title="Validation en masse">
         <div className="grid place-items-center rounded-lg border-2 border-dashed p-10 text-center">
           <Upload className="h-8 w-8 text-muted-foreground" />
           <p className="mt-2 font-medium">Glissez un fichier CSV ici</p>
           <p className="text-sm text-muted-foreground">Jusqu'à 1 million d'adresses</p>
-          <Button className="mt-4" variant="outline">Choisir un fichier</Button>
+          <Button className="mt-4" variant="outline" onClick={() => toast("Sélection d'un fichier CSV à valider.")}>Choisir un fichier</Button>
         </div>
       </Panel>
+
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Nettoyage de la liste « Engagés 0-14 j » lancé.")}>Nettoyer une liste existante</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Règles de rejet ouvertes : jetables, rôles, syntaxe.")}>Ajuster les règles de rejet</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Rapport de validation exporté.")}>Exporter le rapport</Button>
+        </div>
+      </Panel>
+      <StatusBar>Validation prête · 100 vérifications disponibles ce mois</StatusBar>
     </>
   );
 }
