@@ -133,6 +133,71 @@ export type Database = {
         }
         Relationships: []
       }
+      sending_domains: {
+        Row: {
+          account_id: string | null
+          checked_at: string | null
+          checks: Json
+          created_at: string
+          created_by: string | null
+          dkim_priv_a: string
+          dkim_priv_b: string
+          dkim_pub_a: string
+          dkim_pub_b: string
+          domain: string
+          id: string
+          ip: string | null
+          selector_a: string
+          selector_b: string
+          synced_at: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          checked_at?: string | null
+          checks?: Json
+          created_at?: string
+          created_by?: string | null
+          dkim_priv_a: string
+          dkim_priv_b: string
+          dkim_pub_a: string
+          dkim_pub_b: string
+          domain: string
+          id?: string
+          ip?: string | null
+          selector_a: string
+          selector_b: string
+          synced_at?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          checked_at?: string | null
+          checks?: Json
+          created_at?: string
+          created_by?: string | null
+          dkim_priv_a?: string
+          dkim_priv_b?: string
+          dkim_pub_a?: string
+          dkim_pub_b?: string
+          domain?: string
+          id?: string
+          ip?: string | null
+          selector_a?: string
+          selector_b?: string
+          synced_at?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sending_domains_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
