@@ -23,6 +23,7 @@ import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inb
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLabRouteImport } from './routes/dashboard.lab'
 import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardMarketplaceRouteImport } from './routes/dashboard.marketplace'
 import { Route as DashboardMyTasksRouteImport } from './routes/dashboard.my-tasks'
 import { Route as DashboardPoolsRouteImport } from './routes/dashboard.pools'
 import { Route as DashboardPostmasterRouteImport } from './routes/dashboard.postmaster'
@@ -112,6 +113,11 @@ const DashboardLabRoute = DashboardLabRouteImport.update({
 const DashboardLogsRoute = DashboardLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardMarketplaceRoute = DashboardMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardMyTasksRoute = DashboardMyTasksRouteImport.update({
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/marketplace': typeof DashboardMarketplaceRoute
   '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/marketplace': typeof DashboardMarketplaceRoute
   '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/marketplace': typeof DashboardMarketplaceRoute
   '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/marketplace'
     | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/marketplace'
     | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/marketplace'
     | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
@@ -538,6 +550,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/dashboard/logs'
       preLoaderRoute: typeof DashboardLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/marketplace': {
+      id: '/dashboard/marketplace'
+      path: '/marketplace'
+      fullPath: '/dashboard/marketplace'
+      preLoaderRoute: typeof DashboardMarketplaceRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/my-tasks': {
@@ -693,6 +712,7 @@ interface DashboardRouteChildren {
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLabRoute: typeof DashboardLabRoute
   DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardMarketplaceRoute: typeof DashboardMarketplaceRoute
   DashboardMyTasksRoute: typeof DashboardMyTasksRoute
   DashboardPoolsRoute: typeof DashboardPoolsRoute
   DashboardPostmasterRoute: typeof DashboardPostmasterRoute
@@ -726,6 +746,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLabRoute: DashboardLabRoute,
   DashboardLogsRoute: DashboardLogsRoute,
+  DashboardMarketplaceRoute: DashboardMarketplaceRoute,
   DashboardMyTasksRoute: DashboardMyTasksRoute,
   DashboardPoolsRoute: DashboardPoolsRoute,
   DashboardPostmasterRoute: DashboardPostmasterRoute,
