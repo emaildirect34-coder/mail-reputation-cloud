@@ -22,7 +22,7 @@ export const Route = createFileRoute("/dashboard/gmail-postmaster")({
 
 type Stats = Awaited<ReturnType<typeof getPostmasterStats>>["stats"];
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)} %`);
-const repTone = (r?: string | null) => (r === "HIGH" ? "good" : r === "MEDIUM" ? "neutral" : r === "LOW" ? "warn" : r === "BAD" ? "bad" : "neutral") as any;
+const repTone = (r?: string | null) => (r === "HIGH" ? "ok" : r === "MEDIUM" ? "neutral" : r === "LOW" ? "warn" : r === "BAD" ? "bad" : "neutral") as any;
 const repFr: Record<string, string> = { HIGH: "Élevée", MEDIUM: "Moyenne", LOW: "Faible", BAD: "Mauvaise", REPUTATION_CATEGORY_UNSPECIFIED: "Inconnue" };
 const errFr: Record<string, string> = {
   REJECTED: "Rejet", TEMP_FAILED: "Échec temporaire",
@@ -163,7 +163,7 @@ function GmailPostmaster() {
           {(avg("dmarc") ?? 1) < 0.98 && <Pill tone="warn">Vérifier l'alignement DMARC</Pill>}
           {(last?.outboundTls ?? 1) < 1 && <Pill tone="warn">Forcer TLS sortant</Pill>}
           {errors.length > 0 && <Pill tone="warn">Analyser les erreurs de distribution</Pill>}
-          {stats.length > 0 && (spam ?? 0) <= 0.001 && <Pill tone="good">Aucune action urgente</Pill>}
+          {stats.length > 0 && (spam ?? 0) <= 0.001 && <Pill tone="ok">Aucune action urgente</Pill>}
         </div>
       </Panel>
     </>
