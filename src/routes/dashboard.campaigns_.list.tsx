@@ -72,7 +72,7 @@ function ListPage() {
       <MiniKpi icon={<Filter />} label="Taux de clic" value="3.1%" delta="+0.5 pts" />
     </div>
 
-    <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_400px]">
+    <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="card-lux space-y-3 p-3">
         <div className="flex flex-wrap gap-2">
           <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher une campagne (nom, offre, domaine...)" className={`${sel} w-full pl-9 font-normal`} /></label>
@@ -88,7 +88,7 @@ function ListPage() {
             </tr></thead>
             <tbody>{list.map(r => <tr key={r.i} onClick={() => setCur(r.i)} className={`cursor-pointer border-b border-border/40 hover:bg-primary/5 ${cur === r.i ? "bg-primary/10" : ""}`}>
               <td className="p-2" onClick={e => e.stopPropagation()}><input type="checkbox" aria-label={r.name} checked={checked.includes(r.i)} onChange={e => setChecked(p => e.target.checked ? [...p, r.i] : p.filter(x => x !== r.i))} className="accent-primary" /></td>
-              <td className="p-2"><div className="flex items-center gap-2">{r.ab ? <FlaskConical className="size-4 text-primary" /> : <Mail className="size-4 text-primary" />}<div><p className="font-bold text-primary">{r.name}</p><p className="text-[11px] text-muted-foreground">{r.date}</p></div></div></td>
+              <td className="p-2"><div className="flex items-center gap-2">{r.ab ? <FlaskConical className="size-4 text-primary" /> : <Mail className="size-4 text-primary" />}<div><p className="whitespace-nowrap font-bold text-primary">{r.name}</p><p className="whitespace-nowrap text-[11px] text-muted-foreground">{r.date}</p></div></div></td>
               <td className="whitespace-nowrap p-2">{r.offer}</td>
               <td className="p-2"><span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusCls[r.status]}`}>{r.status}</span></td>
               <td className="p-2">{fmt(r.aud)}</td><td className="p-2">{fmt(r.sent)}</td>
