@@ -15,7 +15,6 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
-import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
 import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
 import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inbox-tester'
@@ -37,6 +36,7 @@ import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templ
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
+import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -66,11 +66,6 @@ const DashboardAgentRoute = DashboardAgentRouteImport.update({
 const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardCampaignsRoute = DashboardCampaignsRouteImport.update({
-  id: '/campaigns',
-  path: '/campaigns',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardDnsRoute = DashboardDnsRouteImport.update({
@@ -178,6 +173,11 @@ const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
   path: '/webhooks',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCampaignsNewRoute = DashboardCampaignsNewRouteImport.update({
+  id: '/campaigns_/new',
+  path: '/campaigns/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -185,7 +185,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
-  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -208,13 +207,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
-  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -237,6 +236,7 @@ export interface FileRoutesByTo {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -245,7 +245,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
-  '/dashboard/campaigns': typeof DashboardCampaignsRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/inbox-tester': typeof DashboardInboxTesterRoute
@@ -268,6 +267,7 @@ export interface FileRoutesById {
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -277,7 +277,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
-    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -300,13 +299,13 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
-    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -329,6 +328,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard'
+    | '/dashboard/campaigns/new'
   id:
     | '__root__'
     | '/'
@@ -336,7 +336,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
-    | '/dashboard/campaigns'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/inbox-tester'
@@ -359,6 +358,7 @@ export interface FileRouteTypes {
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
+    | '/dashboard/campaigns_/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -409,13 +409,6 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/dashboard/api-keys'
       preLoaderRoute: typeof DashboardApiKeysRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/campaigns': {
-      id: '/dashboard/campaigns'
-      path: '/campaigns'
-      fullPath: '/dashboard/campaigns'
-      preLoaderRoute: typeof DashboardCampaignsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/dns': {
@@ -565,13 +558,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebhooksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/campaigns_/new': {
+      id: '/dashboard/campaigns_/new'
+      path: '/campaigns/new'
+      fullPath: '/dashboard/campaigns/new'
+      preLoaderRoute: typeof DashboardCampaignsNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
 interface DashboardRouteChildren {
   DashboardAgentRoute: typeof DashboardAgentRoute
   DashboardApiKeysRoute: typeof DashboardApiKeysRoute
-  DashboardCampaignsRoute: typeof DashboardCampaignsRoute
   DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
   DashboardInboxTesterRoute: typeof DashboardInboxTesterRoute
@@ -594,12 +593,12 @@ interface DashboardRouteChildren {
   DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardCampaignsNewRoute: typeof DashboardCampaignsNewRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgentRoute: DashboardAgentRoute,
   DashboardApiKeysRoute: DashboardApiKeysRoute,
-  DashboardCampaignsRoute: DashboardCampaignsRoute,
   DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
   DashboardInboxTesterRoute: DashboardInboxTesterRoute,
@@ -622,6 +621,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardCampaignsNewRoute: DashboardCampaignsNewRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

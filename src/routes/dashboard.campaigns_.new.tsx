@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleHelp, Code2, Cog, FileCode2, FlaskConical, Folder, Gauge, Globe2, Pointer, Image, LayoutDashboard, Link2, Mail, MapPin, Network, Palette, Play, RefreshCw, Reply, Rocket, Save, Search, Send, Server, ShieldCheck, Tag, Target, Trash2, TrendingUp, Upload, Users, Workflow, X, Zap } from "lucide-react";
+import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleHelp, Code2, FileCode2, FlaskConical, Folder, Gauge, Globe2, Pointer, Image, Link2, Mail, MapPin, Network, Palette, Play, RefreshCw, Reply, Rocket, Save, Search, Send, Server, ShieldCheck, Tag, Target, Trash2, TrendingUp, Upload, Users, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
@@ -97,7 +97,6 @@ function Builder() {
     } catch { toast.error("Configuration illisible."); }
   };
   const runTests = () => { setLastTest(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })); ready ? toast.success("Préflight réussi.") : toast.error(`${checks.length - passed} contrôle(s) à corriger.`); };
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const left = allServers.filter(s => !chosen.includes(s) && s.toLowerCase().includes(qL.toLowerCase()));
   const right = chosen.filter(s => s.toLowerCase().includes(qR.toLowerCase()));
 
