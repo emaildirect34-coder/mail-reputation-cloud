@@ -47,9 +47,9 @@ export const readFinance=createServerFn({method:'POST'}).middleware([requireSupa
   if(data.accountId)q=q.eq('account_id',data.accountId);if(data.campaignId)q=q.eq('campaign_id',data.campaignId);
   const entries:Database['public']['Tables']['finance_entries']['Row'][]=[];
   for(let offset=0;;offset+=1000){const r=await q.range(offset,offset+999);check(r.error);entries.push(...(r.data??[]));if((r.data??[]).length<1000)break;if(offset>=99000)throw new Error('Réduisez la période : plus de 100 000 écritures');}
-  const [accounts,campaigns,deliveries,offers]=await Promise.all([context.supabase.from('sponsor_accounts').select('id,name,currency'),context.supabase.rpc('finance_campaign_deliveries',{_from:data.from,_to:data.to}),context.supabase.rpc('finance_campaign_deliveries',{_from:data.from,_to:data.to}),context.supabase.from('sponsor_offers').select('id,name,account_id')]);
-  for(const r of [accounts,campaigns,deliveries,offers])check(r.error);
-  return {entries,accounts:accounts.data??[],campaigns:campaigns.data??[],deliveries:deliveries.data??[],offers:offers.data??[],isAdmin};
+  const [accounts,campaigns,offers]=await Promise.all([context.supabase.from('sponsor_accounts').select('id,name,currency'),context.supabase.rpc('finance_campaign_metrics',{_from:data.from,_to:data.to}),context.supabase.from('sponsor_offers').select('id,name,account_id')]);
+  for(const r of [accounts,campaigns,offers])check(r.error);
+  return {entries,accounts:accounts.data??[],campaigns:campaigns.data??[],offers:offers.data??[],isAdmin};
 });
 export const recordFinanceEntries=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>entryBatch.parse(i)).handler(async({data,context})=>{
   await authorize(context,'/dashboard/finance',true);
