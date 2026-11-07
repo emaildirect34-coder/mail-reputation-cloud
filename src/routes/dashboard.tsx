@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 type Item = { to: string; icon: typeof Home; label: string; badge?: string };
-const sections: { title: string; items: Item[] }[] = [
+type Section = { title: string; items: Item[] };
+
+const sections: Section[] = [
   { title: "Email Engine", items: [
     { to: "/dashboard/campaigns", icon: Send, label: "Campagnes" },
     { to: "/dashboard/api-keys", icon: Code2, label: "API & SMTP" },
@@ -73,6 +75,8 @@ const cockpit: Item[] = [
   { to: "/dashboard/agent", icon: Bot, label: "Agent Hermes AI", badge: "NEW" },
 ];
 
+const shortTitle = (t: string) => (t === "Domain Intelligence" ? "Domain & Auth" : t);
+
 function useClock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => { setNow(new Date()); const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -85,6 +89,8 @@ function DashboardLayout() {
   const [user, setUser] = useState<User | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [mobile, setMobile] = useState(false);
+  const [group, setGroup] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   const now = useClock();
 
   useEffect(() => {
@@ -96,19 +102,51 @@ function DashboardLayout() {
     return () => data.subscription.unsubscribe();
   }, [navigate]);
 
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setGroup(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setGroup(null); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  useEffect(() => { setGroup(null); setMobile(false); }, [path]);
+
   if (!user) return <div className="space grid min-h-screen place-items-center text-muted-foreground">Chargement…</div>;
 
   // Only the first item matching the current page is highlighted
   const all = [...cockpit, ...sections.flatMap((s) => s.items)];
-  const activeLabel = all.find((i) => i.to === path)?.label;
+  const activeItem = all.find((i) => i.to === path);
+  const activeLabel = activeItem?.label;
+  const activeGroup = activeItem ? sections.find((s) => s.items.includes(activeItem))?.title : undefined;
 
-  const NavItem = ({ i }: { i: Item }) => {
+  const Pill = ({ i }: { i: Item }) => {
     const active = i.label === activeLabel;
     return (
       <Link
         to={i.to}
-        onClick={() => setMobile(false)}
-        className={`flex items-center gap-2.5 rounded-lg px-3 py-[5px] text-[12.5px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_var(--primary)]" : "text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+        onClick={() => { setGroup(null); setMobile(false); }}
+        className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_var(--primary)]" : "text-sidebar-foreground hover:bg-sidebar-accent/60"}`}
+      >
+        <i.icon className={`h-[15px] w-[15px] shrink-0 ${active ? "" : "text-sidebar-primary"}`} strokeWidth={2} />
+        <span className="whitespace-nowrap">{i.label}</span>
+        {i.badge && <span className="rounded-full bg-neon-green/20 px-1.5 text-[9px] font-semibold text-neon-green">{i.badge}</span>}
+      </Link>
+    );
+  };
+
+  const Row = ({ i }: { i: Item }) => {
+    const active = i.label === activeLabel;
+    return (
+      <Link
+        to={i.to}
+        onClick={() => { setGroup(null); setMobile(false); }}
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-[6px] text-[12.5px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/60"}`}
       >
         <i.icon className={`h-[15px] w-[15px] shrink-0 ${active ? "" : "text-sidebar-primary"}`} strokeWidth={2} />
         <span className="truncate">{i.label}</span>
@@ -117,29 +155,55 @@ function DashboardLayout() {
     );
   };
 
-  const sidebar = (
+  const GroupMenu = ({ s }: { s: Section }) => {
+    const label = shortTitle(s.title);
+    const isOpen = group === s.title;
+    const isActive = activeGroup === s.title;
+    return (
+      <div className="relative">
+        <Button
+          type="button"
+          variant="ghost"
+          aria-expanded={isOpen}
+          onClick={() => setGroup(isOpen ? null : s.title)}
+          className={`h-[30px] gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-sidebar-accent/60 ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground"}`}
+        >
+          <span className="whitespace-nowrap">{label}</span>
+          <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-70 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </Button>
+        {isOpen && (
+          <div className="absolute left-0 top-full z-40 mt-2 w-[286px] rounded-xl border border-border bg-card p-1.5 shadow-xl">
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <div className="space-y-0.5">{s.items.map((i) => <Row key={i.label} i={i} />)}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const drawer = (
     <div className="lux-side flex h-full flex-col">
       <div className="flex items-center gap-3 px-5 pb-3 pt-5">
         <div className="relative grid h-11 w-11 place-items-center">
           <div className="cockpit-brand-orb h-9 w-9 rounded-full" />
           <div className="absolute h-4 w-14 -rotate-12 rounded-[50%] border-2 border-sidebar-primary" />
         </div>
-        <div>
-          <p className="font-display text-[20px] font-bold leading-tight">Email Direct</p>
-          <p className="text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
+        <div className="min-w-0">
+          <p className="truncate font-display text-[20px] font-bold leading-tight">Email Direct</p>
+          <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
         </div>
       </div>
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
-        <div className="space-y-0.5">{cockpit.map((i) => <NavItem key={i.label} i={i} />)}</div>
+        <div className="space-y-0.5">{cockpit.map((i) => <Row key={i.label} i={i} />)}</div>
         {sections.filter((s) => s.title !== "Settings").map((s) => {
           const collapsed = open[s.title] === false;
           return (
             <div key={s.title} className="mt-3">
               <Button variant="ghost" onClick={() => setOpen((o) => ({ ...o, [s.title]: collapsed }))} aria-expanded={!collapsed} className="h-7 w-full justify-between px-2 text-[10px] font-bold uppercase text-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-foreground">
-                {s.title === "Domain Intelligence" ? "Domain & Auth" : s.title}
+                {shortTitle(s.title)}
                 <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
               </Button>
-              {!collapsed && <div className="space-y-0.5">{s.items.map((i) => <NavItem key={i.label} i={i} />)}</div>}
+              {!collapsed && <div className="space-y-0.5">{s.items.map((i) => <Row key={i.label} i={i} />)}</div>}
             </div>
           );
         })}
@@ -160,27 +224,27 @@ function DashboardLayout() {
   );
 
   return (
-    <div className="lux relative flex min-h-screen font-sans">
-      <aside className="relative z-10 hidden w-[248px] shrink-0 lg:block">
-        <div className="sticky top-0 h-screen">{sidebar}</div>
-      </aside>
-      {mobile && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-foreground/40" onClick={() => setMobile(false)} />
-          <aside className="relative h-full w-[260px]">{sidebar}</aside>
-        </div>
-      )}
-
-      <main className="relative z-10 min-w-0 flex-1 pb-20">
-        <header className="flex flex-wrap items-center gap-4 px-5 py-3">
+    <div className="lux relative flex min-h-screen flex-col font-sans">
+      <header className="lux-top sticky top-0 z-30 border-b border-border">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
           <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={() => setMobile(true)} aria-label="Menu"><Menu className="h-5 w-5" /></Button>
-          <div className="card-lux flex min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground">
-            <Search className="h-4 w-4" />
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center">
+              <div className="cockpit-brand-orb h-8 w-8 rounded-full" />
+              <div className="absolute h-3.5 w-12 -rotate-12 rounded-[50%] border-2 border-sidebar-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-display text-[18px] font-bold leading-tight">Email Direct</p>
+              <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
+            </div>
+          </div>
+          <div className="card-lux flex min-w-[170px] max-w-[430px] flex-1 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground">
+            <Search className="h-4 w-4 shrink-0" />
             <input placeholder="Rechercher un domaine, une campagne, un IP..." aria-label="Rechercher" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
-            <span className="rounded-md bg-muted px-1.5 text-[10px] font-semibold">⌘ K</span>
+            <span className="shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-semibold">⌘ K</span>
           </div>
           <div className="ml-auto hidden items-center gap-3 rounded-xl px-4 py-1.5 md:flex" style={{ background: "color-mix(in oklab, var(--neon-green) 15%, transparent)" }}>
-            <span className="h-3 w-3 rounded-full bg-neon-green shadow-[0_0_10px_var(--neon-green)]" />
+            <span className="h-3 w-3 shrink-0 rounded-full bg-neon-green shadow-[0_0_10px_var(--neon-green)]" />
             <div>
               <p className="text-[12px] font-semibold">Système opérationnel</p>
               <p className="text-[10px] text-muted-foreground">Score réseau : 99.4/100</p>
@@ -194,21 +258,42 @@ function DashboardLayout() {
             <Bell className="h-6 w-6 text-neon-2" />
             <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-neon-red text-[9px] font-bold text-primary-foreground">3</span>
           </Button>
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{(user.email || "A").charAt(0).toUpperCase()}</div>
-            <div className="hidden sm:block">
-              <p className="text-[13px] font-semibold">Admin</p>
-              <p className="text-[10px] text-muted-foreground">Compte principal</p>
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{(user.email || "A").charAt(0).toUpperCase()}</div>
+            <div className="hidden min-w-0 sm:block">
+              <p className="truncate text-[13px] font-semibold">Admin</p>
+              <p className="truncate text-[10px] text-muted-foreground">Compte principal</p>
             </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
-        </header>
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
+        </div>
 
-        <div className="space-y-3 px-4 md:px-5">
+        <div ref={navRef} className="flex flex-wrap items-center gap-1.5 px-4 pb-2">
+          {cockpit.map((i) => <Pill key={i.label} i={i} />)}
+          <span className="mx-1 hidden h-5 w-px shrink-0 bg-border lg:block" />
+          {sections.map((s) => <GroupMenu key={s.title} s={s} />)}
+          <Link to="/dashboard/agent" className="cockpit-expert ml-auto hidden items-center gap-2 rounded-full border px-3 py-1.5 xl:flex">
+            <Bot className="h-4 w-4 shrink-0" />
+            <span className="text-[11.5px] font-bold">Mode Expert</span>
+            <span className="text-[10px] opacity-80">Atlas IA · +12 outils</span>
+          </Link>
+        </div>
+      </header>
+
+      {mobile && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setMobile(false)} />
+          <aside className="relative h-full w-[260px]">{drawer}</aside>
+        </div>
+      )}
+
+      <main className="relative z-10 min-w-0 flex-1 pb-20">
+        <div className="space-y-3 px-4 py-3 md:px-5">
           <Outlet />
         </div>
 
-        <footer className="fixed bottom-3 left-0 right-0 z-20 hidden md:flex items-center justify-between gap-4 px-4 lg:left-[264px]">
+        <footer className="fixed bottom-3 left-0 right-0 z-20 hidden items-center justify-between gap-4 px-4 md:flex">
           <div className="card-lux flex flex-wrap items-center gap-x-5 gap-y-1 rounded-full px-5 py-2 text-[11px]">
             <span className="flex items-center gap-2 font-bold"><Mail className="h-4 w-4 text-neon-red" /> Gmail</span>
             <span><b>98.8%</b> <span className="text-muted-foreground">Délivrabilité</span></span>
