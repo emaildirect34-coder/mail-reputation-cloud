@@ -129,7 +129,7 @@ function Team() {
             <div key={m.id} className="rounded-xl border border-border p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="min-w-0 flex-1 truncate font-semibold">{m.email}</p>
-                <Pill tone={m.role === "superadmin" ? "good" : "neutral"}>{m.role === "superadmin" ? "Superadmin" : "Worker"}</Pill>
+                <Pill tone={m.role === "superadmin" ? "ok" : "neutral"}>{m.role === "superadmin" ? "Superadmin" : "Worker"}</Pill>
                 {!m.confirmed && <Pill tone="warn">Invitation en attente</Pill>}
                 <Button size="sm" variant="ghost" onClick={async () => {
                   if (!confirm(`Retirer ${m.email} ?`)) return;
@@ -142,7 +142,7 @@ function Team() {
                     <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm">
                       <span className="min-w-0 flex-1 font-medium">{t.title}</span>
                       <span className="text-xs text-muted-foreground">{t.allowed_paths.length} fonctionnalité(s)</span>
-                      <Pill tone={t.status === "active" ? "good" : "neutral"}>{t.status === "active" ? "Active" : "Terminée"}</Pill>
+                      <Pill tone={t.status === "active" ? "ok" : "neutral"}>{t.status === "active" ? "Active" : "Terminée"}</Pill>
                       <Button size="sm" variant="ghost" onClick={async () => { await setStatus({ data: { id: t.id, status: t.status === "active" ? "done" : "active" } }); load(); }}>
                         {t.status === "active" ? "Terminer" : "Réactiver"}
                       </Button>

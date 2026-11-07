@@ -28,7 +28,7 @@ function MyTasks() {
       <PageHeader title="Mes tâches" desc="Vous voyez uniquement les fonctionnalités liées à vos tâches." />
       {tasks.length === 0 && <Panel><p className="text-sm text-muted-foreground">Aucune tâche ne vous est encore attribuée.</p></Panel>}
       {tasks.map((t) => (
-        <Panel key={t.id} title={t.title} action={<Pill tone={t.status === "active" ? "good" : "neutral"}>{t.status === "active" ? "Active" : "Terminée"}</Pill>}>
+        <Panel key={t.id} title={t.title} action={<Pill tone={t.status === "active" ? "ok" : "neutral"}>{t.status === "active" ? "Active" : "Terminée"}</Pill>}>
           {t.description && <p className="mb-3 text-sm text-muted-foreground">{t.description}</p>}
           {t.status === "active" && (
             <div className="flex flex-wrap gap-2">
