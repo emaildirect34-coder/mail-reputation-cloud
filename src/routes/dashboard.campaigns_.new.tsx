@@ -124,7 +124,7 @@ function Builder() {
     <CampaignTabs active="new" />
 
     {/* KPIs */}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <Kpi icon={<Target />} label="Délivrabilité estimée" value="99.8%" sub="↑ +0.2% vs dernière campagne" tone="blue" />
       <Kpi icon={<Server />} label="Serveurs actifs" value="12" sub="100% opérationnels" tone="blue" />
       <Kpi icon={<Network />} label="Interfaces sélectionnées" value={String(chosen.length)} sub="VMTA / SMTP" tone="blue" />
@@ -133,7 +133,7 @@ function Builder() {
     </div>
 
     {/* 4 columns */}
-    <div className="columns-1 gap-3 md:columns-2 2xl:columns-3 min-[1700px]:columns-4">
+    <div className="columns-1 gap-3 md:columns-2 xl:columns-3 min-[1700px]:columns-4">
       {/* Offre */}
       <div className="contents">
         <Col id="offre" title="Offre" icon={<Tag />}>
@@ -243,7 +243,7 @@ function Builder() {
           <Row label="Rotation" w="w-24">{inp("replyRotation", "", "number")}</Row>
           <Row label="Comptes email" w="w-24">{area("accounts", "h-12", "Collez ici les comptes email actifs pour l'auto-réponse...")}</Row>
         </Col>
-        <details className="card-lux p-3.5"><summary className="flex cursor-pointer list-none items-center gap-2 text-[14px] font-bold text-primary"><Braces className="size-5" />Variables (Placeholders)<span className="ml-auto text-lg">+</span></summary>
+        <details className="card-lux mb-3 break-inside-avoid p-3.5"><summary className="flex cursor-pointer list-none items-center gap-2 text-[14px] font-bold text-primary"><Braces className="size-5" />Variables (Placeholders)<span className="ml-auto text-lg">+</span></summary>
           <div className="mt-2 flex flex-wrap gap-1">{["{first_name}", "{to}", "{subject}", "{from_name}", "{from_email}", "{domain}", "{offer_url}", "{unsubscribe_url}", "{smtp_date}", "{n,15}", "{A,3}"].map(v => <button key={v} onClick={() => { navigator.clipboard?.writeText(v); toast.success(`${v} copié.`); }} className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] text-primary">{v}</button>)}</div>
         </details>
       </div>
