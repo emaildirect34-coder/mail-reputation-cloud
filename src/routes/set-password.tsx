@@ -36,11 +36,11 @@ function SetPassword() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const p = String(f.get("password"));
-    if (p !== String(f.get("confirm"))) return toast.error("Les mots de passe ne correspondent pas");
+    if (p !== String(f.get("confirm"))) { toast.error("Les mots de passe ne correspondent pas"); return; }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: p });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Mot de passe créé");
     navigate({ to: "/dashboard" });
   }
