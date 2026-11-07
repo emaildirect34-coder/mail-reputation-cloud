@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
 import { LaunchPanel } from "@/components/dash/launch-panel";
+import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -166,7 +167,7 @@ function Builder() {
           <Row label="From Name">{inp("fromName")}</Row>
           <Row label="From Email">{inp("fromEmail", "", "email")}</Row>
           <Row label="Reply To">{inp("replyTo", "", "email")}</Row>
-          <Row label="Subject">{inp("subject")}</Row>
+          <Row label="Subject"><div className="flex items-center gap-2">{inp("subject")}<AiDiagnostic compact input={{skill:'subject',subject:d.subject,body:d.body}} before={d.subject} onApply={v=>u('subject',v)}/></div></Row>
           <Row label="Content Type">{sel("contentType", ["Text/Html", "Text/Plain", "Multipart"])}</Row>
           <Row label="Charset">{sel("charset", ["UTF-8", "ISO-8859-1"])}</Row>
           <Row label="C.T Encoding">{sel("encoding", ["8Bit Encoding", "Quoted-Printable", "Base64"])}</Row>
@@ -186,7 +187,7 @@ function Builder() {
 
       {/* Corps */}
       <div className="contents">
-        <Col id="corps" title="Corps de l'Email (HTML)" icon={<Code2 />}>
+        <Col id="corps" title="Corps de l'Email (HTML)" icon={<Code2 />} right={<AiDiagnostic compact input={{skill:'content',subject:d.subject,body:d.body}} before={d.body} onApply={v=>u('body',v)}/> }>
           <div className="flex justify-center gap-1">
             <label className="grid size-7 cursor-pointer place-items-center rounded-md border border-border bg-card" title="Importer"><Upload className="size-3.5" /><input type="file" accept=".html,.htm" className="sr-only" onChange={async e => { const f = e.target.files?.[0]; if (f) { u("body", await f.text()); toast.success("HTML importé."); } }} /></label>
             <IconBtn label="Nouveau" tone="primary" onClick={() => u("body", initial.body)}><span className="text-sm font-bold">+</span></IconBtn>
