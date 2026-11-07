@@ -15,6 +15,13 @@
       "when": 1794039433397,
       "tag": "0001_roles_and_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794040662398,
+      "tag": "0002_provider_accounts_and_servers",
+      "breakpoints": true
     }
   ]
 }

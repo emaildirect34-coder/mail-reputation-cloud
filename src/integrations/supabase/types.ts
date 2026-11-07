@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      managed_servers: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          created_by: string | null
+          external_id: string | null
+          id: string
+          ipv4: string | null
+          label: string
+          monthly_price: number | null
+          plan: string | null
+          provider: string
+          region: string | null
+          status: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_id?: string | null
+          id?: string
+          ipv4?: string | null
+          label: string
+          monthly_price?: number | null
+          plan?: string | null
+          provider: string
+          region?: string | null
+          status?: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_id?: string | null
+          id?: string
+          ipv4?: string | null
+          label?: string
+          monthly_price?: number | null
+          plan?: string | null
+          provider?: string
+          region?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "managed_servers_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company: string | null
@@ -35,6 +88,48 @@ export type Database = {
           full_name?: string | null
           id?: string
           plan?: string
+        }
+        Relationships: []
+      }
+      provider_accounts: {
+        Row: {
+          auth_type: string
+          checked_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          info: Json
+          label: string
+          provider: string
+          secret: string
+          status: string
+        }
+        Insert: {
+          auth_type?: string
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          info?: Json
+          label: string
+          provider: string
+          secret: string
+          status?: string
+        }
+        Update: {
+          auth_type?: string
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          info?: Json
+          label?: string
+          provider?: string
+          secret?: string
+          status?: string
         }
         Relationships: []
       }
