@@ -115,20 +115,16 @@ function Integrations() {
         return (
           <section key={g.cat}>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{g.cat}</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="space-y-2">
               {items.map((i) => (
-                <div key={i.name} className="flex min-w-0 flex-col rounded-lg border bg-card p-4">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-bold">{i.name[0]}</div>
-                      <span className="min-w-0 truncate font-medium" title={i.name}>{i.name}</span>
-                    </div>
-                    <Badge variant={STATUS[i.status].variant}>{STATUS[i.status].label}</Badge>
+                <div key={i.name} className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-bold">{i.name[0]}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium" title={i.name}>{i.name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{i.desc}</p>
                   </div>
-                  <p className="flex-1 text-sm text-muted-foreground">{i.desc}</p>
-                  <Button size="sm" variant={i.status === "connected" ? "outline" : "default"} className="mt-4 self-start">
-                    {i.status === "connected" ? "Gérer" : "Configurer"}
-                  </Button>
+                  <Badge variant={STATUS[i.status].variant}>{STATUS[i.status].label}</Badge>
+                  <Button size="sm" variant={i.status === "connected" ? "outline" : "default"}>{i.status === "connected" ? "Gérer" : "Configurer"}</Button>
                 </div>
               ))}
             </div>
