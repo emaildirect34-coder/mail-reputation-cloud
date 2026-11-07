@@ -38,7 +38,8 @@
 - [x] Vérifier connecté les quatre pages, création et relecture d’un pool, tests d’accès et quotas, téléphone sans débordement.
 - [ ] Vérifier synchronisation réelle, affectation IP et plan warmup de bout en bout — aucun compte fournisseur ni serveur enregistré.
 ## Phase 3 — Moteur d'envoi KumoMTA
-- [ ] Agent/API sur chaque serveur (config Lua générée: DKIM, pools, shaping); push de config.
+- [x] Agent sur chaque serveur (installation en une commande), config Lua générée (pools, IPs, quotas warmup, double DKIM), clés DKIM installées automatiquement, état et métriques remontés.
+- [ ] Vérifier sur un vrai serveur — aucun serveur enregistré pour l’instant.
 ## Phase 4 — Campagnes réelles
 - [ ] Listes/contacts, suppression MD5, envoi des campagnes via KumoMTA, désabonnement 1-clic.
 ## Phase 5 — Événements & logs
