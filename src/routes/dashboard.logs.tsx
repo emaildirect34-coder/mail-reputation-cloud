@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PageHeader, Panel, Pill, DataTable, Stat } from '@/components/dash/kit';
 import { readDeliveryLogs } from '@/lib/delivery.functions';
+import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
 
 export const Route = createFileRoute('/dashboard/logs')({
   head:()=>({meta:[{title:'Journaux de livraison & alertes — Email Direct'},{name:'description',content:'Livraisons SMTP, rebonds, reports et plaintes KumoMTA avec protection automatique des campagnes.'},{property:'og:title',content:'Journaux de livraison — Email Direct'},{property:'og:description',content:'Suivi des événements réels et des alertes de délivrabilité.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),
@@ -31,7 +32,7 @@ function Logs(){
     <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
       <Stat label="Délivrés · 24 h" value={String(summary?.delivered ?? '—')}/><Stat label="Rebonds durs · 24 h" value={String(summary?.bounced ?? '—')}/><Stat label="Reports · 24 h" value={String(summary?.deferred ?? '—')}/><Stat label="Plaintes · 24 h" value={String(summary?.complaints ?? '—')}/>
     </div>
-    <Panel title="Protection automatique">
+    <Panel title="Protection automatique" action={<AiDiagnostic compact input={{skill:'logs'}}/>}>
       <div className="flex flex-wrap gap-3 text-sm"><Pill tone="warn">Rebonds durs &gt; 3 % · premiers 500 messages</Pill><Pill tone="bad">Plaintes &gt; 0,08 % · par FAI</Pill></div>
       {(data?.alerts ?? []).map(a=><div key={a.id} className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm"><ShieldAlert className="h-4 w-4 text-destructive"/><strong>{a.campaign_name}</strong><Pill tone="bad">Alerte enregistrée</Pill><span>{a.rule==='complaint'?'Plaintes':'Rebonds durs'} · {a.isp} · {(a.rate*100).toFixed(3)} % / {a.sample_size} messages</span><span className="text-muted-foreground">{new Date(a.created_at).toLocaleString('fr-FR')}</span></div>)}
       {data && !data.alerts.length && <p className="mt-3 text-sm text-muted-foreground">Aucune alerte enregistrée.</p>}

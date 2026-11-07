@@ -49,6 +49,10 @@
 - [x] Vérifier l’API avec 18 événements temporaires, déduplication, rejet d’un message étranger, suspension, 17 suppressions, filtres/CSV connecté et téléphone; données de test nettoyées.
 - [ ] Vérifier collecte locale et livraisons sur un vrai serveur; brancher les flux ARF des FAI — aucun serveur actif ni abonnement FBL disponible.
 ## Phase 6 — IA Gateway & Skills
-- [ ] Boutons IA par page (diagnostic objet/contenu/DNS) avec correction appliquée.
+- [x] Diagnostics IA réels par skill : objet, contenu, DNS et journaux, avec accès vérifiés et données minimisées.
+- [x] Propositions avant/après appliquées au brouillon avec confirmation et annulation; DNS reste une action Cloudflare séparée, sans commandes arbitraires.
+- [x] Remplacer la démonstration Hermes par une console réelle; analyse réelle et application relues, boutons campagne/journaux vérifiés et fenêtre mobile sans débordement; quatre tests de permissions réussis.
+- [ ] Vérifier diagnostic DNS sur un domaine configuré et correction DNS chez Cloudflare — aucun domaine/compte configuré disponible pour cet essai.
+- [ ] Connexion OAuth des abonnements ChatGPT/Claude — nécessite une intégration officielle compatible; aucune connexion simulée.
 ## Phase 7 — Offres sponsors & revenus
 - [ ] Import d'offres via API, suivi eCPM.

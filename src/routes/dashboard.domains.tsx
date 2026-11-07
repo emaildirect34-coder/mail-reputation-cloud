@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain } from "@/lib/domains.functions";
 import { listAccounts, listZones, listManagedServers } from "@/lib/providers.functions";
 import { bindDomainServer, listDomainBindings } from '@/lib/infrastructure.functions';
+import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
 
 export const Route = createFileRoute("/dashboard/domains")({
   head: () => ({ meta: [
@@ -80,7 +81,7 @@ function Domains() {
       </Panel>
 
       {cur && (
-        <Panel title={`Détails — ${cur.domain}`}>
+        <Panel title={`Détails — ${cur.domain}`} action={<AiDiagnostic compact input={{skill:'dns',domainId:cur.id}}/>}>
           <div className="grid gap-2 md:grid-cols-4">
             <label className="text-xs font-semibold text-muted-foreground">Compte Cloudflare
               <select className={sel} value={cfAcc} onChange={(e) => { setCfAcc(e.target.value); setZone(""); }}>
