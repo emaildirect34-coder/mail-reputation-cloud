@@ -34,6 +34,7 @@
 - [ ] rDNS/PTR automatique via Linode sur les IP des serveurs.
 ## Phase 2 — Serveurs, IP & pools
 - [ ] Synchroniser serveurs/IP réels depuis les fournisseurs; pools VMTA en base; plan de warmup.
+- [ ] Associer domaines et serveurs pour installation DKIM automatique, avec état réel en attente d’agent (phase 3).
 ## Phase 3 — Moteur d'envoi KumoMTA
 - [ ] Agent/API sur chaque serveur (config Lua générée: DKIM, pools, shaping); push de config.
 ## Phase 4 — Campagnes réelles
