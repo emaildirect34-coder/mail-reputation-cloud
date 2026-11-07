@@ -30,7 +30,7 @@ const initial = {
 type Draft = typeof initial;
 const storageKey = "email-direct-campaign-draft";
 const allServers = ["SERV001 [Serveurs Principaux]", "SERV002 [Warmup]", "SERV003 [Test Inbox]", "SERV004 [Secondaire]"];
-const inCls = "h-7 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
+const inCls = "h-8 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
 
 function Col({ id, title, icon, children, right }: { id?: string; title: string; icon: ReactNode; children: ReactNode; right?: ReactNode }) {
   return <section id={id} className="card-lux scroll-mt-24 p-3.5">
@@ -42,7 +42,7 @@ function Sub({ title, icon, children, right }: { title: string; icon: ReactNode;
   return <div className="rounded-xl border border-border/60 bg-primary/[0.03] p-3"><div className="mb-2 flex items-center gap-2"><span className="text-primary [&_svg]:size-4">{icon}</span><h3 className="text-[13px] font-bold text-primary">{title}</h3>{right && <div className="ml-auto">{right}</div>}</div><div className="space-y-2">{children}</div></div>;
 }
 function Row({ label, children, w = "w-28" }: { label: string; children: ReactNode; w?: string }) {
-  return <div className="flex items-center gap-2"><span className={`${w} shrink-0 text-[12px] font-semibold`}>{label} :</span><div className="min-w-0 flex-1">{children}</div></div>;
+  void w; return <div className="min-w-0 space-y-1"><span className="block text-[11.5px] font-semibold text-muted-foreground">{label}</span><div className="min-w-0">{children}</div></div>;
 }
 function IconBtn({ children, tone = "card", label, onClick }: { children: ReactNode; tone?: "card" | "primary" | "red"; label: string; onClick?: () => void }) {
   const c = tone === "primary" ? "bg-primary text-primary-foreground" : tone === "red" ? "bg-neon-red text-primary-foreground" : "border border-border bg-card text-foreground";
@@ -102,18 +102,18 @@ function Builder() {
 
   return <div id="top" className="scroll-mt-24 space-y-3 pb-4">
     {/* Header */}
-    <div className="flex flex-wrap items-center gap-3 xl:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-3">
         <span className="grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_var(--primary)]"><Mail className="size-8" /></span>
         <div><h1 className="font-display text-[26px] font-extrabold leading-tight text-primary">Campaign Builder</h1><p className="text-[12.5px] font-semibold">Créez, testez et pilotez vos campagnes avec une précision maximale</p></div>
       </div>
-      <label className="ml-2 flex items-center gap-2 text-[13px] font-bold">Mode Test :<Switch checked={testMode} onCheckedChange={setTestMode} /></label>
-      <div className="lux-banner flex items-center gap-3 rounded-2xl px-5 py-2.5">
+      <label className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap text-[13px] font-bold">Mode Test :<Switch checked={testMode} onCheckedChange={setTestMode} /></label>
+      <div className="lux-banner flex shrink-0 items-center gap-3 rounded-2xl px-5 py-2.5">
         <ShieldCheck className={`size-9 ${ready ? "text-neon-green" : "text-neon-amber"}`} />
-        <div><p className="text-[14px] font-bold">{ready ? "Validation préflight active" : "Préflight en attente"}</p><p className={`text-[12.5px] font-semibold ${ready ? "text-neon-green" : "text-neon-amber"}`}>{ready ? "Campagne prête pour envoi" : `${passed}/${checks.length} contrôles validés`}</p></div>
+        <div className="whitespace-nowrap"><p className="text-[14px] font-bold">{ready ? "Validation préflight active" : "Préflight en attente"}</p><p className={`text-[12.5px] font-semibold ${ready ? "text-neon-green" : "text-neon-amber"}`}>{ready ? "Campagne prête pour envoi" : `${passed}/${checks.length} contrôles validés`}</p></div>
         <TrendingUp className="size-8 text-neon-green" />
       </div>
-      <div className="ml-auto flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
         <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
         <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
