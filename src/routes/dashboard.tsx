@@ -7,7 +7,7 @@ import { canOpen, type Access } from "@/lib/access";
 import { getMyAccess } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 import {
-  Home, LayoutGrid, Activity, Bot, Send, Code2, FileText, ScrollText, Server, Network, Boxes, Layers, Gauge,
+  Home, LayoutGrid, Activity, Bot, Send, Code2, FileText, ScrollText, Server, ShoppingCart, Network, Boxes, Layers, Gauge,
   Globe, CloudCog, KeyRound, BadgeCheck, Lock, FlaskConical, MailCheck, Search, BarChart3, MailX, ScanLine,
   ShieldAlert, Ban, ClipboardCheck, FileBarChart, Users, CreditCard, Settings2, Settings, ChevronDown, Bell,
   LogOut, ShieldCheck, Zap, Rocket, Menu, Mail,
