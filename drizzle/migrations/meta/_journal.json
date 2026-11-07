@@ -43,6 +43,13 @@
       "when": 1794062194899,
       "tag": "0005_kumomta_agents",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794062202930,
+      "tag": "0006_agents_column_grants",
+      "breakpoints": true
     }
   ]
 }

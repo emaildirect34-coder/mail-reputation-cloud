@@ -1,0 +1,2 @@
+REVOKE SELECT ON public.server_agents FROM authenticated;
+GRANT SELECT (server_id,status,agent_version,kumo_version,config_hash,applied_hash,metrics,last_error,last_seen,created_at) ON public.server_agents TO authenticated;
