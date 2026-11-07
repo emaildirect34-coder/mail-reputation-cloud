@@ -3,6 +3,8 @@ import { useState } from "react";
 import { OctagonX, Play, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/shield")({
   head: () => ({
@@ -54,6 +56,12 @@ function Shield() {
     <>
       <PageHeader title="Bouclier d'Inboxing & Arrêt d'Urgence" desc="Protège votre réputation en temps réel et coupe tout en un clic si un FAI se met à bloquer." />
 
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <Stat label="Disjoncteurs" value="0 déclenché" sub="5 surveillés en continu" />
+        <Stat label="Sous-réseaux sains" value="1 / 3" sub="1 à éviter pour les nouvelles IPs" />
+        <Stat label="Contacts coupés" value="23 900" sub="Auto-sunset > 90 jours" />
+      </div>
+
       <Panel title="Frein d'urgence">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -61,7 +69,7 @@ function Shield() {
             <p className="text-xs text-muted-foreground">La file est conservée. Les emails transactionnels basculent sur le pool de secours.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline"><Snowflake className="h-4 w-4" /> Drainer un pool</Button>
+            <Button variant="outline" onClick={() => toast("Pool Marketing drainé : les envois repartent en douceur.")}><Snowflake className="h-4 w-4" /> Drainer un pool</Button>
             {frozen ? (
               <Button onClick={() => setFrozen(false)}><Play className="h-4 w-4" /> Reprendre</Button>
             ) : (
@@ -70,12 +78,6 @@ function Shield() {
           </div>
         </div>
       </Panel>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Disjoncteurs" value="0 déclenché" sub="5 surveillés en continu" />
-        <Stat label="Sous-réseaux sains" value="1 / 3" sub="1 à éviter pour les nouvelles IPs" />
-        <Stat label="Contacts coupés" value="23 900" sub="Auto-sunset > 90 jours" />
-      </div>
 
       <Panel title="Disjoncteurs automatiques">
         <div className="space-y-3">
@@ -106,6 +108,15 @@ function Shield() {
           ))}
         </div>
       </Panel>
+
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Règle Free.fr ajustée : retry après greylisting 15 min.")}>Corriger la règle Free.fr</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Sous-réseau 192.0.2.0/24 exclu de la rotation.")}>Exclure le sous-réseau à risque</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Campagne de réactivation créée pour 41 200 contacts froids.")}>Réactiver les froids</Button>
+        </div>
+      </Panel>
+      <StatusBar>Bouclier actif · 0 disjoncteur déclenché · 23 900 contacts exclus automatiquement</StatusBar>
     </>
   );
 }

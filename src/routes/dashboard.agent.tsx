@@ -88,7 +88,7 @@ function Agent() {
         </div>
       </Panel>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
         <Panel title="Console Hermes">
           <div className="space-y-3">
             {chat.map((c, i) => (

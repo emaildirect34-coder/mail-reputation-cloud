@@ -5,6 +5,8 @@ import {
   Filter, Pencil, Copy, BarChart3, MoreHorizontal, Send, Trash2, CheckCircle2, Pause, Megaphone, ShoppingCart,
   ShieldCheck, Zap, Home, Car, HeartPulse, Plane, Wallet, GraduationCap,
 } from "lucide-react";
+import { toast } from "sonner";
+import { StatusBar } from "@/components/dash/campaign-tabs";
 import { Card, Kpi, Pill, type Tone } from "@/components/dash/lux";
 
 export const Route = createFileRoute("/dashboard/templates")({
@@ -42,7 +44,7 @@ const stTone = { Actif: "green", "En pause": "amber", Terminé: "blue" } as cons
 function Creative({ o, big }: { o: Offer; big?: boolean }) {
   const c = `var(--neon-${o.tone === "blue" ? "2" : o.tone})`;
   return (
-    <div className={`relative overflow-hidden rounded-xl ${big ? "h-48" : "h-24"}`} style={{ background: `radial-gradient(circle at 80% 20%, color-mix(in oklab, ${c} 70%, transparent), transparent 55%), linear-gradient(135deg, var(--sidebar), color-mix(in oklab, ${c} 55%, var(--sidebar)))` }}>
+    <div className={`relative min-w-0 overflow-hidden rounded-xl ${big ? "h-48" : "h-24"}`} style={{ background: `radial-gradient(circle at 80% 20%, color-mix(in oklab, ${c} 70%, transparent), transparent 55%), linear-gradient(135deg, var(--sidebar), color-mix(in oklab, ${c} 55%, var(--sidebar)))` }}>
       <div className="absolute inset-0 p-3">
         <p className={`font-display font-extrabold leading-none text-primary-foreground ${big ? "text-[30px]" : "text-[14px]"}`}>{o.headline}</p>
         <p className={`mt-1 font-display font-black ${big ? "text-[54px]" : "text-[26px]"}`} style={{ color: c, textShadow: "0 2px 10px var(--sidebar)" }}>{o.tag}</p>
@@ -62,22 +64,22 @@ function Offers() {
   return (
     <div className="space-y-3">
       <section className="card-lux flex flex-wrap items-center gap-4 px-5 py-3">
-        <Layers className="h-14 w-14 text-primary" />
-        <div className="mr-auto">
+        <Layers className="h-14 w-14 shrink-0 text-primary" />
+        <div className="mr-auto min-w-0">
           <h1 className="font-display text-[28px] font-extrabold leading-tight text-primary">Offres Sponsors</h1>
           <p className="text-[13px] font-semibold">Gérez vos offres partenaires, leurs créas et choisissez la meilleure au bon moment.</p>
         </div>
-        <button className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-4 py-2 text-[13px] font-bold text-primary-foreground"><Plus className="h-4 w-4" />Nouvelle offre</button>
-        {[[Upload, "Importer API"], [Download, "Exporter"], [HelpCircle, "Aide"]].map(([I, l]) => { const Ic = I as typeof Upload; return <button key={l as string} className="card-lux inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-primary"><Ic className="h-4 w-4" />{l as string}</button>; })}
+        <button className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-4 py-2 text-[13px] font-bold text-primary-foreground" onClick={() => toast("Formulaire de nouvelle offre sponsor ouvert.")}><Plus className="h-4 w-4" />Nouvelle offre</button>
+        {[[Upload, "Importer API"], [Download, "Exporter"], [HelpCircle, "Aide"]].map(([I, l]) => { const Ic = I as typeof Upload; return <button key={l as string} className="card-lux inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-primary" onClick={() => toast(`${l as string} : action de démonstration.`)}><Ic className="h-4 w-4 shrink-0" />{l as string}</button>; })}
       </section>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         <Link to="/dashboard/campaigns/new" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><Send className="h-4 w-4 text-primary" />Nouvelle campagne</Link>
         <span className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground"><Layers className="h-4 w-4" />Offres Sponsors</span>
         <Link to="/dashboard/preflight" className="card-lux flex shrink-0 items-center gap-2 px-5 py-2.5 text-[13px] font-semibold hover:text-primary"><ShieldCheck className="h-4 w-4 text-primary" />Tests & Préflight</Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Kpi icon={<Layers />} label="Total offres" value="412" sub="↑ +12.8%" />
         <Kpi icon={<Star />} label="Actives" value="284" sub="↑ +14.3%" tone="violet" />
         <Kpi icon={<Grid2x2 />} label="Catégories" value="18" sub="↑ +5.9%" />
@@ -88,34 +90,51 @@ function Offers() {
         <Kpi icon={<Gauge />} label="Score qualité" value="98.7%" sub="↑ +0.9 pts" tone="green" />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[230px_1fr_360px]">
-        <Card title="Catégories" icon={<Layers />}>
-          <div className="space-y-1">
-            {cats.map((c) => (
-              <button key={c.n} onClick={() => setCat(c.n)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ${cat === c.n ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-                <c.i className={`h-4 w-4 ${cat === c.n ? "" : "text-primary"}`} />{c.n}<span className="ml-auto rounded-md bg-muted px-1.5 text-[11px] text-foreground">{c.c}</span>
-              </button>
+      <div className="space-y-3">
+        <Card title="Détails de l'offre" icon={<Layers />}>
+          <Creative o={o} big />
+          <div className="mt-3 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1"><p className="truncate font-display text-[17px] font-bold text-primary" title={o.name}>{o.name}</p><p className="text-[12px] text-muted-foreground">{o.sponsor} · {o.cat} · {o.model} · {o.geo}</p></div>
+            <Pill tone={stTone[o.status]}>{o.status}</Pill>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            {[["Payout", o.payout], ["EPC", `${o.epc.toFixed(2)} €`], ["Conv.", `${o.cr}%`], ["Score", `${Math.round(o.epc * 100 + o.cr)}`]].map(([l, v]) => (
+              <div key={l} className="min-w-0"><p className="truncate text-[11px] font-semibold">{l}</p><p className="truncate font-display text-[16px] font-extrabold text-primary">{v}</p></div>
             ))}
-            <button className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border py-2 text-[13px] font-semibold text-primary"><Plus className="h-4 w-4" />Nouvelle catégorie</button>
+          </div>
+          <div className="mt-3 rounded-lg border border-border p-2 text-[12px]">
+            <p className="font-bold text-primary">Recommandation Atlas IA</p>
+            <p className="text-muted-foreground">Meilleure fenêtre : mardi–jeudi 10h-12h. Segment conseillé : actifs 30 jours. Fatigue faible.</p>
           </div>
         </Card>
 
-        <section className="card-lux p-4">
+        <Card title="Catégories" icon={<Layers />}>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 xl:grid-cols-3">
+            {cats.map((c) => (
+              <button key={c.n} onClick={() => setCat(c.n)} className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ${cat === c.n ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+                <c.i className={`h-4 w-4 shrink-0 ${cat === c.n ? "" : "text-primary"}`} /><span className="min-w-0 truncate">{c.n}</span><span className="ml-auto shrink-0 rounded-md bg-muted px-1.5 text-[11px] text-foreground">{c.c}</span>
+              </button>
+            ))}
+            <button className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border py-2 text-[13px] font-semibold text-primary" onClick={() => toast("Nouvelle catégorie à nommer.")}><Plus className="h-4 w-4" />Nouvelle catégorie</button>
+          </div>
+        </Card>
+
+        <section className="card-lux min-w-0 p-4">
           <div className="mb-3 flex flex-wrap gap-2">
-            <label className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5"><Search className="h-4 w-4 text-muted-foreground" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une offre, un sponsor..." className="w-full bg-transparent text-[13px] outline-none" /></label>
-            <select className="rounded-lg border border-border bg-card px-2 text-[12px]"><option>Tous modèles</option><option>CPL</option><option>CPA</option><option>CPS</option></select>
-            <select className="rounded-lg border border-border bg-card px-2 text-[12px]"><option>Tous statuts</option><option>Actif</option><option>En pause</option></select>
-            <button className="inline-flex items-center gap-1 rounded-lg border border-border px-3 text-[12px] font-semibold"><Filter className="h-3.5 w-3.5" />Plus de filtres</button>
+            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une offre, un sponsor..." className="w-full min-w-0 bg-transparent text-[13px] outline-none" /></label>
+            <select className="rounded-lg border border-border bg-card px-2 text-[12px]" aria-label="Modèle"><option>Tous modèles</option><option>CPL</option><option>CPA</option><option>CPS</option></select>
+            <select className="rounded-lg border border-border bg-card px-2 text-[12px]" aria-label="Statut"><option>Tous statuts</option><option>Actif</option><option>En pause</option></select>
+            <button className="inline-flex items-center gap-1 rounded-lg border border-border px-3 text-[12px] font-semibold" onClick={() => toast("Filtres avancés : GEO, EPC, saisonnalité.")}><Filter className="h-3.5 w-3.5" />Plus de filtres</button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             {list.map((x) => {
               const i = offers.indexOf(x);
               return (
-                <button key={x.name} onClick={() => setSel(i)} className={`card-lux overflow-hidden p-2 text-left transition ${sel === i ? "ring-2 ring-primary" : ""}`}>
+                <button key={x.name} onClick={() => setSel(i)} className={`card-lux min-w-0 overflow-hidden p-2 text-left transition ${sel === i ? "ring-2 ring-primary" : ""}`}>
                   <div className="mb-1.5 flex items-center justify-between"><Pill tone={stTone[x.status]}>{x.status === "Actif" ? <CheckCircle2 className="h-3 w-3" /> : <Pause className="h-3 w-3" />}{x.status}</Pill><span className="text-[11px] font-bold text-primary">{x.model}</span></div>
                   <Creative o={x} />
-                  <p className="mt-2 truncate text-[13px] font-bold text-primary">{x.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{x.sponsor} · {x.cat} · {x.geo}</p>
+                  <p className="mt-2 truncate text-[13px] font-bold text-primary" title={x.name}>{x.name}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{x.sponsor} · {x.cat} · {x.geo}</p>
                   <div className="mt-1 flex justify-between text-[11px] font-semibold"><span>{x.payout}</span><span>EPC {x.epc.toFixed(2)} €</span><span>CR {x.cr}%</span></div>
                   <div className="mt-2 flex justify-between border-t border-border pt-1.5 text-muted-foreground [&_svg]:h-3.5 [&_svg]:w-3.5"><Pencil /><Copy /><BarChart3 /><MoreHorizontal /></div>
                 </button>
@@ -126,34 +145,17 @@ function Offers() {
           <p className="mt-3 text-[12px] text-muted-foreground">Afficher {list.length} sur 412 offres</p>
         </section>
 
-        <div className="space-y-3">
-          <Card title="Détails de l'offre" icon={<Layers />}>
-            <Creative o={o} big />
-            <div className="mt-3 flex items-start justify-between">
-              <div><p className="font-display text-[17px] font-bold text-primary">{o.name}</p><p className="text-[12px] text-muted-foreground">{o.sponsor} · {o.cat} · {o.model} · {o.geo}</p></div>
-              <Pill tone={stTone[o.status]}>{o.status}</Pill>
-            </div>
-            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-              {[["Payout", o.payout], ["EPC", `${o.epc.toFixed(2)} €`], ["Conv.", `${o.cr}%`], ["Score", `${Math.round(o.epc * 100 + o.cr)}`]].map(([l, v]) => (
-                <div key={l}><p className="text-[11px] font-semibold">{l}</p><p className="font-display text-[16px] font-extrabold text-primary">{v}</p></div>
-              ))}
-            </div>
-            <div className="mt-3 rounded-lg border border-border p-2 text-[12px]">
-              <p className="font-bold text-primary">Recommandation Atlas IA</p>
-              <p className="text-muted-foreground">Meilleure fenêtre : mardi–jeudi 10h-12h. Segment conseillé : actifs 30 jours. Fatigue faible.</p>
-            </div>
-          </Card>
-          <Card title="Actions rapides" icon={<Zap />}>
-            <div className="grid grid-cols-5 gap-2">
-              {[[Send, "Campagne"], [Copy, "Dupliquer"], [Pencil, "Modifier"], [Download, "Exporter"], [Trash2, "Supprimer"]].map(([I, l]) => { const Ic = I as typeof Send; return (
-                l === "Campagne"
-                  ? <Link key="c" to="/dashboard/campaigns/new" className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><Ic className="h-5 w-5" />Lancer</Link>
-                  : <button key={l as string} className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold" style={l === "Supprimer" ? { color: "var(--neon-red)" } : undefined}><Ic className="h-5 w-5 text-current" />{l as string}</button>
-              ); })}
-            </div>
-          </Card>
-        </div>
+        <Card title="Actions rapides" icon={<Zap />}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {[[Send, "Campagne"], [Copy, "Dupliquer"], [Pencil, "Modifier"], [Download, "Exporter"], [Trash2, "Supprimer"]].map(([I, l]) => { const Ic = I as typeof Send; return (
+              l === "Campagne"
+                ? <Link key="c" to="/dashboard/campaigns/new" className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><Ic className="h-5 w-5" />Lancer</Link>
+                : <button key={l as string} className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold" style={l === "Supprimer" ? { color: "var(--neon-red)" } : undefined} onClick={() => toast(`${l as string} : action de démonstration sur « ${o.name} ».`)}><Ic className="h-5 w-5 text-current" />{l as string}</button>
+            ); })}
+          </div>
+        </Card>
       </div>
+      <StatusBar>8 offres affichées · 27 sponsors synchronisés · EPC moyen 0,62 €</StatusBar>
     </div>
   );
 }

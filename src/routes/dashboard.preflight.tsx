@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/preflight")({
   head: () => ({ meta: [
@@ -26,25 +28,34 @@ const checks: [string, string, "ok" | "warn" | "bad", string][] = [
 function Preflight() {
   return (
     <>
-      <PageHeader title="Pre-Flight Delivery Gate" desc="Chaque campagne passe ces contrôles avant d'atteindre la file KumoMTA." action={<Button>Relancer l'analyse</Button>} />
-      <div className="grid gap-4 sm:grid-cols-4">
+      <PageHeader title="Pre-Flight Delivery Gate" desc="Chaque campagne passe ces contrôles avant d'atteindre la file KumoMTA." action={<Button onClick={() => toast("Analyse complète relancée sur 8 contrôles.")}>Relancer l'analyse</Button>} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Score global" value="82 / 100" /><Stat label="SpamAssassin" value="1,4" sub="Seuil 5,0" />
         <Stat label="Bloquants" value="1" /><Stat label="Avertissements" value="2" />
       </div>
       <Panel title="Campagne : Black Friday — segment Engagés 0-14j">
         <DataTable cols={["Contrôle", "Détail", "Résultat", "Action"]}
           rows={checks.map(([c, d, t, a]) => [c, d, <Pill tone={t}>{t === "ok" ? "Validé" : t === "warn" ? "Attention" : "Bloquant"}</Pill>,
-            t === "ok" ? <span className="text-muted-foreground">—</span> : <Button size="sm" variant="outline">{a}</Button>])} />
+            t === "ok" ? <span className="text-muted-foreground">—</span> : <Button size="sm" variant="outline" onClick={() => toast(`Correction « ${a} » appliquée au brouillon.`)}>{a}</Button>])} />
       </Panel>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-3">
         <Panel title="Seed test (placement prévu)">
           <DataTable cols={["FAI", "Inbox", "Promotions", "Spam"]} rows={[["Gmail", "78 %", "20 %", "2 %"], ["Outlook", "91 %", "—", "9 %"], ["Yahoo", "95 %", "—", "5 %"]]} />
         </Panel>
         <Panel title="Décision">
           <p className="mb-4 text-sm text-muted-foreground">L'envoi est bloqué tant que les éléments bloquants ne sont pas corrigés.</p>
-          <div className="flex gap-2"><Button disabled>Envoyer</Button><Button variant="outline">Envoyer au segment test (5 %)</Button></div>
+          <div className="flex flex-wrap gap-2"><Button disabled>Envoyer</Button><Button variant="outline" onClick={() => toast("Envoi de contrôle envoyé au segment test (5 %).")}>Envoyer au segment test (5 %)</Button></div>
         </Panel>
       </div>
+
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Bit.ly remplacé par votre domaine de tracking.")}>Remplacer le lien raccourci</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Ratio texte / HTML relevé à 32 %.")}>Relever le ratio texte</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("2,4 % d'adresses envoyées en validation.")}>Valider les adresses douteuses</Button>
+        </div>
+      </Panel>
+      <StatusBar>Score 82/100 · 1 bloquant à corriger · 2 avertissements</StatusBar>
     </>
   );
 }

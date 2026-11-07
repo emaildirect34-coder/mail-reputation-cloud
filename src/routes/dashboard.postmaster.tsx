@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/postmaster")({
   head: () => ({ meta: [
@@ -28,8 +30,8 @@ function Postmaster() {
   const max = Math.max(...spam);
   return (
     <>
-      <PageHeader title="Google Postmaster & Microsoft SNDS" desc="Réputation officielle des FAI, synchronisée chaque jour par API." action={<Button variant="outline">Connecter Postmaster</Button>} />
-      <div className="grid gap-4 sm:grid-cols-4">
+      <PageHeader title="Google Postmaster & Microsoft SNDS" desc="Réputation officielle des FAI, synchronisée chaque jour par API." action={<Button variant="outline" onClick={() => toast("Connexion à Google Postmaster à autoriser.")}>Connecter Postmaster</Button>} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Taux de plainte Gmail" value="0,05 %" sub="Seuil 0,10 % / max 0,30 %" />
         <Stat label="Réputation domaine" value="Élevée" /><Stat label="TLS entrant" value="100 %" /><Stat label="IPs SNDS rouges" value="1" />
       </div>
@@ -41,19 +43,26 @@ function Postmaster() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Rouge = au-dessus de 0,10 % (zone d'alerte Google).</p>
       </Panel>
+      <Panel title="Conformité expéditeurs (Gmail/Yahoo 2024)">
+        {[["SPF + DKIM alignés", 100], ["DMARC publié", 100], ["One-click unsub RFC 8058", 96], ["FCrDNS valide", 100], ["TLS", 100]].map(([l, v]) => (
+          <div key={l as string} className="mb-3"><div className="mb-1 flex justify-between text-sm"><span>{l}</span><span>{v} %</span></div><Bar value={v as number} /></div>
+        ))}
+      </Panel>
       <Panel title="Domaines (Gmail)">
         <DataTable cols={["Domaine", "Réputation", "Plaintes", "SPF", "DKIM", "DMARC"]} rows={domains} />
       </Panel>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Microsoft SNDS — IPs">
-          <DataTable cols={["IP", "Statut", "Plaintes", "Trap hits", "JMRP"]} rows={snds} />
-        </Panel>
-        <Panel title="Conformité expéditeurs (Gmail/Yahoo 2024)">
-          {[["SPF + DKIM alignés", 100], ["DMARC publié", 100], ["One-click unsub RFC 8058", 96], ["FCrDNS valide", 100], ["TLS", 100]].map(([l, v]) => (
-            <div key={l as string} className="mb-3"><div className="mb-1 flex justify-between text-sm"><span>{l}</span><span>{v} %</span></div><Bar value={v as number} /></div>
-          ))}
-        </Panel>
-      </div>
+      <Panel title="Microsoft SNDS — IPs">
+        <DataTable cols={["IP", "Statut", "Plaintes", "Trap hits", "JMRP"]} rows={snds} />
+      </Panel>
+
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Synchronisation Postmaster + SNDS relancée.")}>Synchroniser maintenant</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("IP 51.79.12.14 retirée de la rotation.")}>Retirer l'IP rouge</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Rapport de conformité Gmail exporté.")}>Exporter le rapport</Button>
+        </div>
+      </Panel>
+      <StatusBar>Réputation Gmail élevée · taux de plainte 0,05 % · 1 IP SNDS rouge</StatusBar>
     </>
   );
 }

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Bar } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/warmup")({
   head: () => ({ meta: [{ title: "Warmup par FAI — Email Direct" }, { name: "description", content: "Plans de chauffe d'IPs par fournisseur de messagerie." }] }),
@@ -25,7 +27,7 @@ function Warmup() {
   return (
     <>
       <PageHeader title="Warmup par FAI" desc="Quotas journaliers et horaires appliqués automatiquement par KumoMTA." action={<Button>Nouveau plan</Button>} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {profiles.map((p, i) => (
           <div key={p.n} className={`rounded-lg border bg-card p-5 ${i === 1 ? "ring-2 ring-primary" : ""}`}>
             <div className="flex items-center justify-between"><h3 className="font-display font-semibold">{p.n}</h3><Pill tone={i === 1 ? "ok" : "neutral"}>{p.d}</Pill></div>
@@ -44,6 +46,14 @@ function Warmup() {
           <li>• Passage au jour suivant uniquement si délivrabilité &gt; 95 %</li>
         </ul>
       </Panel>
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Plan conservateur appliqué à l'IP 203.0.113.24.")}>Appliquer le plan conservateur</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Passage au jour 13 demandé pour les FAI éligibles.")}>Passer au jour suivant</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Rapport de chauffe exporté.")}>Exporter le rapport de chauffe</Button>
+        </div>
+      </Panel>
+      <StatusBar>Chauffe en cours · 6 FAI suivis · 12 500 emails/jour autorisés</StatusBar>
     </>
   );
 }

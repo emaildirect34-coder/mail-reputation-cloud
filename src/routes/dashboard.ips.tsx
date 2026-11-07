@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, Pill, DataTable, Bar, Stat } from "@/components/dash/kit";
+import { Button } from "@/components/ui/button";
+import { StatusBar } from "@/components/dash/campaign-tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/ips")({
   head: () => ({ meta: [{ title: "IPs & Warmup — Email Direct" }] }),
@@ -19,7 +22,7 @@ function Ips() {
   return (
     <>
       <PageHeader title="IPs & Warmup" desc="Pools d'envoi et chauffe progressive de vos IPs." />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Stat label="Transactionnel" value="2 IPs" />
         <Stat label="Marketing" value="1 IP" />
         <Stat label="Partagé" value="1 IP" />
@@ -36,13 +39,21 @@ function Ips() {
       <Panel title="Plan de warmup (emails / jour)">
         <div className="flex h-48 items-end gap-2">
           {curve.map((v, i) => (
-            <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
               <div className="w-full rounded-t bg-primary" style={{ height: `${Math.max(4, (v / max) * 100)}%` }} />
               <span className="text-[10px] text-muted-foreground">J{i * 3 + 1}</span>
             </div>
           ))}
         </div>
       </Panel>
+      <Panel title="Actions rapides">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast("Nouvelle IP demandée auprès de Linode.")}>Ajouter une IP</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Warmup relancé sur l'IP la plus récente.")}>Relancer un warmup</Button>
+          <Button size="sm" variant="outline" onClick={() => toast("Contrôle des listes noires lancé sur 4 IPs.")}>Contrôler les listes noires</Button>
+        </div>
+      </Panel>
+      <StatusBar>4 IPs suivies · 2 pools actifs · chauffe en cours sur 1 IP</StatusBar>
     </>
   );
 }

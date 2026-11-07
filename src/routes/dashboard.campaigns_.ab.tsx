@@ -51,10 +51,11 @@ function AbPage() {
       <button onClick={() => { setRows(p => [{ n: `Nouveau test #${p.length + 1}`, type: "Objet", st: "Planifié", aud: 50000, a: "Variante A", b: "Variante B", win: "-", lift: "–", open: "–", click: "–" }, ...p]); setCur(0); toast.success("Test A/B créé."); }} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-4 py-2 text-[12.5px] font-bold text-primary-foreground"><Plus className="size-4" />Nouveau test A/B</button>
       <button className={btn} onClick={() => { setServers(p => [...p, { s: `SMTP-${p.length + 1}`, t: "Nouveau", ip: "à configurer", r: "—", ok: false }]); toast.success("Serveur SMTP ajouté (à configurer)."); }}><Mail className="size-4" />Ajouter serveur SMTP</button>
       <button className={btn} onClick={() => toast("Export prêt (démo).")}><Download className="size-4" />Exporter</button>
-      <button className={btn} onClick={() => toast("Cliquez un test pour voir son analyse à droite.")}><CircleHelp className="size-4" />Aide</button>
+      <button className={btn} onClick={() => toast("Cliquez un test pour afficher son analyse au-dessus de la liste.")}><CircleHelp className="size-4" />Aide</button>
     </>} />
     <CampaignTabs active="ab" />
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
       <MiniKpi icon={<FlaskConical />} label="Tests A/B actifs" value={String(rows.filter(r => r.st === "Actif").length)} delta="+20.0%" />
       <MiniKpi icon={<Server />} label="Serveurs SMTP" value={String(servers.length)} delta="100% opérationnels" />
       <MiniKpi icon={<Trophy />} label="Variantes gagnantes" value="27" delta="+14.3%" />
@@ -65,59 +66,63 @@ function AbPage() {
       <MiniKpi icon={<AlertTriangle />} label="Erreurs SMTP" value="0.02%" delta="-18.0%" down />
     </div>
 
-    <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_440px]">
-      <div className="space-y-3">
-        <section className="card-lux space-y-2 p-3">
-          <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-[16px] font-bold text-primary"><FlaskConical className="mr-2 inline size-5" />Tests A/B en cours et récents</h2>
-            <label className="relative ml-auto min-w-52"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un test, un objet..." className="h-9 w-full rounded-xl border border-border bg-card pl-9 text-[12.5px]" /></label></div>
-          <div className="overflow-x-auto"><table className="w-full text-[12px]">
-            <thead><tr className="border-b border-border/60 text-left font-bold text-primary">{["Test", "Type", "Statut", "Audience", "Variante A", "Variante B", "Gagnant", "Lift", "Ouv.", "Clics"].map(h => <th key={h} className="whitespace-nowrap p-2">{h}</th>)}</tr></thead>
-            <tbody>{list.map(r => <tr key={r.i} onClick={() => setCur(r.i)} className={`cursor-pointer border-b border-border/40 hover:bg-primary/5 ${cur === r.i ? "bg-primary/10" : ""}`}>
-              <td className="whitespace-nowrap p-2 font-bold text-primary">{r.n}</td><td className="p-2">{r.type}</td>
-              <td className="p-2"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold ${stCls(r.st)}`}>{r.st}</span></td>
-              <td className="p-2">{r.aud.toLocaleString("fr-FR")}</td><td className="max-w-32 truncate p-2">{r.a}</td><td className="max-w-32 truncate p-2">{r.b}</td>
-              <td className="p-2">{r.win === "-" ? "—" : <span className={`grid size-6 place-items-center rounded-full text-[11px] font-bold text-primary-foreground ${r.win === "B" ? "bg-neon-green" : "bg-primary"}`}>{r.win}</span>}</td>
-              <td className="p-2 font-bold text-neon-green">{r.lift}</td><td className="p-2">{r.open}</td><td className="p-2">{r.click}</td>
-            </tr>)}</tbody>
-          </table></div>
-        </section>
-        <div className="grid items-start gap-3 lg:grid-cols-2">
-          <section className="card-lux p-3">
-            <div className="mb-2 flex items-center"><h2 className="font-display text-[16px] font-bold text-primary"><Server className="mr-2 inline size-5" />Bibliothèque SMTP</h2></div>
-            <table className="w-full text-[11.5px]"><thead><tr className="text-left font-bold text-primary">{["Serveur", "Type", "IP / VMTA", "Routage", "État"].map(h => <th key={h} className="p-1.5">{h}</th>)}</tr></thead>
-              <tbody>{servers.map((s, i) => <tr key={s.s} className="border-t border-border/40"><td className="p-1.5 font-bold">{s.s}</td><td className="p-1.5"><span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{s.t}</span></td><td className="truncate p-1.5">{s.ip}</td><td className="p-1.5">{s.r}</td>
-                <td className="p-1.5"><button onClick={() => setServers(p => p.map((x, j) => j === i ? { ...x, ok: !x.ok } : x))} className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${s.ok ? "bg-neon-green/15 text-neon-green" : "bg-neon-amber/15 text-neon-amber"}`}>{s.ok ? "Actif" : "En pause"}</button></td></tr>)}</tbody></table>
-          </section>
-          <section className="card-lux p-3">
-            <h2 className="mb-2 font-display text-[16px] font-bold text-primary"><Scale className="mr-2 inline size-5" />Analyse comparative</h2>
-            <div className="grid grid-cols-2 gap-2">{(["A", "B"] as const).map(v => { const win = t.win === v; return <div key={v} className={`rounded-xl border p-2.5 ${win ? "border-neon-green/50 bg-neon-green/5" : "border-border/60"}`}>
-              <div className="mb-1.5 flex items-center gap-1"><p className="font-display text-[14px] font-bold text-primary">Variante {v}</p>{win && <span className="ml-auto rounded-full bg-neon-green px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">🏆 Gagnante</span>}</div>
-              <p className="text-[11.5px]"><b>Contenu :</b> {v === "A" ? t.a : t.b}</p>
-              <div className="mt-2 grid grid-cols-2 gap-1 text-center"><div><p className="text-[10px] text-muted-foreground">Ouv.</p><p className="font-display font-extrabold text-primary">{t.open === "–" ? "–" : win ? t.open : `${(parseFloat(t.open) - parseFloat(t.lift.replace("+", ""))).toFixed(1)}%`}</p></div><div><p className="text-[10px] text-muted-foreground">Clics</p><p className="font-display font-extrabold text-primary">{t.click}</p></div></div>
-            </div>; })}</div>
-          </section>
-        </div>
+    <section className="card-lux p-3.5">
+      <h2 className="mb-2 font-display text-[16px] font-bold text-primary">Détails du test</h2>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Mail className="size-6" /></span>
+        <div className="min-w-0 flex-1"><p className="truncate font-display text-[15px] font-bold text-primary" title={t.n}>{t.n}</p><p className="text-[11.5px] text-muted-foreground">{t.type} · {t.aud.toLocaleString("fr-FR")} destinataires</p></div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${stCls(t.st)}`}>{t.st}</span>
       </div>
+      <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">{(["Performance", "Configuration SMTP", "Logs"] as const).map(x => <button key={x} onClick={() => setTab(x)} className={`rounded-lg py-1.5 text-[11.5px] font-bold ${tab === x ? "bg-primary text-primary-foreground" : "text-primary"}`}>{x}</button>)}</div>
+      {tab === "Performance" && <>
+        <div className="mb-2 grid grid-cols-2 gap-1 text-center sm:grid-cols-4">{[[Mail, "Ouvertures", t.open], [MousePointer2, "Clics", t.click], [BarChart3, "Conversions", "3.2%"], [TrendingUp, "Lift", t.lift]].map(([I, l, v]) => { const Ic = I as typeof Mail; return <div key={l as string} className="min-w-0 rounded-xl border border-border/60 p-1.5"><Ic className="mx-auto size-4 text-primary" /><p className="truncate text-[10px] text-muted-foreground">{l as string}</p><p className="truncate font-display text-[13px] font-extrabold text-primary">{v as string}</p></div>; })}</div>
+        <LineChart labels={["18 avr.", "19", "20", "21", "22", "23", "24 avr."]} series={[{ name: "Variante B", color: "var(--neon-green)", values: [33, 35, 37, 39, 40, 41, 42.1] }, { name: "Variante A", color: "var(--neon-2)", values: [31, 33, 34, 36, 37, 38, 38.3] }]} />
+      </>}
+      {tab === "Configuration SMTP" && <dl className="grid grid-cols-1 gap-x-4 text-[12px] sm:grid-cols-2">{[["Serveur", "SERV001 [Principal]"], ["Débit", "100 emails / minute"], ["Interface", "VMTA 192.236.161.81"], ["Batch", "100"], ["Protocole", "SMTP"], ["Pause", "1 minute"], ["Rotation IP", "1 email"], ["Queue watcher", "Actif"], ["Script d'envoi", "Queue (x/time)"], ["Warmup", "Oui"]].map(([k, v]) => <div key={k} className="flex justify-between border-b border-border/40 py-1.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-semibold">{v}</dd></div>)}</dl>}
+      {tab === "Logs" && <ul className="space-y-1 font-mono text-[11px]">{["14:00 Répartition 50/50 démarrée", "14:30 Variante B en tête (+2.1 pts)", "15:00 Seuil de confiance 95% atteint", "15:01 Gagnant appliqué au reste de l'audience"].map(l => <li key={l} className="rounded bg-muted px-2 py-1">{l}</li>)}</ul>}
+    </section>
 
-      <aside className="space-y-3">
-        <section className="card-lux p-3.5">
-          <h2 className="mb-2 font-display text-[16px] font-bold text-primary">Détails du test</h2>
-          <div className="mb-3 flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Mail className="size-6" /></span><div className="min-w-0 flex-1"><p className="truncate font-display text-[15px] font-bold text-primary">{t.n}</p><p className="text-[11.5px] text-muted-foreground">{t.type} · {t.aud.toLocaleString("fr-FR")} destinataires</p></div><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${stCls(t.st)}`}>{t.st}</span></div>
-          <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">{(["Performance", "Configuration SMTP", "Logs"] as const).map(x => <button key={x} onClick={() => setTab(x)} className={`rounded-lg py-1.5 text-[11.5px] font-bold ${tab === x ? "bg-primary text-primary-foreground" : "text-primary"}`}>{x}</button>)}</div>
-          {tab === "Performance" && <>
-            <div className="mb-2 grid grid-cols-4 gap-1 text-center">{[[Mail, "Ouvertures", t.open], [MousePointer2, "Clics", t.click], [BarChart3, "Conversions", "3.2%"], [TrendingUp, "Lift", t.lift]].map(([I, l, v]) => { const Ic = I as typeof Mail; return <div key={l as string} className="rounded-xl border border-border/60 p-1.5"><Ic className="mx-auto size-4 text-primary" /><p className="text-[10px] text-muted-foreground">{l as string}</p><p className="font-display text-[13px] font-extrabold text-primary">{v as string}</p></div>; })}</div>
-            <LineChart labels={["18 avr.", "19", "20", "21", "22", "23", "24 avr."]} series={[{ name: "Variante B", color: "var(--neon-green)", values: [33, 35, 37, 39, 40, 41, 42.1] }, { name: "Variante A", color: "var(--neon-2)", values: [31, 33, 34, 36, 37, 38, 38.3] }]} />
-          </>}
-          {tab === "Configuration SMTP" && <dl className="grid grid-cols-2 gap-x-4 text-[12px]">{[["Serveur", "SERV001 [Principal]"], ["Débit", "100 emails / minute"], ["Interface", "VMTA 192.236.161.81"], ["Batch", "100"], ["Protocole", "SMTP"], ["Pause", "1 minute"], ["Rotation IP", "1 email"], ["Queue watcher", "Actif"], ["Script d'envoi", "Queue (x/time)"], ["Warmup", "Oui"]].map(([k, v]) => <div key={k} className="flex justify-between border-b border-border/40 py-1.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-semibold">{v}</dd></div>)}</dl>}
-          {tab === "Logs" && <ul className="space-y-1 font-mono text-[11px]">{["14:00 Répartition 50/50 démarrée", "14:30 Variante B en tête (+2.1 pts)", "15:00 Seuil de confiance 95% atteint", "15:01 Gagnant appliqué au reste de l'audience"].map(l => <li key={l} className="rounded bg-muted px-2 py-1">{l}</li>)}</ul>}
-        </section>
-        <section className="card-lux p-3.5">
-          <h2 className="mb-2 font-display text-[15px] font-bold text-primary">⚡ Actions rapides</h2>
-          <div className="grid grid-cols-5 gap-1.5">{[{ i: Copy, l: "Dupliquer", f: dup }, { i: Pause, l: t.st === "En pause" ? "Reprendre" : "Pause", f: pause }, { i: Pencil, l: "Modifier", f: () => toast("Modification : ouvrez Nouvelle campagne.") }, { i: Rocket, l: "Préflight", f: () => toast.success("Préflight lancé sur les 2 variantes.") }, { i: FileText, l: "Rapport", f: () => window.print() }].map(a => <button key={a.l} onClick={a.f} className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><a.i className="size-5" />{a.l}</button>)}</div>
-        </section>
-        <section className="card-lux p-3.5"><h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-bold text-primary"><Settings className="size-4" />Configuration SMTP active</h2><p className="flex items-center gap-1.5 text-[12px]"><CheckCircle2 className="size-4 text-neon-green" />SERV001 [Principal] · 100 emails / minute · Warmup actif</p></section>
-      </aside>
-    </div>
+    <section className="card-lux p-3">
+      <h2 className="mb-2 font-display text-[16px] font-bold text-primary"><Scale className="mr-2 inline size-5" />Analyse comparative</h2>
+      <div className="space-y-2">{(["A", "B"] as const).map(v => { const win = t.win === v; return <div key={v} className={`min-w-0 rounded-xl border p-2.5 ${win ? "border-neon-green/50 bg-neon-green/5" : "border-border/60"}`}>
+        <div className="mb-1.5 flex flex-wrap items-center gap-1"><p className="font-display text-[14px] font-bold text-primary">Variante {v}</p>{win && <span className="ml-auto rounded-full bg-neon-green px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">🏆 Gagnante</span>}</div>
+        <p className="text-[11.5px]"><b>Contenu :</b> {v === "A" ? t.a : t.b}</p>
+        <div className="mt-2 grid grid-cols-2 gap-1 text-center sm:grid-cols-4"><div><p className="text-[10px] text-muted-foreground">Ouv.</p><p className="font-display font-extrabold text-primary">{t.open === "–" ? "–" : win ? t.open : `${(parseFloat(t.open) - parseFloat(t.lift.replace("+", ""))).toFixed(1)}%`}</p></div><div><p className="text-[10px] text-muted-foreground">Clics</p><p className="font-display font-extrabold text-primary">{t.click}</p></div><div><p className="text-[10px] text-muted-foreground">Lift</p><p className="font-display font-extrabold text-primary">{t.lift}</p></div><div><p className="text-[10px] text-muted-foreground">Audience</p><p className="font-display font-extrabold text-primary">{(t.aud / 2).toLocaleString("fr-FR")}</p></div></div>
+      </div>; })}</div>
+    </section>
+
+    <section className="card-lux p-3.5">
+      <h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-bold text-primary"><Settings className="size-4 shrink-0" />Configuration SMTP active</h2>
+      <p className="flex items-center gap-1.5 text-[12px]"><CheckCircle2 className="size-4 shrink-0 text-neon-green" />SERV001 [Principal] · 100 emails / minute · Warmup actif</p>
+    </section>
+
+    <section className="card-lux p-3">
+      <div className="mb-2 flex items-center"><h2 className="font-display text-[16px] font-bold text-primary"><Server className="mr-2 inline size-5" />Bibliothèque SMTP</h2></div>
+      <div className="min-w-0 overflow-x-auto"><table className="w-full text-[11.5px]"><thead><tr className="text-left font-bold text-primary">{["Serveur", "Type", "IP / VMTA", "Routage", "État"].map(h => <th key={h} className="whitespace-nowrap p-1.5">{h}</th>)}</tr></thead>
+        <tbody>{servers.map((s, i) => <tr key={s.s} className="border-t border-border/40"><td className="p-1.5 font-bold">{s.s}</td><td className="p-1.5"><span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{s.t}</span></td><td className="whitespace-nowrap p-1.5">{s.ip}</td><td className="whitespace-nowrap p-1.5">{s.r}</td>
+          <td className="p-1.5"><button onClick={() => setServers(p => p.map((x, j) => j === i ? { ...x, ok: !x.ok } : x))} className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${s.ok ? "bg-neon-green/15 text-neon-green" : "bg-neon-amber/15 text-neon-amber"}`}>{s.ok ? "Actif" : "En pause"}</button></td></tr>)}</tbody></table></div>
+    </section>
+
+    <section className="card-lux space-y-2 p-3">
+      <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-[16px] font-bold text-primary"><FlaskConical className="mr-2 inline size-5" />Tests A/B en cours et récents</h2>
+        <label className="relative ml-auto min-w-52"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un test, un objet..." className="h-9 w-full rounded-xl border border-border bg-card pl-9 text-[12.5px]" /></label></div>
+      <div className="min-w-0 overflow-x-auto"><table className="w-full text-[12px]">
+        <thead><tr className="border-b border-border/60 text-left font-bold text-primary">{["Test", "Type", "Statut", "Audience", "Variante A", "Variante B", "Gagnant", "Lift", "Ouv.", "Clics"].map(h => <th key={h} className="whitespace-nowrap p-2">{h}</th>)}</tr></thead>
+        <tbody>{list.map(r => <tr key={r.i} onClick={() => setCur(r.i)} className={`cursor-pointer border-b border-border/40 hover:bg-primary/5 ${cur === r.i ? "bg-primary/10" : ""}`}>
+          <td className="whitespace-nowrap p-2 font-bold text-primary">{r.n}</td><td className="p-2">{r.type}</td>
+          <td className="p-2"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold ${stCls(r.st)}`}>{r.st}</span></td>
+          <td className="whitespace-nowrap p-2">{r.aud.toLocaleString("fr-FR")}</td><td className="max-w-32 truncate p-2">{r.a}</td><td className="max-w-32 truncate p-2">{r.b}</td>
+          <td className="p-2">{r.win === "-" ? "—" : <span className={`grid size-6 place-items-center rounded-full text-[11px] font-bold text-primary-foreground ${r.win === "B" ? "bg-neon-green" : "bg-primary"}`}>{r.win}</span>}</td>
+          <td className="p-2 font-bold text-neon-green">{r.lift}</td><td className="p-2">{r.open}</td><td className="p-2">{r.click}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>
+
+    <section className="card-lux p-3.5">
+      <h2 className="mb-2 font-display text-[15px] font-bold text-primary">⚡ Actions rapides</h2>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">{[{ i: Copy, l: "Dupliquer", f: dup }, { i: Pause, l: t.st === "En pause" ? "Reprendre" : "Pause", f: pause }, { i: Pencil, l: "Modifier", f: () => toast("Modification : ouvrez Nouvelle campagne.") }, { i: Rocket, l: "Préflight", f: () => toast.success("Préflight lancé sur les 2 variantes.") }, { i: FileText, l: "Rapport", f: () => window.print() }].map(a => <button key={a.l} onClick={a.f} className="card-lux flex flex-col items-center gap-1 p-2 text-[10.5px] font-semibold text-primary"><a.i className="size-5" />{a.l}</button>)}</div>
+    </section>
+
     <StatusBar>Module A/B & SMTP opérationnel · {rows.filter(r => r.st === "Actif").length} tests actifs · {servers.filter(s => s.ok).length} serveurs SMTP sains · Inbox rate moyen 99.1%</StatusBar>
   </div>;
 }
