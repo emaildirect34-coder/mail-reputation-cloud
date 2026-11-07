@@ -8,6 +8,13 @@
       "when": 1792551099815,
       "tag": "0000_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794039433397,
+      "tag": "0001_roles_and_tasks",
+      "breakpoints": true
     }
   ]
 }

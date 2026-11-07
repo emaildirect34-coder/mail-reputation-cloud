@@ -2,6 +2,9 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { canOpen, type Access } from "@/lib/access";
+import { getMyAccess } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 import {
   Home, LayoutGrid, Activity, Bot, Send, Code2, FileText, ScrollText, Server, Network, Boxes, Layers, Gauge,
@@ -92,11 +95,14 @@ function DashboardLayout() {
   const [group, setGroup] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
   const now = useClock();
+  const fetchAccess = useServerFn(getMyAccess);
+  const [access, setAccess] = useState<Access | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { navigate({ to: "/auth" }); return; }
       setUser(data.user);
+      fetchAccess().then(setAccess).catch(() => setAccess({ role: null, paths: [] }));
     });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => { if (!s) navigate({ to: "/auth" }); });
     return () => data.subscription.unsubscribe();
@@ -117,13 +123,31 @@ function DashboardLayout() {
 
   useEffect(() => { setGroup(null); setMobile(false); }, [path]);
 
-  if (!user) return <div className="space grid min-h-screen place-items-center text-muted-foreground">Chargement…</div>;
+  useEffect(() => {
+    if (!access || access.role !== "worker") return;
+    if (!canOpen(access, path)) navigate({ to: "/dashboard/my-tasks", replace: true });
+  }, [access, path, navigate]);
+
+  if (!user || !access) return <div className="space grid min-h-screen place-items-center text-muted-foreground">Chargement…</div>;
+  if (!access.role) return (
+    <div className="space grid min-h-screen place-items-center p-6 text-center">
+      <div><p className="text-lg font-semibold">Accès non autorisé</p><p className="mt-1 text-sm text-muted-foreground">Votre compte n'a pas encore de rôle. Contactez un Superadmin.</p>
+      <Button className="mt-4" onClick={() => supabase.auth.signOut()}>Se déconnecter</Button></div>
+    </div>
+  );
+  const isSuper = access.role === "superadmin";
+  const visCockpit: Item[] = isSuper ? cockpit : [{ to: "/dashboard/my-tasks", icon: ClipboardCheck, label: "Mes tâches" }, ...cockpit.filter((i) => canOpen(access, i.to))];
+  const visSections: Section[] = (isSuper
+    ? sections.map((s) => s.title === "Settings" ? { ...s, items: [{ to: "/dashboard/team", icon: Users, label: "Équipe & tâches" }, ...s.items] } : s)
+    : sections.map((s) => ({ ...s, items: s.items.filter((i) => canOpen(access, i.to)) }))
+  ).filter((s) => s.items.length);
+  if (access.role === "worker" && !canOpen(access, path)) return <div className="space grid min-h-screen place-items-center text-muted-foreground">Chargement…</div>;
 
   // Only the first item matching the current page is highlighted
-  const all = [...cockpit, ...sections.flatMap((s) => s.items)];
+  const all = [...visCockpit, ...visSections.flatMap((s) => s.items)];
   const activeItem = all.find((i) => i.to === path);
   const activeLabel = activeItem?.label;
-  const activeGroup = activeItem ? sections.find((s) => s.items.includes(activeItem))?.title : undefined;
+  const activeGroup = activeItem ? visSections.find((s) => s.items.includes(activeItem))?.title : undefined;
 
   const Pill = ({ i }: { i: Item }) => {
     const active = i.label === activeLabel;
@@ -194,8 +218,8 @@ function DashboardLayout() {
         </div>
       </div>
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
-        <div className="space-y-0.5">{cockpit.map((i) => <Row key={i.label} i={i} />)}</div>
-        {sections.filter((s) => s.title !== "Settings").map((s) => {
+        <div className="space-y-0.5">{visCockpit.map((i) => <Row key={i.label} i={i} />)}</div>
+        {visSections.map((s) => {
           const collapsed = open[s.title] === false;
           return (
             <div key={s.title} className="mt-3">
@@ -225,8 +249,8 @@ function DashboardLayout() {
 
   return (
     <div className="lux relative flex min-h-screen flex-col font-sans">
-      <header className="lux-top sticky top-0 z-30 border-b border-border">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+      <header className="lux-top lg:sticky top-0 z-30 border-b border-border">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
           <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={() => setMobile(true)} aria-label="Menu"><Menu className="h-5 w-5" /></Button>
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="relative grid h-10 w-10 shrink-0 place-items-center">
@@ -238,7 +262,7 @@ function DashboardLayout() {
               <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide opacity-80">Deliver more. Stay safe</p>
             </div>
           </div>
-          <div className="card-lux order-last flex w-full min-w-0 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground sm:order-none sm:w-auto sm:max-w-[430px] sm:flex-1">
+          <div className="card-lux order-last hidden w-full sm:flex min-w-0 items-center gap-2 rounded-full px-4 py-2 text-[12px] text-muted-foreground sm:order-none sm:w-auto sm:max-w-[430px] sm:flex-1">
             <Search className="h-4 w-4 shrink-0" />
             <input placeholder="Rechercher un domaine, une campagne, un IP..." aria-label="Rechercher" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
             <span className="hidden shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-semibold sm:block">⌘ K</span>
@@ -266,18 +290,18 @@ function DashboardLayout() {
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{(user.email || "A").charAt(0).toUpperCase()}</div>
             <div className="hidden min-w-0 sm:block">
-              <p className="truncate text-[13px] font-semibold">Admin</p>
-              <p className="truncate text-[10px] text-sidebar-foreground/70">Compte principal</p>
+              <p className="truncate text-[13px] font-semibold">{isSuper ? "Superadmin" : "Worker"}</p>
+              <p className="truncate text-[10px] text-sidebar-foreground/70">{user.email}</p>
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
           </div>
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="hidden shrink-0 sm:inline-flex" aria-label="Déconnexion" onClick={() => supabase.auth.signOut()}><LogOut className="h-5 w-5" /></Button>
         </div>
 
-        <div ref={navRef} className="flex flex-wrap items-center gap-1 px-4 pb-2">
-          {cockpit.map((i) => <Pill key={i.label} i={i} />)}
+        <div ref={navRef} className="hidden flex-wrap items-center gap-1 px-4 pb-2 lg:flex">
+          {visCockpit.map((i) => <Pill key={i.label} i={i} />)}
           <span className="mx-1 hidden h-5 w-px shrink-0 bg-border lg:block" />
-          {sections.map((s) => <GroupMenu key={s.title} s={s} />)}
+          {visSections.map((s) => <GroupMenu key={s.title} s={s} />)}
         </div>
       </header>
 

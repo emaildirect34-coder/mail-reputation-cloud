@@ -11,3 +11,4 @@
 
 - Keep the overview cockpit in its leaf route, with dashboard-scoped semantic CSS tokens and existing shared controls, to prevent presentation changes from altering delivery logic.
 - Keep campaign creation in its existing leaf route with shared form controls and one persistent draft state across steps, so presentation changes do not change delivery services.
+- Access control: roles live in `user_roles` (superadmin|worker); workers see only dashboard paths listed in their active `worker_tasks`, enforced by `canOpen` in `src/lib/access.ts` and the dashboard layout; why: one source for menu filtering and redirects.

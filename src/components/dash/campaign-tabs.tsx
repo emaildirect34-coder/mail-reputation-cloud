@@ -17,7 +17,7 @@ export type CampaignTab = (typeof tabs)[number]["k"];
 /** Shared navigation between the campaign module pages. */
 export function CampaignTabs({ active }: { active: CampaignTab }) {
   return (
-    <nav aria-label="Module campagnes" className="flex flex-wrap gap-2 pb-1">
+    <nav aria-label="Module campagnes" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>*]:shrink-0">
       {tabs.map(t => (
         <Link key={t.k} to={t.to} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-semibold transition ${t.k === active ? "bg-primary text-primary-foreground shadow-[0_6px_18px_-6px_var(--primary)]" : "card-lux text-primary hover:bg-primary/10"}`}>
           <t.i className="size-4" />{t.l}

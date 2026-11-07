@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
@@ -22,6 +23,7 @@ import { Route as DashboardInboxTesterRouteImport } from './routes/dashboard.inb
 import { Route as DashboardIpsRouteImport } from './routes/dashboard.ips'
 import { Route as DashboardLabRouteImport } from './routes/dashboard.lab'
 import { Route as DashboardLogsRouteImport } from './routes/dashboard.logs'
+import { Route as DashboardMyTasksRouteImport } from './routes/dashboard.my-tasks'
 import { Route as DashboardPoolsRouteImport } from './routes/dashboard.pools'
 import { Route as DashboardPostmasterRouteImport } from './routes/dashboard.postmaster'
 import { Route as DashboardPreflightRouteImport } from './routes/dashboard.preflight'
@@ -33,6 +35,7 @@ import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settin
 import { Route as DashboardShapingRouteImport } from './routes/dashboard.shaping'
 import { Route as DashboardShieldRouteImport } from './routes/dashboard.shield'
 import { Route as DashboardSuppressionRouteImport } from './routes/dashboard.suppression'
+import { Route as DashboardTeamRouteImport } from './routes/dashboard.team'
 import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templates'
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
@@ -54,6 +57,11 @@ const AuthRoute = AuthRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -104,6 +112,11 @@ const DashboardLabRoute = DashboardLabRouteImport.update({
 const DashboardLogsRoute = DashboardLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardMyTasksRoute = DashboardMyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardPoolsRoute = DashboardPoolsRouteImport.update({
@@ -161,6 +174,11 @@ const DashboardSuppressionRoute = DashboardSuppressionRouteImport.update({
   path: '/suppression',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardTeamRoute = DashboardTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardTemplatesRoute = DashboardTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -201,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -210,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
   '/dashboard/preflight': typeof DashboardPreflightRoute
@@ -221,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -233,6 +254,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -242,6 +264,7 @@ export interface FileRoutesByTo {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
   '/dashboard/preflight': typeof DashboardPreflightRoute
@@ -253,6 +276,7 @@ export interface FileRoutesByTo {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -267,6 +291,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -276,6 +301,7 @@ export interface FileRoutesById {
   '/dashboard/ips': typeof DashboardIpsRoute
   '/dashboard/lab': typeof DashboardLabRoute
   '/dashboard/logs': typeof DashboardLogsRoute
+  '/dashboard/my-tasks': typeof DashboardMyTasksRoute
   '/dashboard/pools': typeof DashboardPoolsRoute
   '/dashboard/postmaster': typeof DashboardPostmasterRoute
   '/dashboard/preflight': typeof DashboardPreflightRoute
@@ -287,6 +313,7 @@ export interface FileRoutesById {
   '/dashboard/shaping': typeof DashboardShapingRoute
   '/dashboard/shield': typeof DashboardShieldRoute
   '/dashboard/suppression': typeof DashboardSuppressionRoute
+  '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
@@ -302,6 +329,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -311,6 +339,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
     | '/dashboard/preflight'
@@ -322,6 +351,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -334,6 +364,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -343,6 +374,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
     | '/dashboard/preflight'
@@ -354,6 +386,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -367,6 +400,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/set-password'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -376,6 +410,7 @@ export interface FileRouteTypes {
     | '/dashboard/ips'
     | '/dashboard/lab'
     | '/dashboard/logs'
+    | '/dashboard/my-tasks'
     | '/dashboard/pools'
     | '/dashboard/postmaster'
     | '/dashboard/preflight'
@@ -387,6 +422,7 @@ export interface FileRouteTypes {
     | '/dashboard/shaping'
     | '/dashboard/shield'
     | '/dashboard/suppression'
+    | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
     | '/dashboard/warmup'
@@ -401,6 +437,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  SetPasswordRoute: typeof SetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -424,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -494,6 +538,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/dashboard/logs'
       preLoaderRoute: typeof DashboardLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/my-tasks': {
+      id: '/dashboard/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/dashboard/my-tasks'
+      preLoaderRoute: typeof DashboardMyTasksRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/pools': {
@@ -573,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSuppressionRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/team': {
+      id: '/dashboard/team'
+      path: '/team'
+      fullPath: '/dashboard/team'
+      preLoaderRoute: typeof DashboardTeamRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/templates': {
       id: '/dashboard/templates'
       path: '/templates'
@@ -635,6 +693,7 @@ interface DashboardRouteChildren {
   DashboardIpsRoute: typeof DashboardIpsRoute
   DashboardLabRoute: typeof DashboardLabRoute
   DashboardLogsRoute: typeof DashboardLogsRoute
+  DashboardMyTasksRoute: typeof DashboardMyTasksRoute
   DashboardPoolsRoute: typeof DashboardPoolsRoute
   DashboardPostmasterRoute: typeof DashboardPostmasterRoute
   DashboardPreflightRoute: typeof DashboardPreflightRoute
@@ -646,6 +705,7 @@ interface DashboardRouteChildren {
   DashboardShapingRoute: typeof DashboardShapingRoute
   DashboardShieldRoute: typeof DashboardShieldRoute
   DashboardSuppressionRoute: typeof DashboardSuppressionRoute
+  DashboardTeamRoute: typeof DashboardTeamRoute
   DashboardTemplatesRoute: typeof DashboardTemplatesRoute
   DashboardValidationRoute: typeof DashboardValidationRoute
   DashboardWarmupRoute: typeof DashboardWarmupRoute
@@ -666,6 +726,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIpsRoute: DashboardIpsRoute,
   DashboardLabRoute: DashboardLabRoute,
   DashboardLogsRoute: DashboardLogsRoute,
+  DashboardMyTasksRoute: DashboardMyTasksRoute,
   DashboardPoolsRoute: DashboardPoolsRoute,
   DashboardPostmasterRoute: DashboardPostmasterRoute,
   DashboardPreflightRoute: DashboardPreflightRoute,
@@ -677,6 +738,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardShapingRoute: DashboardShapingRoute,
   DashboardShieldRoute: DashboardShieldRoute,
   DashboardSuppressionRoute: DashboardSuppressionRoute,
+  DashboardTeamRoute: DashboardTeamRoute,
   DashboardTemplatesRoute: DashboardTemplatesRoute,
   DashboardValidationRoute: DashboardValidationRoute,
   DashboardWarmupRoute: DashboardWarmupRoute,
@@ -695,6 +757,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  SetPasswordRoute: SetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
