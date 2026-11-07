@@ -44,9 +44,10 @@ export function StatusBar({ children }: { children: ReactNode }) {
 
 export function MiniKpi({ icon, label, value, delta, down }: { icon: ReactNode; label: string; value: string; delta: string; down?: boolean }) {
   return (
-    <div className="card-lux flex items-center gap-3 p-3">
-      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary [&_svg]:size-6">{icon}</span>
-      <div className="min-w-0"><p className="truncate text-[12px] font-semibold">{label}</p><p className="font-display text-[22px] font-extrabold leading-tight text-primary">{value}</p><p className={`text-[11.5px] font-bold ${down ? "text-neon-red" : "text-neon-green"}`}>{down ? "↓" : "↑"} {delta}</p></div>
+    <div className="card-lux min-w-0 p-3">
+      <div className="flex items-center gap-2"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary [&_svg]:size-4">{icon}</span><p className="truncate text-[11.5px] font-semibold" title={label}>{label}</p></div>
+      <p className="mt-1.5 truncate font-display text-[20px] font-extrabold leading-tight text-primary">{value}</p>
+      <p className={`truncate text-[11px] font-bold ${down ? "text-neon-red" : "text-neon-green"}`}>{down ? "↓" : "↑"} {delta}</p>
     </div>
   );
 }

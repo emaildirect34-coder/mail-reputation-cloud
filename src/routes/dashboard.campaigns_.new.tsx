@@ -30,7 +30,7 @@ const initial = {
 type Draft = typeof initial;
 const storageKey = "email-direct-campaign-draft";
 const allServers = ["SERV001 [Serveurs Principaux]", "SERV002 [Warmup]", "SERV003 [Test Inbox]", "SERV004 [Secondaire]"];
-const inCls = "h-7 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
+const inCls = "h-8 w-full min-w-0 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-ring";
 
 function Col({ id, title, icon, children, right }: { id?: string; title: string; icon: ReactNode; children: ReactNode; right?: ReactNode }) {
   return <section id={id} className="card-lux scroll-mt-24 p-3.5">
@@ -42,7 +42,7 @@ function Sub({ title, icon, children, right }: { title: string; icon: ReactNode;
   return <div className="rounded-xl border border-border/60 bg-primary/[0.03] p-3"><div className="mb-2 flex items-center gap-2"><span className="text-primary [&_svg]:size-4">{icon}</span><h3 className="text-[13px] font-bold text-primary">{title}</h3>{right && <div className="ml-auto">{right}</div>}</div><div className="space-y-2">{children}</div></div>;
 }
 function Row({ label, children, w = "w-28" }: { label: string; children: ReactNode; w?: string }) {
-  return <div className="flex items-center gap-2"><span className={`${w} shrink-0 text-[12px] font-semibold`}>{label} :</span><div className="min-w-0 flex-1">{children}</div></div>;
+  void w; return <div className="min-w-0 space-y-1"><span className="block text-[11.5px] font-semibold text-muted-foreground">{label}</span><div className="min-w-0">{children}</div></div>;
 }
 function IconBtn({ children, tone = "card", label, onClick }: { children: ReactNode; tone?: "card" | "primary" | "red"; label: string; onClick?: () => void }) {
   const c = tone === "primary" ? "bg-primary text-primary-foreground" : tone === "red" ? "bg-neon-red text-primary-foreground" : "border border-border bg-card text-foreground";
@@ -107,24 +107,24 @@ function Builder() {
         <span className="grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_var(--primary)]"><Mail className="size-8" /></span>
         <div><h1 className="font-display text-[26px] font-extrabold leading-tight text-primary">Campaign Builder</h1><p className="text-[12.5px] font-semibold">Créez, testez et pilotez vos campagnes avec une précision maximale</p></div>
       </div>
-      <label className="ml-2 flex items-center gap-2 text-[13px] font-bold">Mode Test :<Switch checked={testMode} onCheckedChange={setTestMode} /></label>
-      <div className="lux-banner flex items-center gap-3 rounded-2xl px-5 py-2.5">
+      <label className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap text-[13px] font-bold">Mode Test :<Switch checked={testMode} onCheckedChange={setTestMode} /></label>
+      <div className="lux-banner flex shrink-0 items-center gap-3 rounded-2xl px-5 py-2.5">
         <ShieldCheck className={`size-9 ${ready ? "text-neon-green" : "text-neon-amber"}`} />
-        <div><p className="text-[14px] font-bold">{ready ? "Validation préflight active" : "Préflight en attente"}</p><p className={`text-[12.5px] font-semibold ${ready ? "text-neon-green" : "text-neon-amber"}`}>{ready ? "Campagne prête pour envoi" : `${passed}/${checks.length} contrôles validés`}</p></div>
+        <div className="whitespace-nowrap"><p className="text-[14px] font-bold">{ready ? "Validation préflight active" : "Préflight en attente"}</p><p className={`text-[12.5px] font-semibold ${ready ? "text-neon-green" : "text-neon-amber"}`}>{ready ? "Campagne prête pour envoi" : `${passed}/${checks.length} contrôles validés`}</p></div>
         <TrendingUp className="size-8 text-neon-green" />
       </div>
-      <div className="ml-auto flex flex-wrap gap-2">
-        <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
-        <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-3 py-2 text-[12.5px] font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
-        <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
-        <button disabled={!hasDraft} onClick={restore} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold disabled:opacity-50"><Folder className="size-4 text-primary" />Configs enregistrées</button>
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
+        <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
+        <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
+        <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
+        <button disabled={!hasDraft} onClick={restore} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold disabled:opacity-50"><Folder className="size-4 text-primary" />Configs enregistrées</button>
       </div>
     </div>
 
     <CampaignTabs active="new" />
 
     {/* KPIs */}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <Kpi icon={<Target />} label="Délivrabilité estimée" value="99.8%" sub="↑ +0.2% vs dernière campagne" tone="blue" />
       <Kpi icon={<Server />} label="Serveurs actifs" value="12" sub="100% opérationnels" tone="blue" />
       <Kpi icon={<Network />} label="Interfaces sélectionnées" value={String(chosen.length)} sub="VMTA / SMTP" tone="blue" />
@@ -133,7 +133,7 @@ function Builder() {
     </div>
 
     {/* 4 columns */}
-    <div className="grid items-start gap-3 lg:grid-cols-2 2xl:grid-cols-4">
+    <div className="grid items-start gap-3 lg:grid-cols-2 xl:grid-cols-4">
       {/* Offre */}
       <div className="space-y-3">
         <Col id="offre" title="Offre" icon={<Tag />}>
@@ -152,7 +152,7 @@ function Builder() {
           </div>
         </Col>
         <Col title="Audience & Ciblage" icon={<Users />}>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[{ i: Users, l: "Contacts ciblés", v: "250,000", c: "text-neon-green" }, { i: Ban, l: "Exclusions", v: "12,400", c: "text-neon-red" }, { i: Globe2, l: "Domaines", v: "18,320", c: "text-primary" }, { i: MapPin, l: "Pays", v: "35", c: "text-neon-green" }].map(s => <div key={s.l} className="rounded-xl border border-border/60 bg-card p-2 text-center"><s.i className={`mx-auto size-6 ${s.c}`} /><p className="mt-1 text-[10.5px] font-semibold">{s.l}</p><p className="font-display text-[15px] font-extrabold text-primary">{s.v}</p></div>)}
           </div>
         </Col>
@@ -216,15 +216,15 @@ function Builder() {
       <div className="space-y-3">
         <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
           <p className="flex items-center gap-1.5 text-[13px] font-bold text-primary"><Server className="size-4" />Serveurs de livraison :</p>
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-            <div className="space-y-1"><input value={qL} onChange={e => setQL(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-20 overflow-auto rounded-md border border-border bg-card p-1">{left.map(s => <li key={s}><button onClick={() => setSelL(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selL === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
-            <div className="flex flex-col justify-center gap-1">
-              <IconBtn label="Tout ajouter" tone="primary" onClick={() => setChosen([...allServers])}><ChevronsRight /></IconBtn>
-              <IconBtn label="Ajouter" tone="primary" onClick={() => selL && !chosen.includes(selL) && setChosen(p => [...p, selL])}><ChevronRight /></IconBtn>
-              <IconBtn label="Retirer" tone="primary" onClick={() => selR && setChosen(p => p.filter(x => x !== selR))}><ChevronLeft /></IconBtn>
-              <IconBtn label="Tout retirer" tone="primary" onClick={() => setChosen([])}><ChevronsLeft /></IconBtn>
+          <div className="grid gap-2">
+            <div className="space-y-1"><input value={qL} onChange={e => setQL(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-16 overflow-auto rounded-md border border-border bg-card p-1">{left.map(s => <li key={s}><button onClick={() => setSelL(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selL === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
+            <div className="flex justify-center gap-1">
+              <IconBtn label="Tout ajouter" tone="primary" onClick={() => setChosen([...allServers])}><ChevronsRight className="rotate-90" /></IconBtn>
+              <IconBtn label="Ajouter" tone="primary" onClick={() => selL && !chosen.includes(selL) && setChosen(p => [...p, selL])}><ChevronRight className="rotate-90" /></IconBtn>
+              <IconBtn label="Retirer" tone="primary" onClick={() => selR && setChosen(p => p.filter(x => x !== selR))}><ChevronLeft className="rotate-90" /></IconBtn>
+              <IconBtn label="Tout retirer" tone="primary" onClick={() => setChosen([])}><ChevronsLeft className="rotate-90" /></IconBtn>
             </div>
-            <div className="space-y-1"><input value={qR} onChange={e => setQR(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-20 overflow-auto rounded-md border border-border bg-card p-1">{right.map(s => <li key={s}><button onClick={() => setSelR(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selR === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
+            <div className="space-y-1"><input value={qR} onChange={e => setQR(e.target.value)} placeholder="Rechercher..." className={inCls} /><ul className="h-16 overflow-auto rounded-md border border-border bg-card p-1">{right.map(s => <li key={s}><button onClick={() => setSelR(s)} className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] ${selR === s ? "bg-primary text-primary-foreground" : ""}`}>{s}</button></li>)}</ul></div>
           </div>
           <div className="flex flex-wrap gap-1">{["IPv4", "IPv6", "SMTP", "Route", "Custom", "Tous"].map(p => <button key={p} onClick={() => setProto(p)} className={`flex-1 rounded-md px-2 py-1 text-[11px] font-bold ${proto === p ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary"}`}>{p}</button>)}</div>
           <p className="flex items-center gap-1.5 pt-1 text-[13px] font-bold text-primary"><Network className="size-4" />Interfaces (VMTA & SMTP) :</p>
