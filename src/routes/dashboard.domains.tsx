@@ -26,7 +26,7 @@ export const Route = createFileRoute("/dashboard/domains")({
 
 const LABELS: Record<string, string> = { a: "A mail", mx: "MX", spf: "SPF", dkim_a: "DKIM 1", dkim_b: "DKIM 2", dmarc: "DMARC", mta_sts: "MTA-STS", tls_rpt: "TLS-RPT" };
 const SUB_PREFIXES = ["news", "mail", "info", "promo", "offres", "contact", "letter", "send", "mx", "go", "deals", "club", "pro", "hello", "alert", "notify", "update", "service", "client", "bonus"];
-export function planDomains(zone: string, mode: "root" | "auto" | "both", count: number, custom: string): string[] {
+function planDomains(zone: string, mode: "root" | "auto" | "both", count: number, custom: string): string[] {
   if (!zone) return [];
   const out: string[] = mode === "auto" ? [] : [zone];
   if (mode === "root") return out;
