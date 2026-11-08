@@ -1,5 +1,5 @@
 // Outgoing webhooks: HMAC-SHA256 signed JSON POSTs to registered endpoints.
-export const WEBHOOK_EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'test'] as const;
+export const WEBHOOK_EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'daily_report', 'test'] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 export async function sign(secret: string, body: string) {
@@ -9,7 +9,9 @@ export async function sign(secret: string, body: string) {
 }
 
 export async function deliver(db: any, ep: { id: string; url: string; secret: string; fail_count: number; sent_count: number }, event: string, data: unknown) {
-  const body = JSON.stringify({ event, sent_at: new Date().toISOString(), data });
+  // Slack / Discord incoming webhooks expect plain text, not our signed JSON envelope.
+  const text = (data as any)?.text ?? `Email Direct — ${event}`;
+  const body = /hooks\.slack\.com/.test(ep.url) ? JSON.stringify({ text }) : /discord(app)?\.com\/api\/webhooks/.test(ep.url) ? JSON.stringify({ content: String(text).slice(0, 1900) }) : JSON.stringify({ event, sent_at: new Date().toISOString(), data });
   const ts = Math.floor(Date.now() / 1000).toString();
   let status = 0, error: string | null = null;
   try {
