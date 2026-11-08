@@ -41,6 +41,7 @@ import { Route as DashboardSuppressionRouteImport } from './routes/dashboard.sup
 import { Route as DashboardTeamRouteImport } from './routes/dashboard.team'
 import { Route as DashboardTemplatesRouteImport } from './routes/dashboard.templates'
 import { Route as DashboardValidationRouteImport } from './routes/dashboard.validation'
+import { Route as DashboardVaultRouteImport } from './routes/dashboard.vault'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
 import { Route as DashboardCampaignsAbRouteImport } from './routes/dashboard.campaigns_.ab'
@@ -216,6 +217,11 @@ const DashboardValidationRoute = DashboardValidationRouteImport.update({
   path: '/validation',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardVaultRoute = DashboardVaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardWarmupRoute = DashboardWarmupRouteImport.update({
   id: '/warmup',
   path: '/warmup',
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -361,6 +368,7 @@ export interface FileRoutesByTo {
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -409,6 +417,7 @@ export interface FileRoutesById {
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/templates': typeof DashboardTemplatesRoute
   '/dashboard/validation': typeof DashboardValidationRoute
+  '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -458,6 +467,7 @@ export interface FileRouteTypes {
     | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
+    | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
@@ -504,6 +514,7 @@ export interface FileRouteTypes {
     | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
+    | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard'
@@ -551,6 +562,7 @@ export interface FileRouteTypes {
     | '/dashboard/team'
     | '/dashboard/templates'
     | '/dashboard/validation'
+    | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
     | '/dashboard/'
@@ -808,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardValidationRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/vault': {
+      id: '/dashboard/vault'
+      path: '/vault'
+      fullPath: '/dashboard/vault'
+      preLoaderRoute: typeof DashboardVaultRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/warmup': {
       id: '/dashboard/warmup'
       path: '/warmup'
@@ -930,6 +949,7 @@ interface DashboardRouteChildren {
   DashboardTeamRoute: typeof DashboardTeamRoute
   DashboardTemplatesRoute: typeof DashboardTemplatesRoute
   DashboardValidationRoute: typeof DashboardValidationRoute
+  DashboardVaultRoute: typeof DashboardVaultRoute
   DashboardWarmupRoute: typeof DashboardWarmupRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -966,6 +986,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTeamRoute: DashboardTeamRoute,
   DashboardTemplatesRoute: DashboardTemplatesRoute,
   DashboardValidationRoute: DashboardValidationRoute,
+  DashboardVaultRoute: DashboardVaultRoute,
   DashboardWarmupRoute: DashboardWarmupRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
