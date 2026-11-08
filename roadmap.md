@@ -79,4 +79,4 @@
 - [x] Optimiseur IA d'objets
 - [x] Tracking clics/ouvertures sur vos sous-domaines (t.domaine, Caddy sur serveurs)
 - [x] Régulation dynamique par FAI + FBL (ralentit auto selon plaintes/rebonds/reports de la dernière heure)
-- [ ] Rapprochement automatique des conversions sponsors
+- [x] Postback S2S : conversions sponsors en temps réel (URL par compte, {click_id}, dédoublonnage par transaction)
