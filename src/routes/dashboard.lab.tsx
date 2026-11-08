@@ -397,7 +397,7 @@ function AutoFix({ res }: { res: any }) {
   return (
     <div className="rounded-lg border border-success/40 bg-success/10 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={go} disabled={busy || !domain} className="bg-success text-success-foreground hover:bg-success/90">
+        <Button onClick={go} disabled={busy || !domain} className="bg-success text-primary-foreground hover:bg-success/90">
           <Wand2 className="mr-1 h-4 w-4" />{busy ? "Vérification et correction…" : "Automatiser les corrections"}
         </Button>
         <Input value={domain} onChange={(e) => setDomain(e.target.value.trim())} placeholder="domaine expéditeur" className="max-w-xs" />
