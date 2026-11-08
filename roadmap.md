@@ -64,3 +64,14 @@
 - [x] Mail-Tester : connecteur Lab prêt (contrat docs/CODEX.md)
 - [ ] Mail-Tester : renseigner MAILTESTER_URL et MAILTESTER_KEY quand le serveur Codex est en ligne
 - [x] Files KumoMTA et Traffic Shaping sur données réelles
+
+# Nouveaux modules (un par un)
+- [x] Validation d'emails réelle (syntaxe, fautes, MX, jetables, rôles, suppression) + nettoyage de listes
+- [ ] Pre-Flight Gate branché aux campagnes
+- [ ] Testeur de placement Inbox/Spam/Promo
+- [ ] Alertes Slack/Webhook/Email
+- [ ] Éditeur visuel de templates
+- [ ] Optimiseur IA d'objets
+- [ ] Tracking clics/ouvertures sur vos sous-domaines
+- [ ] Régulation dynamique par FAI + FBL
+- [ ] Rapprochement automatique des conversions sponsors
