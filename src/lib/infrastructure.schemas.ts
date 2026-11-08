@@ -44,7 +44,7 @@ export function ispHealth(events: { recipient: string; event_type: string }[]): 
   for (const isp of Object.keys(ISP_DOMAINS)) out[isp] = { isp, total: 0, deferred: 0, bounced: 0, complaints: 0, factor: 1, reason: 'Normal' };
   for (const e of events) {
     const isp = ispOf(e.recipient); if (!isp) continue;
-    const h = out[isp]; h.total++;
+    const h = out[isp]; if (!h) continue; h.total++;
     if (e.event_type === 'deferred') h.deferred++;
     else if (e.event_type === 'bounce') h.bounced++;
     else if (e.event_type === 'complaint') h.complaints++;
