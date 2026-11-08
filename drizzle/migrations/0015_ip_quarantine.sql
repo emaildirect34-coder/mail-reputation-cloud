@@ -1,0 +1,1 @@
+ALTER TABLE public.server_ips ADD COLUMN IF NOT EXISTS quarantined_at timestamptz, ADD COLUMN IF NOT EXISTS quarantine_reason text, ADD COLUMN IF NOT EXISTS checked_at timestamptz;

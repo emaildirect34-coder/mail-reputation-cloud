@@ -715,9 +715,12 @@ export type Database = {
         Row: {
           active: boolean
           address: string
+          checked_at: string | null
           family: number
           id: string
           pool_id: string | null
+          quarantine_reason: string | null
+          quarantined_at: string | null
           rdns: string | null
           server_id: string
           synced_at: string
@@ -725,9 +728,12 @@ export type Database = {
         Insert: {
           active?: boolean
           address: string
+          checked_at?: string | null
           family: number
           id?: string
           pool_id?: string | null
+          quarantine_reason?: string | null
+          quarantined_at?: string | null
           rdns?: string | null
           server_id: string
           synced_at?: string
@@ -735,9 +741,12 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string
+          checked_at?: string | null
           family?: number
           id?: string
           pool_id?: string | null
+          quarantine_reason?: string | null
+          quarantined_at?: string | null
           rdns?: string | null
           server_id?: string
           synced_at?: string
