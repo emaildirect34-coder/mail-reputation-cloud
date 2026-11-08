@@ -78,7 +78,15 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     const { cfUpsert } = await import("./providers.server");
     const res = await cfUpsert(acc, d.zone_id, expectedRecords(d));
     await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", data.id);
-    return res;
+    // Auto-push DKIM keys: bind domain to every connected KumoMTA server; agents pull keys on next heartbeat.
+    let serversBound = 0;
+    const agents = await db.from("server_agents").select("server_id,status").neq("status", "awaiting");
+    for (const a of agents.data ?? []) {
+      const ex = await db.from("server_domain_bindings").select("id").eq("server_id", a.server_id).eq("domain_id", data.id).maybeSingle();
+      if (!ex.data) { const ins = await db.from("server_domain_bindings").insert({ server_id: a.server_id, domain_id: data.id }); if (!ins.error) serversBound++; }
+      else serversBound++;
+    }
+    return { ...(res as object), serversBound };
   });
 
 export const deleteDomain = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
