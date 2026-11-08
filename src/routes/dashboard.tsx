@@ -11,6 +11,7 @@ import {
   Globe, CloudCog, KeyRound, BadgeCheck, Lock, FlaskConical, MailCheck, Search, BarChart3, MailX, ScanLine,
   ShieldAlert, Ban, ClipboardCheck, FileBarChart, Users, CreditCard, Settings2, Settings, ChevronDown, Bell,
   LogOut, ShieldCheck, Zap, Rocket, Menu, Mail,
+  Database,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
