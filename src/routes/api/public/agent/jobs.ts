@@ -20,7 +20,10 @@ export const Route = createFileRoute('/api/public/agent/jobs')({
         const pick = (c: any, v: number | null) => { const x = Array.isArray(c.ab_variants) ? c.ab_variants[v ?? c.ab_winner ?? 0] : null; return x ? { ...c, subject: x.subject || c.subject, from_name: x.fromName || c.from_name } : c; };
         const { renderMessage } = await import('@/lib/sending.server');
         const origin = new URL(request.url).origin;
-        const jobs = msgs.flatMap(m => { const c = camps.find((x: any) => x.id === m.campaign_id); return c ? [{ id: m.id, sender: `bounce+${m.id}@${c.from_email.split('@')[1]}`, rcpt: m.email, content: renderMessage(pick(c, (m as any).variant), m, origin) }] : []; });
+        const fromDomains = [...new Set(camps.map((c: any) => String(c.from_email).split('@')[1]))];
+        const doms = fromDomains.length ? (await (a.db as any).from('sending_domains').select('domain,tracking_host').in('domain', fromDomains)).data ?? [] : [];
+        const trackFor = (email: string) => { const h = doms.find((x: any) => x.domain === email.split('@')[1])?.tracking_host; return h ? `https://${h}` : origin; };
+        const jobs = msgs.flatMap(m => { const c = camps.find((x: any) => x.id === m.campaign_id); return c ? [{ id: m.id, sender: `bounce+${m.id}@${c.from_email.split('@')[1]}`, rcpt: m.email, content: renderMessage(pick(c, (m as any).variant), m, origin, trackFor(c.from_email)) }] : []; });
         return Response.json({ jobs }, { headers: { 'Cache-Control': 'no-store' } });
       },
       POST: async ({ request }) => {
