@@ -75,6 +75,37 @@ OnUnitActiveSec=60
 [Install]
 WantedBy=timers.target
 U
+# Branded click/open tracking: Caddy serves t.<domain> with on-demand TLS and proxies only tracking paths to the site.
+if command -v apt-get >/dev/null; then
+  apt-get install -y debian-keyring debian-archive-keyring apt-transport-https || true
+  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg || true
+  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt > /etc/apt/sources.list.d/caddy-stable.list || true
+  apt-get update -y && apt-get install -y caddy || true
+else dnf install -y caddy || true; fi
+if command -v caddy >/dev/null; then
+cat > /etc/caddy/Caddyfile <<CADDY
+{
+  on_demand_tls {
+    ask ${origin}/api/public/agent/tls-ask
+  }
+}
+https:// {
+  tls {
+    on_demand
+  }
+  @track path /api/public/t/* /api/public/c/*
+  handle @track {
+    reverse_proxy ${origin} {
+      header_up Host {upstream_hostport}
+    }
+  }
+  handle {
+    respond 404
+  }
+}
+CADDY
+systemctl enable caddy && systemctl restart caddy || true
+fi
 systemctl daemon-reload && systemctl enable --now kumomta kumo-agent.timer
 /usr/local/bin/kumo-agent && echo "Agent installé et connecté."
 `;

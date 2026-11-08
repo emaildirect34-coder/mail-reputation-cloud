@@ -76,7 +76,7 @@
 - [ ] Placement : Codex doit livrer §4 sur le VPS Mail-Tester avec les boîtes témoins
 - [x] Webhooks réels signés (livrés, rebonds, plaintes, désinscriptions)
 - [x] Aperçu email ordinateur/mobile/sombre + insertion des variables
-- [ ] Optimiseur IA d'objets
-- [ ] Tracking clics/ouvertures sur vos sous-domaines
+- [x] Optimiseur IA d'objets
+- [x] Tracking clics/ouvertures sur vos sous-domaines (t.domaine, Caddy sur serveurs)
 - [ ] Régulation dynamique par FAI + FBL
 - [ ] Rapprochement automatique des conversions sponsors

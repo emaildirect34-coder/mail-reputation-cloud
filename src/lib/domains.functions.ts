@@ -183,3 +183,33 @@ export const recheckDomainDns = createServerFn({ method: "POST" }).middleware([r
     await db.from("sending_domains").update({ checks: res, checked_at: new Date().toISOString() }).eq("id", (d as any).id);
     return { checks: Object.fromEntries(Object.entries(res).map(([k, v]) => [k, v.ok])) as Record<string, boolean> };
   });
+
+/** Branded tracking: publish t.<domain> → sending server; Caddy on that server proxies open/click URLs to the site with on-demand TLS. */
+export const setupTracking = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((i: { id: string; disable?: boolean }) => ({ id: String(i.id), disable: Boolean(i.disable) }))
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const { data: d } = await db.from("sending_domains").select(PUBLIC).eq("id", data.id).single();
+    if (!d) throw new Error("Domaine introuvable");
+    if (data.disable) { await db.from("sending_domains").update({ tracking_host: null }).eq("id", d.id); return { host: null, live: false }; }
+    const healed = await healDomain(db, d);
+    if (!healed.acc) throw new Error(healed.note);
+    if (!healed.d.ip) throw new Error("Aucun serveur d'envoi connecté pour héberger le suivi.");
+    const host = `t.${d.domain}`;
+    const { cfUpsert } = await import("./providers.server");
+    const [r] = await cfUpsert(healed.acc, healed.d.zone_id, [{ key: "tracking", type: "A", name: host, content: healed.d.ip }]);
+    if (!r?.ok) throw new Error(r?.error ?? "Cloudflare a refusé l'enregistrement");
+    await db.from("sending_domains").update({ tracking_host: host }).eq("id", d.id);
+    return { host, live: await trackingLive(host) };
+  });
+
+async function trackingLive(host: string) {
+  try { const r = await fetch(`https://${host}/api/public/t/health`, { signal: AbortSignal.timeout(6000) }); return r.ok; } catch { return false; }
+}
+
+export const trackingStatus = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await admin(context);
+    const { data } = await db.from("sending_domains").select("id,domain,tracking_host").order("created_at");
+    return Promise.all(((data ?? []) as { id: string; domain: string; tracking_host: string | null }[]).map(async x => ({ ...x, live: x.tracking_host ? await trackingLive(x.tracking_host) : false })));
+  });
