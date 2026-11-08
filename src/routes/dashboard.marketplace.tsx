@@ -52,7 +52,7 @@ function Marketplace() {
     setBusy(true);
     try {
       const r = await deployFn({ data: { accountId: acc, plan: chosen.id, region, label, monthly: chosen.monthly } });
-      toast.success(`Serveur commandé${r.ipv4 ? ` · IP ${r.ipv4}` : ""}. KumoMTA s'installe (5–10 min).`);
+      toast.success(`Serveur commandé${r.ipv4 ? ` · IP ${r.ipv4}` : ""}. KumoMTA et l’agent s’installent seuls (5–10 min), sans terminal.`);
       qc.invalidateQueries({ queryKey: ["managed-servers"] });
     } catch (e) { toast.error((e as Error).message); }
     setBusy(false);

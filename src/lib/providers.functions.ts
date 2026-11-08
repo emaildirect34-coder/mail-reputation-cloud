@@ -94,13 +94,26 @@ export const deployServer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = await admin(context);
     const acc = await loadAccount(db, data.accountId);
-    const { deploy } = await import("./providers.server");
-    const r = await deploy(acc, data);
-    await db.from("managed_servers").insert({
-      account_id: acc.id, provider: acc.provider, external_id: r.id, label: data.label, region: data.region,
-      plan: data.plan, monthly_price: data.monthly, ipv4: r.ipv4, status: "provisioning", created_by: context.userId,
-    });
-    return r;
+    const { deploy, agentCloudInit } = await import("./providers.server");
+    const { newToken, sha256 } = await import("./kumo.server");
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const origin = new URL(getRequest().url).origin;
+    const ins = await db.from("managed_servers").insert({
+      account_id: acc.id, provider: acc.provider, external_id: `pending-${crypto.randomUUID()}`, label: data.label, region: data.region,
+      plan: data.plan, monthly_price: data.monthly, status: "provisioning", created_by: context.userId,
+    }).select("id").single();
+    if (ins.error) throw new Error(ins.error.message);
+    const token = newToken();
+    const ag = await db.from("server_agents").upsert({ server_id: ins.data.id, token_hash: await sha256(token), status: "awaiting", last_error: null }, { onConflict: "server_id" });
+    if (ag.error) { await db.from("managed_servers").delete().eq("id", ins.data.id); throw new Error(ag.error.message); }
+    try {
+      const r = await deploy(acc, { ...data, userData: agentCloudInit(origin, token) });
+      await db.from("managed_servers").update({ external_id: r.id, ipv4: r.ipv4 }).eq("id", ins.data.id);
+      return r;
+    } catch (e) {
+      await db.from("managed_servers").delete().eq("id", ins.data.id);
+      throw e;
+    }
   });
 
 export const listManagedServers = createServerFn({ method: "POST" })
