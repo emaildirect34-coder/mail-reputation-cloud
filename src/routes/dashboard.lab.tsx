@@ -255,6 +255,119 @@ function Content() {
   );
 }
 
+const INFO: Record<string, { name: string; why: string }> = {
+  spf: { name: "SPF — serveur autorisé", why: "Dit aux boîtes mail que votre serveur a le droit d'envoyer pour ce domaine. Sans lui, l'email paraît suspect." },
+  dkim: { name: "DKIM — signature du domaine", why: "Prouve que l'email vient bien de vous et n'a pas été modifié en route." },
+  dmarc: { name: "DMARC — protection anti-usurpation", why: "Indique quoi faire des emails qui échouent SPF/DKIM. Exigé par Gmail et Yahoo." },
+  dmarc_alignment: { name: "Alignement DMARC", why: "Le domaine signé doit correspondre au domaine affiché dans « De : »." },
+  arc: { name: "ARC — chaîne de confiance", why: "Utile surtout pour les relais et listes de diffusion. Faible impact pour un envoi direct." },
+  rspamd: { name: "Filtre anti-spam Rspamd", why: "Le filtre utilisé par de nombreux hébergeurs analyse le contenu et les en-têtes." },
+  spamassassin: { name: "Filtre anti-spam SpamAssassin", why: "Le filtre historique. Un score sous 5 signifie que l'email passe." },
+  rdns: { name: "Reverse DNS de l'IP", why: "L'adresse IP doit pointer vers un nom de serveur réel." },
+  mime: { name: "Structure du message", why: "Le format technique (texte, HTML, pièces jointes) est bien construit." },
+  links: { name: "Liens du message", why: "Vérifie les liens raccourcis, redirigés ou cassés." },
+  rfc8058: { name: "Désinscription en 1 clic", why: "Obligatoire pour Gmail et Yahoo depuis 2024 pour les envois en masse." },
+  list_unsubscribe: { name: "Lien de désinscription", why: "Permet au destinataire de se désinscrire au lieu de cliquer « Spam »." },
+  gmail_yahoo_2024: { name: "Règles Gmail & Yahoo 2024", why: "Résumé des exigences des deux plus grosses messageries." },
+  fr_isp: { name: "Orange, SFR, Free", why: "Exigences propres aux fournisseurs français (nom du serveur, EHLO)." },
+  rbl: { name: "Listes noires", why: "Votre IP ne doit figurer sur aucune liste noire anti-spam." },
+  subnet24: { name: "Réputation des IP voisines", why: "Les IP de votre bloc /24 peuvent nuire à votre réputation." },
+  mta_sts: { name: "MTA-STS", why: "Force le chiffrement des emails reçus sur votre domaine. Bonus de confiance." },
+  dane_tlsa: { name: "DANE / TLSA", why: "Sécurité avancée du chiffrement. Bonus, non bloquant." },
+  bimi_vmc: { name: "BIMI — logo dans la boîte", why: "Affiche votre logo à côté de vos emails dans Gmail et Yahoo. Bonus." },
+};
+const GROUPS: { title: string; desc: string; keys: string[] }[] = [
+  { title: "Authentification", desc: "Prouver que vous êtes bien l'expéditeur", keys: ["spf", "dkim", "dmarc", "dmarc_alignment", "arc"] },
+  { title: "Filtres anti-spam & contenu", desc: "Comment les filtres jugent votre message", keys: ["rspamd", "spamassassin", "mime", "links"] },
+  { title: "Règles des messageries", desc: "Exigences Gmail, Yahoo et fournisseurs français", keys: ["rfc8058", "list_unsubscribe", "gmail_yahoo_2024", "fr_isp"] },
+  { title: "Réputation du serveur", desc: "Image de votre IP sur Internet", keys: ["rdns", "rbl", "subnet24"] },
+  { title: "Bonus avancés", desc: "Pour aller au-delà du 10/10", keys: ["mta_sts", "dane_tlsa", "bimi_vmc"] },
+];
+
+function CheckCard({ k, v, pts }: { k: string; v: any; pts?: number | undefined }) {
+  const [open, setOpen] = useState(!v.pass);
+  const [copied, setCopied] = useState(false);
+  const info = INFO[k] ?? { name: k.toUpperCase(), why: "" };
+  return (
+    <div className={`rounded-lg border p-3 ${v.pass ? "border-border" : "border-destructive/40 bg-destructive/5"}`}>
+      <button className="flex w-full items-start justify-between gap-2 text-left" onClick={() => setOpen(!open)}>
+        <div>
+          <p className="text-sm font-medium">{info.name}</p>
+          <p className="text-xs text-muted-foreground">{info.why}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {pts ? <Pill tone="bad">{pts} pt</Pill> : null}
+          <Pill tone={v.pass ? "ok" : "bad"}>{v.pass ? "OK" : "À corriger"}</Pill>
+        </div>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          {v.detail && <p className="break-words text-xs text-muted-foreground"><span className="font-medium text-foreground">Constaté : </span>{v.detail}</p>}
+          {v.fix && (
+            <div className="rounded-md bg-muted p-2">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs font-medium">Solution</span>
+                <Button size="sm" variant="outline" className="h-7" onClick={() => { navigator.clipboard?.writeText(v.fix); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+                  <Copy className="mr-1 h-3 w-3" />{copied ? "Copié" : "Copier la solution"}
+                </Button>
+              </div>
+              <pre className="whitespace-pre-wrap break-words text-xs">{v.fix}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Report({ res, checks }: { res: any; checks: [string, any][] }) {
+  const score = Number(res.score);
+  const map = Object.fromEntries(checks);
+  const pen = new Map<string, number>((res.penalties ?? []).map((p: any) => [String(p.rule).toLowerCase(), Number(p.points)]));
+  const failed = checks.filter(([, v]) => !v.pass).length;
+  const gain = (res.penalties ?? []).reduce((s: number, p: any) => s - Number(p.points), 0);
+  const verdict = score >= 9 ? ["Excellent", "Votre email arrivera en boîte de réception.", "ok"] : score >= 7 ? ["Correct", "Quelques réglages pour éviter les spams.", "warn"] : ["Risque de spam", "Gmail et Yahoo risquent de classer cet email en spam.", "bad"];
+  const known = new Set(GROUPS.flatMap((g) => g.keys));
+  const others = checks.filter(([k]) => !known.has(k)).map(([k]) => k);
+  const groups = others.length ? [...GROUPS, { title: "Autres contrôles", desc: "", keys: others }] : GROUPS;
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="rounded-lg border border-border p-4 lg:col-span-1">
+          <p className="text-xs text-muted-foreground">Score global</p>
+          <p className="text-4xl font-bold text-primary">{score.toFixed(1)}<span className="text-lg text-muted-foreground"> / 10</span></p>
+          <div className="my-2"><Bar value={score * 10} /></div>
+          <Pill tone={verdict[2] as any}>{verdict[0]}</Pill>
+          <p className="mt-2 text-sm text-muted-foreground">{verdict[1]}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+          {groups.slice(0, 4).map((g) => {
+            const items = g.keys.filter((k) => map[k]);
+            const ok = items.filter((k) => map[k].pass).length;
+            return <Stat key={g.title} label={g.title} value={`${ok} / ${items.length}`} sub={ok === items.length ? "Tout est bon" : `${items.length - ok} à corriger`} />;
+          })}
+        </div>
+      </div>
+      {failed > 0 && (
+        <p className="rounded-lg border border-border bg-muted/50 p-3 text-sm">
+          <span className="font-medium">{failed} point(s) à corriger.</span> {gain > 0 && <>Les corrections ci-dessous peuvent vous faire gagner <b>+{gain.toFixed(1)} pt</b>. </>}Cliquez sur « Copier la solution » puis appliquez-la dans vos DNS ou votre serveur.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {groups.map((g) => {
+          const items = g.keys.filter((k) => map[k]).sort((a, b) => Number(map[a].pass) - Number(map[b].pass));
+          if (!items.length) return null;
+          return (
+            <Panel key={g.title} title={g.title} action={<span className="text-xs text-muted-foreground">{g.desc}</span>}>
+              <div className="space-y-2">{items.map((k) => <CheckCard key={k} k={k} v={map[k]} pts={pen.get(k)} />)}</div>
+            </Panel>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function VpsTester() {
   const create = useServerFn(mailTesterNew);
   const fetchResult = useServerFn(mailTesterResult);
@@ -285,11 +398,7 @@ function VpsTester() {
       {test && !res && <p className="mt-3 text-sm text-muted-foreground">Envoyez votre email à cette adresse, puis cliquez sur « Voir le résultat ».</p>}
       {res && res.status !== "done" && <p className="mt-3 text-sm text-muted-foreground">En attente de réception de l'email…</p>}
       {res?.status === "done" && (
-        <div className="mt-4 space-y-3">
-          <Stat label="Score" value={`${Number(res.score).toFixed(1)} / 10`} />
-          <DataTable cols={["Contrôle", "Résultat", "Détail"]} rows={checks.map(([k, v]) => [k.toUpperCase(), <Pill tone={v.pass ? "ok" : "bad"}>{v.pass ? "OK" : "Échec"}</Pill>, v.detail ?? "—"])} />
-          {(res.penalties ?? []).length > 0 && <DataTable cols={["Règle", "Points", "Description"]} rows={res.penalties.map((p: any) => [p.rule, p.points, p.description ?? ""])} />}
-        </div>
+        <Report res={res} checks={checks} />
       )}
     </Panel>
   );
