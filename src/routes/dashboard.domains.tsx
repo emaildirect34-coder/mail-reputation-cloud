@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
 import { toast } from "sonner";
-import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain } from "@/lib/domains.functions";
+import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain, setupTracking, trackingStatus } from "@/lib/domains.functions";
 import { listAccounts, listZones, listManagedServers } from "@/lib/providers.functions";
 import { bindDomainServer, listDomainBindings } from '@/lib/infrastructure.functions';
 import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
@@ -202,7 +202,44 @@ function Domains() {
           </div>
         </Panel>
       )}
+      <TrackingPanel />
       <StatusBar>{domains.length} domaine(s) · {ready} prêt(s) à envoyer · contrôle par DNS public</StatusBar>
     </>
+  );
+}
+
+function TrackingPanel() {
+  const fStatus = useServerFn(trackingStatus), fSetup = useServerFn(setupTracking);
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["tracking-status"], queryFn: () => fStatus(), refetchInterval: 30000 });
+  const [busy, setBusy] = useState<string | null>(null);
+  const act = async (id: string, disable = false) => {
+    setBusy(id);
+    try { const r = await fSetup({ data: { id, disable } }); toast.success(disable ? "Suivi de marque désactivé." : r.live ? `${r.host} est actif.` : `${r.host} publié — le certificat s'active en quelques minutes.`); qc.invalidateQueries({ queryKey: ["tracking-status"] }); }
+    catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
+  return (
+    <Panel title="Suivi des clics et ouvertures sur vos domaines">
+      <div className="space-y-3 p-4">
+        <p className="text-sm text-muted-foreground">Les liens et le pixel de vos emails passent par <b>t.votre-domaine.com</b> au lieu d'une adresse partagée : meilleure réputation et alignement avec l'expéditeur. Le sous-domaine est publié sur Cloudflare et servi en HTTPS par votre serveur d'envoi.</p>
+        {q.error && <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p>}
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {(q.data ?? []).map(d => (
+            <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{d.domain}</p>
+                <p className="truncate font-mono text-xs text-muted-foreground">{d.tracking_host ?? "Adresse partagée du site"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {d.tracking_host ? <Pill tone={d.live ? "good" : "warn"}>{d.live ? "Actif" : "En attente du certificat"}</Pill> : <Pill>Désactivé</Pill>}
+                {d.tracking_host
+                  ? <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => act(d.id, true)}>Désactiver</Button>
+                  : <Button size="sm" disabled={busy === d.id} onClick={() => act(d.id)}><Link2 className="h-4 w-4" /> Activer</Button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Panel>
   );
 }
