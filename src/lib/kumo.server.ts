@@ -1,5 +1,5 @@
 // Server-only: KumoMTA configuration generator and agent token helpers.
-import { plannedQuota } from './infrastructure.schemas';
+import { plannedQuota, effectiveDay } from './infrastructure.schemas';
 
 export async function sha256(text: string) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
