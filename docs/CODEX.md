@@ -47,3 +47,14 @@ Inbound SMTP sink on a dedicated domain (e.g. `check.example.com`, wildcard MX),
 `test_id` matches `^[A-Za-z0-9_-]{4,64}$`. Results kept ≥ 7 days.
 
 Once deployed, the owner stores `MAILTESTER_URL` and `MAILTESTER_KEY` as app secrets; the Lab page « Testeur 10/10 » works with no code change.
+
+## Mail-Tester v2 — checks beyond mail-tester.com (Codex must implement)
+Add to `checks[]` of GET /api/v1/tests/:id (each `{id,status:pass|warn|fail,points,detail,fix}`):
+- `rspamd` + `spamassassin` dual engine scores (both returned, worst one penalizes).
+- `rfc8058` List-Unsubscribe-Post: List-Unsubscribe=One-Click present and DKIM-signed.
+- `dmarc_alignment` strict (adkim=s/aspf=s) result, `arc` chain validity.
+- `mta_sts`, `dane_tlsa`, `bimi_vmc` for the From domain.
+- `subnet24` reputation: count of listed IPs in sender /24 (Spamhaus DQS, Barracuda, SORBS, 25+ RBLs).
+- `fr_isp` hints for Orange/SFR/Free/Laposte (rate, HELO, rDNS forward-confirmed).
+- `gmail_yahoo_2024` compliance summary.
+Every failing check MUST carry a concrete `fix` string (DNS record or header to add).
