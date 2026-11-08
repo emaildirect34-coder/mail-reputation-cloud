@@ -65,6 +65,7 @@ const sections: Section[] = [
     { to: "/dashboard/preflight", icon: ScanLine, label: "Scanner de liens sponsors" },
     { to: "/dashboard/shield", icon: ShieldAlert, label: "Protection & Urgence" },
     { to: "/dashboard/suppression", icon: Ban, label: "Suppressions" },
+    { to: "/dashboard/vault", icon: Database, label: "Base clients" },
     { to: "/dashboard/validation", icon: ClipboardCheck, label: "Conformité" },
     { to: "/dashboard/postmaster", icon: FileBarChart, label: "Rapports DMARC" },
   ]},

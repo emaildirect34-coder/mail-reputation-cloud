@@ -58,3 +58,16 @@ Add to `checks[]` of GET /api/v1/tests/:id (each `{id,status:pass|warn|fail,poin
 - `fr_isp` hints for Orange/SFR/Free/Laposte (rate, HELO, rDNS forward-confirmed).
 - `gmail_yahoo_2024` compliance summary.
 Every failing check MUST carry a concrete `fix` string (DNS record or header to add).
+
+## 3. Contacts Vault VPS (149 GB customer base, built by Codex)
+
+The dashboard never stores the full base. A dedicated VPS (ClickHouse recommended, ~2 TB NVMe) holds contacts; the site drives it over HTTPS with `Authorization: Bearer $VAULT_KEY`. Secrets on the site: `VAULT_URL`, `VAULT_KEY`.
+
+Contact columns: `email` (lowercase), `email_md5`, `domain`, `isp` (gmail|outlook|yahoo|orange|sfr|free|laposte|other), `country`, `first_name`, `created_at`, `last_open_at`, `last_click_at`, `status` (active|invalid|suppressed|bounced|complained), `tags` (array).
+
+- `GET /api/v1/stats` → `{ "total": n, "active": n, "invalid": n, "suppressed": n, "by_isp": {"gmail": n,...}, "by_country": {"FR": n,...}, "disk_bytes": n }`
+- `POST /api/v1/imports` body `{ "source_url": "https://... or sftp path", "format": "csv", "delimiter": ",", "mapping": {"email": 0, "first_name": 1, "country": 2} }` → `{ "import_id": "..." }`. Streams the file, dedupes by `email_md5`, validates syntax/MX, applies suppression.
+- `GET /api/v1/imports` → `{ "imports": [{ "import_id", "status": "queued|running|done|failed", "rows_read", "rows_inserted", "rows_rejected", "started_at", "finished_at", "error" }] }`
+- `POST /api/v1/segments/count` body `{ "filters": { "isp": ["gmail"], "country": ["FR"], "active_days": 90, "tags": [], "status": "active" } }` → `{ "count": n }` (must answer < 2 s, use materialized aggregates).
+- `POST /api/v1/segments/export` body `{ "filters": {...}, "campaign_id": "uuid", "limit": n, "callback_url": "https://mail-reputation-cloud.lovable.app/api/public/vault/batch" }` → `{ "export_id": "..." }`. The VPS must exclude MD5 suppressions fetched from the site and push recipients to the campaign queue in batches of 5 000 (contract for the callback to be finalized together).
+- `POST /api/v1/suppressions` body `{ "md5": ["..."] }` → marks contacts suppressed (site calls this on every new unsubscribe/complaint).
