@@ -231,7 +231,7 @@ function TrackingPanel() {
                 <p className="truncate font-mono text-xs text-muted-foreground">{d.tracking_host ?? "Adresse partagée du site"}</p>
               </div>
               <div className="flex items-center gap-2">
-                {d.tracking_host ? <Pill tone={d.live ? "good" : "warn"}>{d.live ? "Actif" : "En attente du certificat"}</Pill> : <Pill>Désactivé</Pill>}
+                {d.tracking_host ? <Pill tone={d.live ? "ok" : "warn"}>{d.live ? "Actif" : "En attente du certificat"}</Pill> : <Pill>Désactivé</Pill>}
                 {d.tracking_host
                   ? <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => act(d.id, true)}>Désactiver</Button>
                   : <Button size="sm" disabled={busy === d.id} onClick={() => act(d.id)}><Link2 className="h-4 w-4" /> Activer</Button>}

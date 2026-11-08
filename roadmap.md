@@ -77,6 +77,6 @@
 - [x] Webhooks réels signés (livrés, rebonds, plaintes, désinscriptions)
 - [x] Aperçu email ordinateur/mobile/sombre + insertion des variables
 - [x] Optimiseur IA d'objets
-- [ ] Tracking clics/ouvertures sur vos sous-domaines
+- [x] Tracking clics/ouvertures sur vos sous-domaines (t.domaine, Caddy sur serveurs)
 - [ ] Régulation dynamique par FAI + FBL
 - [ ] Rapprochement automatique des conversions sponsors
