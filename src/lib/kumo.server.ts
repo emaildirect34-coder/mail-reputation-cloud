@@ -1,5 +1,5 @@
 // Server-only: KumoMTA configuration generator and agent token helpers.
-import { plannedQuota } from './infrastructure.schemas';
+import { plannedQuota, effectiveDay } from './infrastructure.schemas';
 
 export async function sha256(text: string) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -34,7 +34,7 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   if (doms.error) throw new Error(doms.error.message);
   const v4 = (ips.data ?? []).filter((i: any) => i.family === 4);
   const ipIds = v4.map((i: any) => i.id);
-  const warm = ipIds.length ? await db.from('warmup_plans').select('ip_id,isp,daily_limits,current_day,status').in('ip_id', ipIds).neq('status', 'paused') : { data: [] };
+  const warm = ipIds.length ? await db.from('warmup_plans').select('ip_id,isp,daily_limits,current_day,status,created_at').in('ip_id', ipIds).eq('status', 'active') : { data: [] };
   if (warm.error) throw new Error(warm.error.message);
 
   const src = (a: string) => 'ip-' + a.replace(/[.:]/g, '_');
@@ -60,7 +60,7 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`}`, `kumo.on('get_egress_pool', function(name) return kumo.make_egress_pool { name = name, entries = POOLS[name] or POOLS['default'] or {} } end)`, '');
   // Warmup → per ISP daily caps (minimum across IPs of the plan quota)
   const caps: Record<string, number> = {};
-  for (const w of warm.data ?? []) { const v = plannedQuota(w.daily_limits, w.current_day); caps[w.isp] = (caps[w.isp] ?? 0) + v; }
+  for (const w of warm.data ?? []) { const v = plannedQuota(w.daily_limits, effectiveDay(w as any)); caps[w.isp] = (caps[w.isp] ?? 0) + v; }
   L.push(`local ISP_CAPS = {`);
   for (const [isp, cap] of Object.entries(caps)) for (const d of ISP_DOMAINS[isp] ?? []) L.push(`  [${q(d)}] = { max_message_rate = ${q(`${Math.max(1, Math.ceil(cap / 24))}/h`)}, connection_limit = 3 },`);
   L.push(`}`);
