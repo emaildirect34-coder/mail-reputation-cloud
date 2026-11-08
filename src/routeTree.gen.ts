@@ -54,6 +54,7 @@ import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agen
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
 import { Route as ApiPublicAgentTlsAskRouteImport } from './routes/api/public/agent/tls-ask'
 import { Route as ApiPublicCTokenRouteImport } from './routes/api/public/c/$token'
+import { Route as ApiPublicPostbackTokenRouteImport } from './routes/api/public/postback/$token'
 import { Route as ApiPublicTTokenRouteImport } from './routes/api/public/t/$token'
 import { Route as ApiPublicUnsubTokenRouteImport } from './routes/api/public/unsub/$token'
 
@@ -284,6 +285,11 @@ const ApiPublicCTokenRoute = ApiPublicCTokenRouteImport.update({
   path: '/api/public/c/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPostbackTokenRoute = ApiPublicPostbackTokenRouteImport.update({
+  id: '/api/public/postback/$token',
+  path: '/api/public/postback/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTTokenRoute = ApiPublicTTokenRouteImport.update({
   id: '/api/public/t/$token',
   path: '/api/public/t/$token',
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
@@ -490,6 +499,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/report'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
+    | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/report'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
+    | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   id:
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/report'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
+    | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   fileRoutesById: FileRoutesById
@@ -603,6 +615,7 @@ export interface RootRouteChildren {
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
   ApiPublicAgentTlsAskRoute: typeof ApiPublicAgentTlsAskRoute
   ApiPublicCTokenRoute: typeof ApiPublicCTokenRoute
+  ApiPublicPostbackTokenRoute: typeof ApiPublicPostbackTokenRoute
   ApiPublicTTokenRoute: typeof ApiPublicTTokenRoute
   ApiPublicUnsubTokenRoute: typeof ApiPublicUnsubTokenRoute
 }
@@ -924,6 +937,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/postback/$token': {
+      id: '/api/public/postback/$token'
+      path: '/api/public/postback/$token'
+      fullPath: '/api/public/postback/$token'
+      preLoaderRoute: typeof ApiPublicPostbackTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/t/$token': {
       id: '/api/public/t/$token'
       path: '/api/public/t/$token'
@@ -1031,6 +1051,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
   ApiPublicAgentTlsAskRoute: ApiPublicAgentTlsAskRoute,
   ApiPublicCTokenRoute: ApiPublicCTokenRoute,
+  ApiPublicPostbackTokenRoute: ApiPublicPostbackTokenRoute,
   ApiPublicTTokenRoute: ApiPublicTTokenRoute,
   ApiPublicUnsubTokenRoute: ApiPublicUnsubTokenRoute,
 }
