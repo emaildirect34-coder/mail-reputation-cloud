@@ -74,7 +74,7 @@
 - [x] rDNS/PTR automatique
 - [x] Testeur de placement Inbox/Spam/Promo (page + contrat §4)
 - [ ] Placement : Codex doit livrer §4 sur le VPS Mail-Tester avec les boîtes témoins
-- [ ] Alertes Slack/Webhook/Email
+- [x] Webhooks réels signés (livrés, rebonds, plaintes, désinscriptions)
 - [ ] Éditeur visuel de templates
 - [ ] Optimiseur IA d'objets
 - [ ] Tracking clics/ouvertures sur vos sous-domaines

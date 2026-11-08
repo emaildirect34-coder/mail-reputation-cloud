@@ -9,6 +9,8 @@ async function unsubscribe(token: string) {
   if (!m.data) return false;
   await db.rpc('add_suppressions', { _values: [m.data.email], _reason: 'unsubscribe', _source: `campagne ${m.data.campaign_id}` });
   await db.from('contacts').update({ status: 'unsubscribed' }).eq('email', m.data.email);
+  const { fireWebhooks } = await import('@/lib/webhooks.server');
+  await fireWebhooks('unsubscribe', { email: m.data.email, campaign_id: m.data.campaign_id });
   return true;
 }
 

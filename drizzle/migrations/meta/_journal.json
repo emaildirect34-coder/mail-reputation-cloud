@@ -85,6 +85,13 @@
       "when": 1794064381858,
       "tag": "0011_finance_campaign_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794167553975,
+      "tag": "0012_webhook_endpoints",
+      "breakpoints": true
     }
   ]
 }
