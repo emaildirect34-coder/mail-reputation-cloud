@@ -36,8 +36,8 @@ function Suppression() {
   return (
     <>
       <PageHeader title="Listes & suppressions" desc="Vos contacts et les adresses à ne jamais contacter, filtrées automatiquement avant chaque envoi." />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat label="Listes" value={String(lists.length)} /><Stat label="Contacts actifs" value={String(lists.reduce((a, l) => a + l.active, 0))} /><Stat label="Adresses supprimées" value={String(totalSupp)} /><Stat label="Désinscriptions" value={String(s["unsubscribe"] ?? 0)} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <Stat label="Listes" value={String(lists.length)} /><Stat label="Plaintes FBL" value={String(s["complaint"] ?? 0)} /><Stat label="Contacts actifs" value={String(lists.reduce((a, l) => a + l.active, 0))} /><Stat label="Adresses supprimées" value={String(totalSupp)} /><Stat label="Désinscriptions" value={String(s["unsubscribe"] ?? 0)} />
       </div>
       {q.error && <p role="alert" className="text-sm text-destructive">{q.error.message}</p>}
       <Panel title="Importer des contacts">
