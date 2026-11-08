@@ -144,7 +144,8 @@ export const autoFixDomain = createServerFn({ method: "POST" }).middleware([requ
     const before = await checkDomain(d);
     const recs = expectedRecords(d);
     // SPF must also authorize the sending IP, not just exist.
-    if (d.ip && before.spf?.ok && !String(before.spf.found ?? "").includes(d.ip)) before.spf = { ...before.spf, ok: false };
+    const spf = before["spf"];
+    if (d.ip && spf?.ok && !String(spf.found ?? "").includes(d.ip)) before["spf"] = { ...spf, ok: false };
     const missing = recs.filter((r) => !before[r.key]?.ok);
     let published = false;
     let note = healed.note;
