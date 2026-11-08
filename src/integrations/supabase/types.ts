@@ -565,6 +565,7 @@ export type Database = {
           selector_a: string
           selector_b: string
           synced_at: string | null
+          tracking_host: string | null
           zone_id: string | null
         }
         Insert: {
@@ -583,6 +584,7 @@ export type Database = {
           selector_a: string
           selector_b: string
           synced_at?: string | null
+          tracking_host?: string | null
           zone_id?: string | null
         }
         Update: {
@@ -601,6 +603,7 @@ export type Database = {
           selector_a?: string
           selector_b?: string
           synced_at?: string | null
+          tracking_host?: string | null
           zone_id?: string | null
         }
         Relationships: [
@@ -881,6 +884,38 @@ export type Database = {
             foreignKeyName: "sponsor_offers_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
+            referencedRelation: "sponsor_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsor_postbacks: {
+        Row: {
+          account_id: string
+          created_at: string
+          hits: number
+          last_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          hits?: number
+          last_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          hits?: number
+          last_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_postbacks_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
             referencedRelation: "sponsor_accounts"
             referencedColumns: ["id"]
           },
