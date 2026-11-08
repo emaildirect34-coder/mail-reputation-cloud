@@ -66,6 +66,7 @@
 - [x] Files KumoMTA et Traffic Shaping sur données réelles
 
 # Nouveaux modules (un par un)
+- [x] Quarantaine auto des IP en liste noire (vérif horaire, réintégration auto)
 - [x] Validation d'emails réelle (syntaxe, fautes, MX, jetables, rôles, suppression) + nettoyage de listes
 - [x] Pre-Flight Gate branché aux campagnes
 - [x] Base clients 149 Go : page + contrat Codex (docs/CODEX.md §3)
