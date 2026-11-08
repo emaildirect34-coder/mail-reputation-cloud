@@ -372,7 +372,7 @@ function Report({ res, checks }: { res: any; checks: [string, any][] }) {
 
 function senderDomain(res: any): string {
   const h = res?.headers;
-  const raw = String(res?.from ?? res?.sender ?? res?.mail_from ?? (Array.isArray(h) ? (h.find((x: any) => /^from$/i.test(x?.name ?? x?.[0] ?? ""))?.value ?? "") : (h?.From ?? h?.from ?? (typeof h === "string" ? (h.match(/^From:.*$/im)?.[0] ?? "") : ""))) ?? "");
+  const raw = String(res?.from ?? res?.sender ?? res?.mail_from ?? (Array.isArray(h) ? (h.find((x: any) => /^from$/i.test(x?.name ?? x?.[0] ?? ""))?.value ?? "") : (h?.From ?? h?.from ?? (typeof h === "string" ? (h.match(/^From:.*$/im)?.[0] ?? "") : ""))));
   return (raw.match(/@([a-z0-9.-]+\.[a-z]{2,})/i)?.[1] ?? "").toLowerCase();
 }
 
@@ -410,7 +410,7 @@ function AutoFix({ res }: { res: any }) {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {out.items.map((i) => (
               <div key={i.key} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <span className="font-medium">{i.label}</span><Pill tone={STATE[i.state][1]}>{STATE[i.state][0]}</Pill>
+                <span className="font-medium">{i.label}</span><Pill tone={STATE[i.state]?.[1] ?? "neutral"}>{STATE[i.state]?.[0]}</Pill>
               </div>
             ))}
           </div>
