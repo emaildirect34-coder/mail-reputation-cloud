@@ -143,3 +143,26 @@ export const deployMailDns = createServerFn({ method: "POST" })
     const { cfMailDns } = await import("./providers.server");
     return cfMailDns(await loadAccount(db, data.accountId), data.zoneId, data.domain, data.ip);
   });
+
+export const declareServer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { label: string; ipv4: string; provider: string }) => {
+    const label = String(i.label ?? "").trim().slice(0, 80);
+    const ipv4 = String(i.ipv4 ?? "").trim();
+    const provider = String(i.provider ?? "").trim().toLowerCase().slice(0, 40) || "autre";
+    if (!label) throw new Error("Nom requis");
+    if (!/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(ipv4)) throw new Error("Adresse IPv4 invalide");
+    return { label, ipv4, provider };
+  })
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const { data: dup } = await db.from("managed_servers").select("id").eq("ipv4", data.ipv4).maybeSingle();
+    if (dup) throw new Error("Un serveur avec cette IP existe déjà");
+    const { data: row, error } = await db.from("managed_servers").insert({
+      label: data.label, ipv4: data.ipv4, provider: data.provider, external_id: `manual-${data.ipv4}`,
+      status: "running", created_by: context.userId,
+    }).select("id").single();
+    if (error) throw new Error(error.message);
+    await db.from("server_ips").insert({ server_id: row.id, address: data.ipv4, family: 4, active: true, synced_at: new Date().toISOString() });
+    return { id: row.id as string };
+  });
