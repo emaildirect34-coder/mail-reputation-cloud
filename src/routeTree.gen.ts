@@ -52,6 +52,7 @@ import { Route as ApiPublicAgentEventsRouteImport } from './routes/api/public/ag
 import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
+import { Route as ApiPublicAgentTlsAskRouteImport } from './routes/api/public/agent/tls-ask'
 import { Route as ApiPublicCTokenRouteImport } from './routes/api/public/c/$token'
 import { Route as ApiPublicTTokenRouteImport } from './routes/api/public/t/$token'
 import { Route as ApiPublicUnsubTokenRouteImport } from './routes/api/public/unsub/$token'
@@ -273,6 +274,11 @@ const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
   path: '/api/public/agent/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentTlsAskRoute = ApiPublicAgentTlsAskRouteImport.update({
+  id: '/api/public/agent/tls-ask',
+  path: '/api/public/agent/tls-ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCTokenRoute = ApiPublicCTokenRouteImport.update({
   id: '/api/public/c/$token',
   path: '/api/public/c/$token',
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -479,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -589,6 +601,7 @@ export interface RootRouteChildren {
   ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
+  ApiPublicAgentTlsAskRoute: typeof ApiPublicAgentTlsAskRoute
   ApiPublicCTokenRoute: typeof ApiPublicCTokenRoute
   ApiPublicTTokenRoute: typeof ApiPublicTTokenRoute
   ApiPublicUnsubTokenRoute: typeof ApiPublicUnsubTokenRoute
@@ -897,6 +910,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/tls-ask': {
+      id: '/api/public/agent/tls-ask'
+      path: '/api/public/agent/tls-ask'
+      fullPath: '/api/public/agent/tls-ask'
+      preLoaderRoute: typeof ApiPublicAgentTlsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/c/$token': {
       id: '/api/public/c/$token'
       path: '/api/public/c/$token'
@@ -1009,6 +1029,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
+  ApiPublicAgentTlsAskRoute: ApiPublicAgentTlsAskRoute,
   ApiPublicCTokenRoute: ApiPublicCTokenRoute,
   ApiPublicTTokenRoute: ApiPublicTTokenRoute,
   ApiPublicUnsubTokenRoute: ApiPublicUnsubTokenRoute,

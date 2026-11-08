@@ -78,8 +78,8 @@ U
 # Branded click/open tracking: Caddy serves t.<domain> with on-demand TLS and proxies only tracking paths to the site.
 if command -v apt-get >/dev/null; then
   apt-get install -y debian-keyring debian-archive-keyring apt-transport-https || true
-  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt > /etc/apt/sources.list.d/caddy-stable.list
+  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg || true
+  curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt > /etc/apt/sources.list.d/caddy-stable.list || true
   apt-get update -y && apt-get install -y caddy || true
 else dnf install -y caddy || true; fi
 if command -v caddy >/dev/null; then
