@@ -47,7 +47,7 @@ function Validation() {
 
   const check = async (raw: string) => {
     const emails = Array.from(new Set(raw.split(/[\s,;]+/).map(s => s.trim()).filter(s => s.includes("@")))).slice(0, 5000);
-    if (!emails.length) return toast.error("Aucune adresse détectée");
+    if (!emails.length) { toast.error("Aucune adresse détectée"); return; }
     setBusy(true);
     try { setRes((await run({ data: { emails } })).results); }
     catch (e: any) { toast.error(e.message); }
@@ -78,7 +78,7 @@ function Validation() {
       <PageHeader title="Validation d'emails" desc="Syntaxe, fautes de frappe, domaine et MX réels, adresses jetables, rôles et liste de suppression." />
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Vérifiées" value={String(res.length)} />
-        <Stat label="Valides" value={String(counts.valid)} sub={rate == null ? undefined : `${rate} %`} />
+        <Stat label="Valides" value={String(counts.valid)} {...(rate == null ? {} : { sub: `${rate} %` })} />
         <Stat label="Risquées" value={String(counts.risky)} />
         <Stat label="Invalides" value={String(counts.invalid)} />
       </div>
