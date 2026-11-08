@@ -11,6 +11,33 @@ const PUBLIC = "id, domain, account_id, zone_id, ip, selector_a, selector_b, dki
 const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
 
+/** Self-heal before publishing: pick the Cloudflare zone that really owns the domain (by name, across all accounts) and fill the sending IP from a connected server. */
+async function healDomain(db: any, d: any): Promise<{ d: any; acc: any | null; note: string }> {
+  const { cfZones } = await import("./providers.server");
+  const { data: accs } = await db.from("provider_accounts").select("*").eq("provider", "cloudflare");
+  const ordered = [...(accs ?? [])].sort((a: any) => (a.id === d.account_id ? -1 : 1));
+  let acc: any = null, zoneId: string | null = null, note = "";
+  for (const a of ordered) {
+    try {
+      const zones = await cfZones(a);
+      const z = zones.filter((x) => d.domain === x.name || d.domain.endsWith("." + x.name)).sort((x, y) => y.name.length - x.name.length)[0];
+      if (z) { acc = a; zoneId = z.id; break; }
+    } catch (e) { note = (e as Error).message; }
+  }
+  let ip = d.ip;
+  if (!ip) {
+    const { data: ag } = await db.from("server_agents").select("server_id").neq("status", "awaiting");
+    const ids = (ag ?? []).map((x: any) => x.server_id);
+    if (ids.length) { const { data: s } = await db.from("managed_servers").select("ipv4").in("id", ids).not("ipv4", "is", null).limit(1); ip = s?.[0]?.ipv4 ?? null; }
+  }
+  const patch: any = {};
+  if (acc && (acc.id !== d.account_id || zoneId !== d.zone_id)) { patch.account_id = acc.id; patch.zone_id = zoneId; }
+  if (ip !== d.ip) patch.ip = ip;
+  if (Object.keys(patch).length) await db.from("sending_domains").update(patch).eq("id", d.id);
+  if (!acc) note = note || `Aucune zone Cloudflare ne contient « ${d.domain} ».`;
+  return { d: { ...d, ...patch }, acc, note };
+}
+
 export const listDomains = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = await admin(context);
@@ -71,12 +98,13 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     const db = await admin(context);
     const { data: d } = await db.from("sending_domains").select(PUBLIC).eq("id", data.id).single();
     if (!d) throw new Error("Domaine introuvable");
-    if (!d.account_id || !d.zone_id) throw new Error("Choisissez d'abord un compte et une zone Cloudflare");
-    const { data: acc } = await db.from("provider_accounts").select("*").eq("id", d.account_id).single();
-    if (!acc) throw new Error("Compte Cloudflare introuvable");
+    const healed = await healDomain(db, d);
+    if (!healed.acc) throw new Error(healed.note);
     const { expectedRecords } = await import("./domains.server");
     const { cfUpsert } = await import("./providers.server");
-    const res = await cfUpsert(acc, d.zone_id, expectedRecords(d));
+    const res = await cfUpsert(healed.acc, healed.d.zone_id, expectedRecords(healed.d));
+    const bad = res.filter((r) => !r.ok);
+    if (bad.length === res.length) throw new Error(bad[0]?.error ?? "Cloudflare a refusé la publication");
     await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", data.id);
     // Auto-push DKIM keys: bind domain to every connected KumoMTA server; agents pull keys on next heartbeat.
     let serversBound = 0;
@@ -108,22 +136,27 @@ export const autoFixDomain = createServerFn({ method: "POST" }).middleware([requ
     const db = await admin(context);
     const { data: list } = await db.from("sending_domains").select(PUBLIC);
     const doms = (list ?? []) as any[];
-    const d = doms.find((x) => x.domain === data.domain) ?? doms.filter((x) => data.domain.endsWith("." + x.domain)).sort((a, b) => b.domain.length - a.domain.length)[0];
-    if (!d) return { ok: false as const, domain: data.domain, message: `Le domaine « ${data.domain || "inconnu"} » n'est pas encore dans vos Domaines. Ajoutez-le d'abord.`, items: [] as { key: string; label: string; state: "done" | "pending" | "fixed" | "manual" }[] };
+    const d0 = doms.find((x) => x.domain === data.domain) ?? doms.filter((x) => data.domain.endsWith("." + x.domain)).sort((a, b) => b.domain.length - a.domain.length)[0];
+    if (!d0) return { ok: false as const, domain: data.domain, message: `Le domaine « ${data.domain || "inconnu"} » n'est pas encore dans vos Domaines. Ajoutez-le d'abord.`, items: [] as { key: string; label: string; state: "done" | "pending" | "fixed" | "manual" }[] };
+    const healed = await healDomain(db, d0);
+    const d = healed.d;
     const { checkDomain, expectedRecords } = await import("./domains.server");
     const before = await checkDomain(d);
     const recs = expectedRecords(d);
+    // SPF must also authorize the sending IP, not just exist.
+    const spf = before["spf"];
+    if (d.ip && spf?.ok && !String(spf.found ?? "").includes(d.ip)) before["spf"] = { ...spf, ok: false };
     const missing = recs.filter((r) => !before[r.key]?.ok);
     let published = false;
-    let note = "";
-    if (missing.length && d.account_id && d.zone_id) {
-      const { data: acc } = await db.from("provider_accounts").select("*").eq("id", d.account_id).single();
-      if (acc) {
-        const { cfUpsert } = await import("./providers.server");
-        try { await cfUpsert(acc, d.zone_id, missing); published = true; await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", d.id); }
-        catch (e) { note = (e as Error).message; }
-      }
-    } else if (missing.length) note = "Domaine non relié à Cloudflare : correction manuelle nécessaire.";
+    let note = healed.note;
+    if (missing.length && healed.acc) {
+      const { cfUpsert } = await import("./providers.server");
+      const res = await cfUpsert(healed.acc, d.zone_id, missing);
+      const bad = res.filter((r) => !r.ok);
+      published = bad.length < res.length;
+      if (bad.length) note = `Cloudflare a refusé : ${bad.map((b) => `${LABEL[b.key] ?? b.key} (${b.error})`).join(", ")}`;
+      if (published) await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", d.id);
+    } else if (missing.length) note = note || "Domaine non relié à Cloudflare : correction manuelle nécessaire.";
     // Ensure DKIM keys reach every connected server.
     const agents = await db.from("server_agents").select("server_id").neq("status", "awaiting");
     for (const a of agents.data ?? []) {
