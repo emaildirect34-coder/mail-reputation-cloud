@@ -86,7 +86,8 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
       if (!ex.data) { const ins = await db.from("server_domain_bindings").insert({ server_id: a.server_id, domain_id: data.id }); if (!ins.error) serversBound++; }
       else serversBound++;
     }
-    return { ...(res as object), serversBound };
+    void serversBound;
+    return res;
   });
 
 export const deleteDomain = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
