@@ -209,3 +209,14 @@ export async function inventory(a: Account): Promise<InventoryServer[]> {
   }
   throw new Error('Inventaire trop volumineux : synchronisation interrompue sans suppression');
 }
+
+// Set the reverse DNS (PTR) of a public IPv4 at the hosting provider. Returns false when the provider has no PTR API.
+export async function setRdns(a: Account, serverExternalId: string | null, ip: string, hostname: string): Promise<boolean> {
+  switch (a.provider) {
+    case "linode": await call(a, `/networking/ips/${ip}`, { method: "PUT", body: JSON.stringify({ rdns: hostname }) }); return true;
+    case "vultr": if (!serverExternalId) return false; await call(a, `/instances/${serverExternalId}/ipv4/reverse`, { method: "POST", body: JSON.stringify({ ip, reverse: hostname }) }); return true;
+    case "hetzner": if (!serverExternalId) return false; await call(a, `/servers/${serverExternalId}/actions/change_dns_ptr`, { method: "POST", body: JSON.stringify({ ip, dns_ptr: hostname }) }); return true;
+    case "digitalocean": if (!serverExternalId) return false; await call(a, `/droplets/${serverExternalId}/actions`, { method: "POST", body: JSON.stringify({ type: "rename", name: hostname }) }); return true;
+    default: return false;
+  }
+}
