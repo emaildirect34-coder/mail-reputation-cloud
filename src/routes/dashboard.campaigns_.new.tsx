@@ -10,6 +10,7 @@ import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { campaignOffers } from '@/lib/finance.functions';
+import { EmailPreview, MACROS } from '@/components/dash/email-preview';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -199,6 +200,7 @@ function Builder() {
             <IconBtn label="Nouveau" tone="primary" onClick={() => u("body", initial.body)}><span className="text-sm font-bold">+</span></IconBtn>
             <IconBtn label="Vider" tone="red" onClick={() => u("body", "")}><Trash2 /></IconBtn>
           </div>
+          <div className="flex flex-wrap gap-1">{MACROS.map(m => <button type="button" key={m.tag} title={`Insérer ${m.tag}`} className="rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold text-primary" onClick={() => { const t = document.querySelector<HTMLTextAreaElement>('[aria-label="Contenu HTML"]'); const a = t?.selectionStart ?? d.body.length, b = t?.selectionEnd ?? a; const ins = m.tag === "{unsubscribe_url}" ? '<a href="{unsubscribe_url}">Se désinscrire</a>' : m.tag; u("body", d.body.slice(0, a) + ins + d.body.slice(b)); }}>+ {m.label}</button>)}</div>
           <textarea aria-label="Contenu HTML" value={d.body} onChange={e => u("body", e.target.value)} className="h-36 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-[11.5px] leading-5 text-primary focus:outline-none focus:ring-1 focus:ring-ring" />
           <Row label="Rotation du corps">{inp("rotation", "", "number")}</Row>
           <div className="flex flex-wrap gap-1.5">
@@ -212,10 +214,7 @@ function Builder() {
           </div>
         </Col>
         <Col title="Aperçu HTML" icon={<Search />}>
-          <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-            <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2"><Mail className="size-5 text-primary" /><span className="font-display text-[14px] font-bold text-primary">Email Direct</span></div>
-            <iframe title="Aperçu HTML" sandbox="" srcDoc={preview} className="block h-44 w-full border-0 bg-card" />
-          </div>
+          <EmailPreview html={preview} subject={d.subject} fromName={d.fromName} />
           <div className="flex items-center justify-between"><IconBtn label="Rafraîchir" tone="primary" onClick={() => setPreview(d.body)}><RefreshCw /></IconBtn><label className="flex items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} className="size-4 accent-primary" />Activer l'aperçu en temps réel</label></div>
         </Col>
       </div>

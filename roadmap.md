@@ -75,7 +75,7 @@
 - [x] Testeur de placement Inbox/Spam/Promo (page + contrat §4)
 - [ ] Placement : Codex doit livrer §4 sur le VPS Mail-Tester avec les boîtes témoins
 - [x] Webhooks réels signés (livrés, rebonds, plaintes, désinscriptions)
-- [ ] Éditeur visuel de templates
+- [x] Aperçu email ordinateur/mobile/sombre + insertion des variables
 - [ ] Optimiseur IA d'objets
 - [ ] Tracking clics/ouvertures sur vos sous-domaines
 - [ ] Régulation dynamique par FAI + FBL
