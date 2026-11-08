@@ -70,6 +70,8 @@
 - [x] Pre-Flight Gate branché aux campagnes
 - [x] Base clients 149 Go : page + contrat Codex (docs/CODEX.md §3)
 - [ ] Base clients : brancher VAULT_URL/VAULT_KEY quand Codex a déployé le serveur
+- [x] Scanner réel Réputation & Blacklists
+- [ ] rDNS/PTR automatique
 - [ ] Testeur de placement Inbox/Spam/Promo
 - [ ] Alertes Slack/Webhook/Email
 - [ ] Éditeur visuel de templates
