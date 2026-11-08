@@ -1,66 +1,52 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
-import { toast } from "sonner";
+import { readShaping } from "@/lib/ops.functions";
 
 export const Route = createFileRoute("/dashboard/shaping")({
   head: () => ({ meta: [
     { title: "Traffic Shaping FAI — Email Direct" },
-    { name: "description", content: "Règles de débit KumoMTA par FAI : connexions, messages/min, backoff et micro-pacing." },
+    { name: "description", content: "Règles de débit KumoMTA par FAI, calculées depuis vos plans de warmup." },
     { property: "og:title", content: "Traffic Shaping FAI — Email Direct" },
     { property: "og:description", content: "Politiques de débit par FAI pour KumoMTA." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }),
   component: Shaping,
 });
 
-const rules = [
-  { isp: "Gmail", conn: 20, rate: "3 000/h", mpc: 50, back: "5m → 1h", tls: "Requis", ipv6: "Off", load: 62, st: "ok" as const },
-  { isp: "Microsoft", conn: 8, rate: "1 200/h", mpc: 20, back: "10m → 2h", tls: "Opportuniste", ipv6: "Off", load: 88, st: "warn" as const },
-  { isp: "Yahoo / AOL", conn: 12, rate: "2 000/h", mpc: 30, back: "5m → 1h", tls: "Requis", ipv6: "Off", load: 40, st: "ok" as const },
-  { isp: "Orange / SFR", conn: 4, rate: "400/h", mpc: 10, back: "15m → 4h", tls: "Opportuniste", ipv6: "Off", load: 97, st: "bad" as const },
-  { isp: "Apple iCloud", conn: 10, rate: "1 500/h", mpc: 25, back: "5m → 1h", tls: "Requis", ipv6: "Off", load: 30, st: "ok" as const },
-];
-const signals = [
-  ["14:02", "Microsoft", "421 4.7.650 throttled", "Débit réduit de 30 %", <Pill tone="warn">Auto</Pill>],
-  ["13:47", "Orange", "550 5.7.1 blocked IP", "Circuit ouvert 30 min", <Pill tone="bad">Breaker</Pill>],
-  ["13:10", "Gmail", "421 4.7.28 rate limited", "Leaky bucket ralenti", <Pill tone="warn">Auto</Pill>],
-];
-
 function Shaping() {
+  const read = useServerFn(readShaping);
+  const q = useQuery({ queryKey: ["shaping"], queryFn: () => read() });
+  const d = q.data;
+  const active = d?.rules.filter((r) => r.ips > 0).length ?? 0;
   return (
     <>
-      <PageHeader title="Traffic Shaping par FAI" desc="Politiques KumoMTA adaptatives : le débit s'ajuste selon les réponses SMTP de chaque FAI." action={<Button>Publier les règles</Button>} />
+      <PageHeader title="Traffic Shaping FAI" desc="Mêmes règles que celles envoyées aux serveurs KumoMTA : débit horaire = quota warmup du jour ÷ 24." />
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat label="Débit global" value="8 100/h" /><Stat label="Throttles 24h" value="37" sub="-12 %" /><Stat label="Circuits ouverts" value="1" /><Stat label="Mode" value="Adaptatif" />
+        <Stat label="FAI limités" value={d ? String(active) : "…"} />
+        <Stat label="Plans warmup" value={d ? String(d.plans.length) : "…"} />
+        <Stat label="Quota total / jour" value={d ? d.rules.reduce((s, r) => s + r.daily, 0).toLocaleString("fr") : "…"} />
+        <Stat label="Signaux récents" value={d ? String(d.signals.length) : "…"} />
       </div>
+      {q.error && <Panel title="Erreur"><p className="text-sm text-destructive">{(q.error as Error).message}</p></Panel>}
       <Panel title="Règles par FAI">
-        <DataTable cols={["FAI", "Conn. max", "Débit", "Msg/conn", "Backoff", "TLS", "IPv6", "Charge", "État"]}
-          rows={rules.map((r) => [r.isp, r.conn, r.rate, r.mpc, r.back, r.tls, r.ipv6, <div className="w-24"><Bar value={r.load} /></div>,
-            <Pill tone={r.st}>{r.st === "ok" ? "Fluide" : r.st === "warn" ? "Ralenti" : "Bloqué"}</Pill>])} />
+        <DataTable cols={["FAI", "Domaines", "IPs en warmup", "Quota / jour", "Débit max", "Connexions", "Statut"]}
+          rows={(d?.rules ?? []).map((r) => [r.isp, r.domains, r.ips, r.daily.toLocaleString("fr"), r.hourly ? `${r.hourly}/h` : "Défaut KumoMTA", r.connections,
+            <Pill tone={r.ips ? "warn" : "ok"}>{r.ips ? "Limité (warmup)" : "Libre"}</Pill>])} />
       </Panel>
-      <div className="space-y-3">
-        <Panel title="Réactions automatiques (codes SMTP)">
-          <DataTable cols={["Heure", "FAI", "Réponse", "Action", "Type"]} rows={signals} />
-        </Panel>
-        <Panel title="Aperçu politique KumoMTA (Lua)">
-          <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-muted-foreground">{`kumo.make_egress_path {
-  connection_limit = 20,
-  max_deliveries_per_connection = 50,
-  max_message_rate = "3000/h",
-  enable_tls = "Required",
-  -- micro-pacing leaky bucket
-}`}</pre>
-        </Panel>
-      </div>
-      <Panel title="Actions rapides">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Règles publiées sur les 3 nœuds KumoMTA.")}>Publier les règles</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Circuit de Orange rouvert pour test.")}>Rouvrir un circuit</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Simulation de débit lancée sur 5 FAI.")}>Simuler le débit</Button>
-        </div>
+      <Panel title="Plans warmup appliqués">
+        {d && d.plans.length === 0 ? <p className="text-sm text-muted-foreground">Aucun plan — créez-en depuis la page Warmup.</p> :
+        <DataTable cols={["IP", "FAI", "Jour", "Quota du jour", "Statut"]}
+          rows={(d?.plans ?? []).map((p: any) => [p.address, p.isp, `${p.current_day + 1}/${p.daily_limits.length}`, (p.daily_limits[Math.min(p.current_day, p.daily_limits.length - 1)] ?? 0).toLocaleString("fr"), <Pill tone={p.status === "paused" ? "neutral" : "ok"}>{p.status}</Pill>])} />}
       </Panel>
-      <StatusBar>Traffic shaping adaptatif · 8 100 emails/h · 1 circuit ouvert</StatusBar>
+      <Panel title="Signaux FAI (différés & rebonds)">
+        {d && d.signals.length === 0 ? <p className="text-sm text-muted-foreground">Aucun signal reçu des serveurs.</p> :
+        <DataTable cols={["Heure", "FAI", "Code", "Type", "Destinataire"]}
+          rows={(d?.signals ?? []).map((s: any) => [new Date(s.occurred_at).toLocaleString("fr"), s.isp ?? "—", s.smtp_code ?? "—", <Pill tone={s.event_type === "bounce" ? "bad" : "warn"}>{s.event_type}</Pill>, s.recipient])} />}
+      </Panel>
+      <StatusBar>Règles compilées dans la configuration Lua de chaque serveur</StatusBar>
     </>
   );
 }
