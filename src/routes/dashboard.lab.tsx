@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Copy, Mail, RefreshCw, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useServerFn } from "@tanstack/react-start";
+import { mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 
 export const Route = createFileRoute("/dashboard/lab")({
@@ -38,7 +40,7 @@ function Lab() {
           </button>
         ))}
       </div>
-      {tab === "Testeur 10/10" && <Scorer />}
+      {tab === "Testeur 10/10" && <VpsTester />}
       {tab === "SPF" && <Spf />}
       {tab === "DKIM" && <Dkim />}
       {tab === "DMARC" && <Dmarc />}
@@ -250,5 +252,45 @@ function Content() {
         <DataTable cols={["URL", "Chaîne", "Statut"]} rows={links.map(([u, c, t, s]) => [<code className="text-xs">{u}</code>, <span className="text-xs">{c}</span>, <Pill tone={t}>{s}</Pill>])} />
       </Panel>
     </div>
+  );
+}
+
+function VpsTester() {
+  const create = useServerFn(mailTesterNew);
+  const fetchResult = useServerFn(mailTesterResult);
+  const [test, setTest] = useState<{ test_id: string; email: string } | null>(null);
+  const [res, setRes] = useState<any>(null);
+  const [state, setState] = useState<"idle" | "busy" | "off" | "error">("idle");
+  const [err, setErr] = useState("");
+  const start = async () => {
+    setState("busy"); setRes(null);
+    try { const r = await create(); if (!r.configured) { setState("off"); return; } setTest(r.test); setState("idle"); }
+    catch (e) { setErr((e as Error).message); setState("error"); }
+  };
+  const check = async () => {
+    if (!test) return; setState("busy");
+    try { const r = await fetchResult({ data: { id: test.test_id } }); setRes(r.result); setState("idle"); }
+    catch (e) { setErr((e as Error).message); setState("error"); }
+  };
+  const checks: [string, any][] = res ? Object.entries(res.checks ?? {}) : [];
+  return (
+    <Panel title="Testeur 10/10 — serveur Mail-Tester" action={<Pill tone={state === "off" ? "warn" : "neutral"}>{state === "off" ? "Serveur non connecté" : "VPS"}</Pill>}>
+      {state === "off" && <p className="mb-3 text-sm text-muted-foreground">Le serveur Mail-Tester n'est pas encore relié. Dès que son adresse et sa clé seront enregistrées, les tests fonctionneront ici.</p>}
+      {state === "error" && <p className="mb-3 text-sm text-destructive">{err}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={start} disabled={state === "busy"}><Mail className="mr-1 h-3.5 w-3.5" />Nouvelle adresse de test</Button>
+        {test && <><Input readOnly value={test.email} className="max-w-xs" /><Button size="sm" variant="outline" onClick={() => navigator.clipboard?.writeText(test.email)}><Copy className="h-3.5 w-3.5" /></Button>
+          <Button size="sm" variant="outline" onClick={check} disabled={state === "busy"}><RefreshCw className="mr-1 h-3.5 w-3.5" />Voir le résultat</Button></>}
+      </div>
+      {test && !res && <p className="mt-3 text-sm text-muted-foreground">Envoyez votre email à cette adresse, puis cliquez sur « Voir le résultat ».</p>}
+      {res && res.status !== "done" && <p className="mt-3 text-sm text-muted-foreground">En attente de réception de l'email…</p>}
+      {res?.status === "done" && (
+        <div className="mt-4 space-y-3">
+          <Stat label="Score" value={`${Number(res.score).toFixed(1)} / 10`} />
+          <DataTable cols={["Contrôle", "Résultat", "Détail"]} rows={checks.map(([k, v]) => [k.toUpperCase(), <Pill tone={v.pass ? "ok" : "bad"}>{v.pass ? "OK" : "Échec"}</Pill>, v.detail ?? "—"])} />
+          {(res.penalties ?? []).length > 0 && <DataTable cols={["Règle", "Points", "Description"]} rows={res.penalties.map((p: any) => [p.rule, p.points, p.description ?? ""])} />}
+        </div>
+      )}
+    </Panel>
   );
 }
