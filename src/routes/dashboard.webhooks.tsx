@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
-import { listWebhooks, saveWebhook, toggleWebhook, testWebhook } from "@/lib/webhooks.functions";
+import { listWebhooks, saveWebhook, toggleWebhook, testWebhook, sendReportNow } from "@/lib/webhooks.functions";
 
 export const Route = createFileRoute("/dashboard/webhooks")({
   head: () => ({
@@ -23,11 +23,12 @@ export const Route = createFileRoute("/dashboard/webhooks")({
   component: Webhooks,
 });
 
-const EV_LABEL: Record<string, string> = { delivered: "Livrés", bounce: "Rebonds", deferred: "Différés", complaint: "Plaintes spam", unsubscribe: "Désinscriptions" };
+const EV_LABEL: Record<string, string> = { delivered: "Livrés", bounce: "Rebonds", deferred: "Différés", complaint: "Plaintes spam", unsubscribe: "Désinscriptions", daily_report: "Rapport quotidien (8 h)" };
 
 function Webhooks() {
   const qc = useQueryClient();
-  const fList = useServerFn(listWebhooks), fSave = useServerFn(saveWebhook), fToggle = useServerFn(toggleWebhook), fTest = useServerFn(testWebhook);
+  const fList = useServerFn(listWebhooks), fSave = useServerFn(saveWebhook), fToggle = useServerFn(toggleWebhook), fTest = useServerFn(testWebhook), fReport = useServerFn(sendReportNow);
+  const [report, setReport] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["webhooks"], queryFn: () => fList() });
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<string[]>(["bounce", "complaint", "unsubscribe"]);
@@ -87,6 +88,11 @@ function Webhooks() {
           />
         )}
         <p className="mt-2 text-xs text-muted-foreground">Un webhook en échec 20 fois de suite est désactivé automatiquement.</p>
+      </Panel>
+      <Panel title="Rapport quotidien">
+        <p className="mb-2 text-sm text-muted-foreground">Chaque matin à 8 h (Paris), un bilan des dernières 24 h — livraisons par FAI, rebonds, plaintes, revenus, IP en quarantaine, serveurs hors ligne — est envoyé aux webhooks abonnés à « Rapport quotidien ». Les URL Slack et Discord reçoivent un message lisible.</p>
+        <Button variant="outline" disabled={busy} onClick={() => void run(async () => { const r = await fReport(); setReport(r.text); toast.success("Rapport envoyé"); })}>Envoyer le rapport maintenant</Button>
+        {report && <pre className="mt-3 whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs">{report}</pre>}
       </Panel>
     </>
   );
