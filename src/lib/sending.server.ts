@@ -9,8 +9,11 @@ export function renderMessage(c: { from_name: string; from_email: string; reply_
     .replaceAll('{to}', m.email).replaceAll('{unsubscribe_url}', unsub)
     .replaceAll('{from_name}', c.from_name).replaceAll('{from_email}', c.from_email);
   const domain = c.from_email.split('@')[1] ?? 'localhost';
-  let body = fill(c.html, true);
+  // Click tracking only rewrites links written literally in the template, so the redirect endpoint can verify them.
+  const track = `${origin}/api/public/c/${m.unsub_token}?u=`;
+  let body = fill(c.html.replace(/href="(https?:\/\/[^"{}]+)"/g, (_, u: string) => `href="${track}${encodeURIComponent(u.replaceAll('&amp;', '&'))}"`), true);
   if (!c.html.includes('{unsubscribe_url}')) body += `\n<p style="font-size:11px;color:#888">Pour ne plus recevoir nos emails : <a href="${unsub}">se désinscrire</a>.</p>`;
+  body += `\n<img src="${origin}/api/public/t/${m.unsub_token}" width="1" height="1" alt="" style="display:none">`;
   const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(body))).replace(/.{76}/g, '$&\r\n');
   const h = [
     `From: ${enc(c.from_name)} <${c.from_email}>`, `To: <${m.email}>`, `Subject: ${enc(fill(c.subject, false))}`,
