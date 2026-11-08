@@ -31,7 +31,7 @@
 ## Phase 1 — Domaines & authentification
 - [x] Domaines réels en base, double DKIM (2 clés RSA 2048 par domaine), SPF, DMARC strict, MTA-STS, TLS-RPT.
 - [x] Publication en un clic sur Cloudflare (multi-comptes) + contrôle DNS public en direct.
-- [ ] rDNS/PTR automatique via Linode sur les IP des serveurs.
+- [x] rDNS/PTR automatique via Linode sur les IP des serveurs.
 ## Phase 2 — Serveurs, IP & pools
 - [x] Implémenter la synchronisation multi-comptes Linode/Vultr/Hetzner/DigitalOcean, les IPs et plages IPv6, les pools VMTA persistants et les brouillons warmup par FAI.
 - [x] Associer domaines et serveurs pour installation DKIM automatique, avec état réel en attente d’agent (phase 3).
@@ -71,7 +71,7 @@
 - [x] Base clients 149 Go : page + contrat Codex (docs/CODEX.md §3)
 - [ ] Base clients : brancher VAULT_URL/VAULT_KEY quand Codex a déployé le serveur
 - [x] Scanner réel Réputation & Blacklists
-- [ ] rDNS/PTR automatique
+- [x] rDNS/PTR automatique
 - [ ] Testeur de placement Inbox/Spam/Promo
 - [ ] Alertes Slack/Webhook/Email
 - [ ] Éditeur visuel de templates
