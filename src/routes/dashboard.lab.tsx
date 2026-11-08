@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
 import { mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
-import { autoFixDomain } from "@/lib/domains.functions";
+import { autoFixDomain, recheckDomainDns } from "@/lib/domains.functions";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 
 export const Route = createFileRoute("/dashboard/lab")({
@@ -381,6 +381,7 @@ const STATE: Record<string, [string, "ok" | "warn" | "bad" | "neutral"]> = {
   fixed: ["Corrigé automatiquement", "ok"],
   pending: ["Publié — propagation DNS en cours", "warn"],
   manual: ["À corriger manuellement", "bad"],
+  verified: ["Vérifié ✓ — visible sur Internet", "ok"],
 };
 
 function AutoFix({ res }: { res: any }) {
@@ -389,7 +390,22 @@ function AutoFix({ res }: { res: any }) {
   const [busy, setBusy] = useState(false);
   const [out, setOut] = useState<Awaited<ReturnType<typeof autoFixDomain>> | null>(null);
   const [err, setErr] = useState("");
+  const recheck = useServerFn(recheckDomainDns);
+  const [live, setLive] = useState<Record<string, boolean>>({});
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const waiting = !!out?.items.some((i) => i.state !== "manual" && i.state !== "fixed" && !live[i.key]);
+  useEffect(() => {
+    if (!out?.ok || !waiting) return;
+    let stop = false;
+    const tick = async () => {
+      try { const r = await recheck({ data: { domain: out.domain } }); if (!stop) { setLive(r.checks); setLastCheck(new Date()); } } catch { /* retry next tick */ }
+    };
+    tick();
+    const t = setInterval(tick, 20000);
+    return () => { stop = true; clearInterval(t); };
+  }, [out, waiting]);
   const go = async () => {
+    setLive({});
     setBusy(true); setErr(""); setOut(null);
     try { setOut(await run({ data: { domain } })); } catch (e) { setErr((e as Error).message); }
     setBusy(false);
@@ -410,11 +426,12 @@ function AutoFix({ res }: { res: any }) {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {out.items.map((i) => (
               <div key={i.key} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <span className="font-medium">{i.label}</span><Pill tone={STATE[i.state]?.[1] ?? "neutral"}>{STATE[i.state]?.[0]}</Pill>
+                <span className="font-medium">{i.label}</span>{(() => { const st = live[i.key] || i.state === "fixed" ? "verified" : i.state; return <Pill tone={STATE[st]?.[1] ?? "neutral"}>{STATE[st]?.[0]}</Pill>; })()}
               </div>
             ))}
           </div>
-          {out.items.some((i) => i.state === "done") && <p className="text-xs text-muted-foreground">Les éléments « déjà en place » sont bien publiés : les fournisseurs peuvent mettre jusqu'à 48 h pour les prendre en compte. Refaites un test plus tard.</p>}
+          {out.ok && <p className="text-xs text-muted-foreground">{waiting ? <>Vérification automatique toutes les 20 s{lastCheck && <> — dernière : {lastCheck.toLocaleTimeString()}</>}. Chaque ligne passe au vert dès qu'elle est visible.</> : "Tout est vérifié et visible sur Internet."}</p>}
+          {false && <p className="text-xs text-muted-foreground">Les éléments « déjà en place » sont bien publiés : les fournisseurs peuvent mettre jusqu'à 48 h pour les prendre en compte. Refaites un test plus tard.</p>}
         </div>
       )}
     </div>
