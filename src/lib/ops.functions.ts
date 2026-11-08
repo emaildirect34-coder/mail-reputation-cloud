@@ -51,6 +51,9 @@ export const readShaping = createServerFn({ method: 'POST' }).middleware([requir
     db.from('delivery_events').select('isp,event_type,smtp_code,occurred_at,recipient').in('event_type', ['deferred', 'bounce']).order('occurred_at', { ascending: false }).limit(30),
   ]);
   for (const r of [plans, ips, events]) if (r.error) throw new Error('Lecture du shaping impossible');
+  const { ispHealth } = await import('./infrastructure.schemas');
+  const recent = await db.from('delivery_events').select('recipient,event_type').gte('occurred_at', new Date(Date.now() - 3600_000).toISOString()).limit(20000);
+  const health = ispHealth(recent.data ?? []);
   const addr = new Map((ips.data ?? []).map((i: any) => [i.id, i.address]));
   const caps: Record<string, { ips: number; daily: number }> = {};
   for (const p of plans.data ?? []) {
@@ -61,7 +64,8 @@ export const readShaping = createServerFn({ method: 'POST' }).middleware([requir
   // Mirrors the policy compiled into the agent Lua (kumo.server.ts): hourly rate = daily cap / 24, 3 connections.
   const rules = Object.entries(ISPS).map(([isp, domains]) => {
     const c = caps[isp];
-    return { isp, domains, ips: c?.ips ?? 0, daily: c?.daily ?? 0, hourly: c ? Math.max(1, Math.ceil(c.daily / 24)) : null, connections: 3 };
+    const h = health[isp], f = h?.factor ?? 1;
+    return { isp, domains, ips: c?.ips ?? 0, daily: c?.daily ?? 0, hourly: c ? Math.max(1, Math.ceil((c.daily / 24) * f)) : null, connections: Math.max(1, Math.round((c ? 3 : 10) * f)), factor: f, reason: h?.reason ?? 'Normal', sample: h?.total ?? 0 };
   });
   const plansOut = (plans.data ?? []).map((p: any) => ({ ...p, address: addr.get(p.ip_id) ?? '—' }));
   return { rules, plans: plansOut, signals: events.data ?? [] };

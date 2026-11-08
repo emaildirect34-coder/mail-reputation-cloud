@@ -78,5 +78,5 @@
 - [x] Aperçu email ordinateur/mobile/sombre + insertion des variables
 - [x] Optimiseur IA d'objets
 - [x] Tracking clics/ouvertures sur vos sous-domaines (t.domaine, Caddy sur serveurs)
-- [ ] Régulation dynamique par FAI + FBL
+- [x] Régulation dynamique par FAI + FBL (ralentit auto selon plaintes/rebonds/reports de la dernière heure)
 - [ ] Rapprochement automatique des conversions sponsors

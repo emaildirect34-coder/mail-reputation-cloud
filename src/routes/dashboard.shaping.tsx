@@ -32,8 +32,9 @@ function Shaping() {
       </div>
       {q.error && <Panel title="Erreur"><p className="text-sm text-destructive">{(q.error as Error).message}</p></Panel>}
       <Panel title="Règles par FAI">
-        <DataTable cols={["FAI", "Domaines", "IPs en warmup", "Quota / jour", "Débit max", "Connexions", "Statut"]}
+        <DataTable cols={["FAI", "Domaines", "IPs en warmup", "Quota / jour", "Débit max", "Connexions", "Régulation auto (1 h)", "Statut"]}
           rows={(d?.rules ?? []).map((r) => [r.isp, r.domains, r.ips, r.daily.toLocaleString("fr"), r.hourly ? `${r.hourly}/h` : "Défaut KumoMTA", r.connections,
+            <Pill tone={r.factor < 1 ? "bad" : "ok"}>{r.factor < 1 ? `Ralenti ×${r.factor} — ${r.reason}` : `${r.reason}${r.sample ? ` (${r.sample} év.)` : ""}`}</Pill>,
             <Pill tone={r.ips ? "warn" : "ok"}>{r.ips ? "Limité (warmup)" : "Libre"}</Pill>])} />
       </Panel>
       <Panel title="Plans warmup appliqués">

@@ -1,5 +1,5 @@
 // Server-only: KumoMTA configuration generator and agent token helpers.
-import { plannedQuota, effectiveDay } from './infrastructure.schemas';
+import { plannedQuota, effectiveDay, ISP_DOMAINS, ispHealth } from './infrastructure.schemas';
 
 export async function sha256(text: string) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -10,13 +10,6 @@ export function newToken() {
   return 'kag_' + [...b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
-const ISP_DOMAINS: Record<string, string[]> = {
-  Gmail: ['gmail.com', 'googlemail.com'],
-  Microsoft: ['outlook.com', 'hotmail.com', 'live.com', 'msn.com'],
-  Yahoo: ['yahoo.com', 'yahoo.fr', 'aol.com'],
-  Orange: ['orange.fr', 'wanadoo.fr'],
-  'Free / SFR': ['free.fr', 'sfr.fr', 'neuf.fr'],
-};
 const q = (s: string) => JSON.stringify(s);
 
 export type AgentBundle = { lua: string; hash: string; dkim: { domain: string; selector: string; key: string; bindingId: string }[] };
@@ -36,6 +29,9 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   const ipIds = v4.map((i: any) => i.id);
   const warm = ipIds.length ? await db.from('warmup_plans').select('ip_id,isp,daily_limits,current_day,status,created_at').in('ip_id', ipIds).eq('status', 'active') : { data: [] };
   if (warm.error) throw new Error(warm.error.message);
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const ev = await db.from('delivery_events').select('recipient,event_type').eq('server_id', serverId).gte('occurred_at', since).limit(20000);
+  const health = ispHealth(ev.error ? [] : ev.data ?? []);
 
   const src = (a: string) => 'ip-' + a.replace(/[.:]/g, '_');
   const poolMap = new Map<string, string[]>();
@@ -61,8 +57,15 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   // Warmup → per ISP daily caps (minimum across IPs of the plan quota)
   const caps: Record<string, number> = {};
   for (const w of warm.data ?? []) { const v = plannedQuota(w.daily_limits, effectiveDay(w as any)); caps[w.isp] = (caps[w.isp] ?? 0) + v; }
+  // Dynamic regulation: hourly rate and connections are scaled down per ISP when the last hour shows complaints, bounces or deferrals.
   L.push(`local ISP_CAPS = {`);
-  for (const [isp, cap] of Object.entries(caps)) for (const d of ISP_DOMAINS[isp] ?? []) L.push(`  [${q(d)}] = { max_message_rate = ${q(`${Math.max(1, Math.ceil(cap / 24))}/h`)}, connection_limit = 3 },`);
+  for (const [isp, ds] of Object.entries(ISP_DOMAINS)) {
+    const f = health[isp]?.factor ?? 1, cap = caps[isp];
+    if (cap === undefined && f === 1) continue;
+    const conns = Math.max(1, Math.round((cap !== undefined ? 3 : 10) * f));
+    const rate = cap !== undefined ? `, max_message_rate = ${q(`${Math.max(1, Math.ceil((cap / 24) * f))}/h`)}` : '';
+    for (const d of ds) L.push(`  [${q(d)}] = { connection_limit = ${conns}${rate} },`);
+  }
   L.push(`}`);
   L.push(`kumo.on('get_egress_path_config', function(domain, source, site)`);
   L.push(`  local c = ISP_CAPS[domain] or { connection_limit = 10 }`);
