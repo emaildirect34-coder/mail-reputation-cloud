@@ -1,65 +1,117 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Upload, Download, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PageHeader, Panel, Pill, Stat } from "@/components/dash/kit";
+import { Textarea } from "@/components/ui/textarea";
+import { PageHeader, Panel, Pill, Stat, DataTable } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
 import { toast } from "sonner";
+import { validateEmails, listsForCleaning, cleanList, type Verdict } from "@/lib/validation.functions";
 
 export const Route = createFileRoute("/dashboard/validation")({
-  head: () => ({ meta: [{ title: "Validation d'emails — Email Direct" }] }),
+  head: () => ({ meta: [
+    { title: "Validation d'emails — Email Direct" },
+    { name: "description", content: "Vérifiez syntaxe, domaine, MX, adresses jetables et suppressions avant l'envoi." },
+    { property: "og:title", content: "Validation d'emails — Email Direct" },
+    { property: "og:description", content: "Nettoyez vos listes avant chaque campagne." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: Validation,
 });
 
-const disposable = ["yopmail.com", "mailinator.com", "tempmail.com"];
-const roles = ["admin", "info", "contact", "support", "noreply"];
-
-function check(email: string) {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { tone: "bad" as const, label: "Syntaxe invalide" };
-  const [u = "", d = ""] = email.toLowerCase().split("@");
-  if (disposable.includes(d)) return { tone: "bad" as const, label: "Jetable" };
-  if (roles.includes(u)) return { tone: "warn" as const, label: "Adresse générique" };
-  return { tone: "ok" as const, label: "Valide (démo)" };
-}
+const tone = { valid: "ok", risky: "warn", invalid: "bad" } as const;
+const label = { valid: "Valide", risky: "Risquée", invalid: "Invalide" } as const;
+type L = { id: string; name: string; total: number; active: number; invalid: number };
 
 function Validation() {
-  const [email, setEmail] = useState("");
-  const [res, setRes] = useState<ReturnType<typeof check> | null>(null);
+  const run = useServerFn(validateEmails);
+  const readLists = useServerFn(listsForCleaning);
+  const clean = useServerFn(cleanList);
+  const [text, setText] = useState("");
+  const [res, setRes] = useState<Verdict[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [lists, setLists] = useState<L[]>([]);
+  const [cleaning, setCleaning] = useState<string | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+
+  const loadLists = () => readLists().then(r => setLists(r.lists)).catch(e => toast.error(e.message));
+  useEffect(() => { loadLists(); }, []);
+
+  const counts = useMemo(() => ({
+    valid: res.filter(r => r.status === "valid").length,
+    risky: res.filter(r => r.status === "risky").length,
+    invalid: res.filter(r => r.status === "invalid").length,
+  }), [res]);
+
+  const check = async (raw: string) => {
+    const emails = Array.from(new Set(raw.split(/[\s,;]+/).map(s => s.trim()).filter(s => s.includes("@")))).slice(0, 5000);
+    if (!emails.length) return toast.error("Aucune adresse détectée");
+    setBusy(true);
+    try { setRes((await run({ data: { emails } })).results); }
+    catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const exportCsv = () => {
+    const csv = "email,statut,raison,suggestion\n" + res.map(r => [r.email, label[r.status], r.reason, r.suggestion ?? ""].map(v => `"${v}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "validation.csv"; a.click();
+  };
+
+  const doClean = async (l: L) => {
+    setCleaning(l.id);
+    try {
+      const r = await clean({ data: { listId: l.id } });
+      toast.success(`${r.checked} vérifiées · ${r.invalid} retirées des envois · ${r.risky} risquées`);
+      loadLists();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setCleaning(null); }
+  };
+
+  const rate = res.length ? Math.round((counts.valid / res.length) * 100) : null;
+
   return (
     <>
-      <PageHeader title="Validation d'emails" desc="Nettoyez vos listes avant l'envoi." />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <Stat label="Validations ce mois" value="0 / 100" />
-        <Stat label="Taux valides" value="—" />
-        <Stat label="Listes traitées" value="0" />
+      <PageHeader title="Validation d'emails" desc="Syntaxe, fautes de frappe, domaine et MX réels, adresses jetables, rôles et liste de suppression." />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Stat label="Vérifiées" value={String(res.length)} />
+        <Stat label="Valides" value={String(counts.valid)} sub={rate == null ? undefined : `${rate} %`} />
+        <Stat label="Risquées" value={String(counts.risky)} />
+        <Stat label="Invalides" value={String(counts.invalid)} />
       </div>
 
-      <Panel title="Vérifier une adresse">
-        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); setRes(check(email)); }}>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@exemple.com" />
-          <Button type="submit">Vérifier</Button>
-        </form>
-        {res && <div className="mt-3"><Pill tone={res.tone}>{res.label}</Pill></div>}
-      </Panel>
-
-      <Panel title="Validation en masse">
-        <div className="grid place-items-center rounded-lg border-2 border-dashed p-10 text-center">
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="mt-2 font-medium">Glissez un fichier CSV ici</p>
-          <p className="text-sm text-muted-foreground">Jusqu'à 1 million d'adresses</p>
-          <Button className="mt-4" variant="outline" onClick={() => toast("Sélection d'un fichier CSV à valider.")}>Choisir un fichier</Button>
+      <Panel title="Vérifier des adresses" action={<Pill>Jusqu'à 5 000 par lot</Pill>}>
+        <Textarea rows={5} value={text} onChange={e => setText(e.target.value)} placeholder={"client@exemple.com\nautre@gmial.com"} />
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button disabled={busy} onClick={() => check(text)}><Sparkles className="mr-1 h-4 w-4" />{busy ? "Vérification…" : "Vérifier"}</Button>
+          <Button variant="outline" disabled={busy} onClick={() => file.current?.click()}><Upload className="mr-1 h-4 w-4" />Importer un CSV</Button>
+          <input ref={file} type="file" accept=".csv,.txt" hidden onChange={async e => { const f = e.target.files?.[0]; if (f) check(await f.text()); e.target.value = ""; }} />
+          {res.length > 0 && <Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />Exporter le rapport</Button>}
         </div>
       </Panel>
 
-      <Panel title="Actions rapides">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Nettoyage de la liste « Engagés 0-14 j » lancé.")}>Nettoyer une liste existante</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Règles de rejet ouvertes : jetables, rôles, syntaxe.")}>Ajuster les règles de rejet</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Rapport de validation exporté.")}>Exporter le rapport</Button>
-        </div>
+      {res.length > 0 && (
+        <Panel title="Résultats">
+          <DataTable cols={["Adresse", "Statut", "Raison", "Suggestion"]} rows={res.slice(0, 500).map(r => [
+            r.email, <Pill tone={tone[r.status]}>{label[r.status]}</Pill>, r.reason, r.suggestion ?? "—",
+          ])} />
+          {res.length > 500 && <p className="mt-2 text-xs text-muted-foreground">500 premières lignes affichées — exportez le rapport pour tout voir.</p>}
+        </Panel>
+      )}
+
+      <Panel title="Nettoyer une liste existante">
+        {lists.length === 0 ? <p className="text-sm text-muted-foreground">Aucune liste de contacts pour l'instant.</p> : (
+          <DataTable cols={["Liste", "Contacts", "Actifs", "Retirés", ""]} rows={lists.map(l => [
+            l.name, String(l.total), String(l.active), String(l.invalid),
+            <Button size="sm" variant="outline" disabled={!!cleaning || !l.active} onClick={() => doClean(l)}>{cleaning === l.id ? "Nettoyage…" : "Nettoyer"}</Button>,
+          ])} />
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">Les adresses invalides sont retirées des prochains envois ; les adresses risquées restent actives.</p>
       </Panel>
-      <StatusBar>Validation prête · 100 vérifications disponibles ce mois</StatusBar>
+      <StatusBar>Validation réelle · vérification MX en direct</StatusBar>
     </>
   );
 }
