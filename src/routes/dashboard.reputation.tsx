@@ -1,55 +1,83 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation } from "@tanstack/react-query";
+import { RefreshCw, Search, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
-import { StatusBar } from "@/components/dash/campaign-tabs";
-import { toast } from "sonner";
+import { scanReputation } from "@/lib/reputation.functions";
 
 export const Route = createFileRoute("/dashboard/reputation")({
-  head: () => ({ meta: [{ title: "Réputation — Email Direct" }] }),
+  head: () => ({
+    meta: [
+      { title: "Réputation & Blacklists — Email Direct" },
+      { name: "description", content: "Scan en direct de vos IPs et domaines sur les principales listes noires." },
+      { property: "og:title", content: "Réputation & Blacklists — Email Direct" },
+      { property: "og:description", content: "Surveillance réelle des IPs et domaines d'envoi." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Reputation,
 });
 
-const lists = ["Spamhaus ZEN", "Barracuda", "SpamCop", "SORBS", "UCEPROTECT L1", "Spamhaus DBL", "SURBL", "PSBL"];
-const listed = new Set(["UCEPROTECT L1"]);
-
 function Reputation() {
+  const scan = useServerFn(scanReputation);
+  const [input, setInput] = useState("");
+  const m = useMutation({
+    mutationFn: (targets?: string[]) => scan({ data: { targets } }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Scan impossible"),
+  });
+  const scans = m.data?.scans ?? [];
+  const listedTargets = scans.filter((s) => s.listed > 0);
+  const checks = scans.reduce((n, s) => n + s.results.length, 0);
+  const clean = scans.reduce((n, s) => n + s.results.filter((r) => r.status === "clean").length, 0);
+  const health = checks ? Math.round((clean / checks) * 100) : 0;
+
   return (
     <>
-      <PageHeader title="Réputation & Blacklists" desc="Surveillance continue de vos IPs et domaines, avec alertes." />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <Stat label="Score de santé" value="92 / 100" sub="Très bon" />
-        <Stat label="Listes surveillées" value={String(lists.length)} />
-        <Stat label="Alertes actives" value="1" sub="203.0.113.24" />
+      <PageHeader
+        title="Réputation & Blacklists"
+        desc="Interrogation en direct de 10 listes noires d'IP et 3 listes de domaines."
+        action={<Button disabled={m.isPending} onClick={() => m.mutate(undefined)}><RefreshCw className={`h-4 w-4 ${m.isPending ? "animate-spin" : ""}`} /> Scanner toute mon infrastructure</Button>}
+      />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Stat label="Score de santé" value={checks ? `${health} / 100` : "—"} sub={m.data ? `Scan ${new Date(m.data.scannedAt).toLocaleTimeString("fr-FR")}` : "Lancez un scan"} />
+        <Stat label="Cibles scannées" value={String(scans.length)} />
+        <Stat label="Vérifications" value={String(checks)} />
+        <Stat label="Cibles listées" value={String(listedTargets.length)} sub={listedTargets.map((s) => s.target).join(", ") || undefined} />
       </div>
 
       <Panel title="Vérifier une IP ou un domaine">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input placeholder="203.0.113.10 ou monsite.fr" />
-          <Button onClick={() => toast("Scan lancé sur 8 listes en temps réel.")}>Scanner</Button>
-        </div>
+        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); const t = input.split(/[\s,]+/).filter(Boolean); if (t.length) m.mutate(t); }}>
+          <Input aria-label="IP ou domaine" placeholder="203.0.113.10, monsite.fr" value={input} onChange={(e) => setInput(e.target.value)} />
+          <Button disabled={m.isPending}><Search className="h-4 w-4" /> Scanner</Button>
+        </form>
       </Panel>
 
-      <Panel title="Résultat — 203.0.113.24">
-        <DataTable cols={["Liste", "Statut"]} rows={lists.map((l) => [l, listed.has(l) ? <Pill tone="bad">Listée</Pill> : <Pill tone="ok">Propre</Pill>])} />
-      </Panel>
+      {m.isPending && <Panel><p className="text-sm text-muted-foreground">Interrogation des listes noires en cours…</p></Panel>}
+      {!m.isPending && m.data && !scans.length && <Panel><p className="text-sm text-muted-foreground">Aucune IP ni domaine enregistré à scanner.</p></Panel>}
 
-      <Panel title="Alertes">
-        <p className="text-sm text-muted-foreground">Recevez une alerte par email ou webhook dès qu'une IP ou un domaine est listé.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Alerte email configurée pour 203.0.113.24.")}>Configurer email</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Webhook d'alerte enregistré sur votre endpoint.")}>Configurer webhook</Button>
-        </div>
-      </Panel>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {scans.map((s) => (
+          <Panel key={s.target} title={`${s.kind === "ip" ? "IP" : "Domaine"} — ${s.target}`} action={<Pill tone={s.listed ? "bad" : "ok"}>{s.listed ? `${s.listed} listée(s)` : "Propre"}</Pill>}>
+            <DataTable
+              cols={["Liste", "Statut", ""]}
+              rows={s.results.map((r) => [
+                r.list,
+                r.status === "listed" ? <Pill tone="bad">Listée {r.code}</Pill> : r.status === "clean" ? <Pill tone="ok">Propre</Pill> : <Pill tone="warn">Non vérifiable</Pill>,
+                r.status === "listed" ? <a className="inline-flex items-center gap-1 text-sm text-primary underline" href={r.delist} target="_blank" rel="noreferrer">Délister <ExternalLink className="h-3 w-3" /></a> : "",
+              ])}
+            />
+          </Panel>
+        ))}
+      </div>
 
-      <Panel title="Actions rapides">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Demande de suppression envoyée à UCEPROTECT L1.")}>Demander le délistage</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("IP 203.0.113.24 isolée dans le pool Quarantaine.")}>Isoler l'IP concernée</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Scan complet relancé sur 4 IPs et 3 domaines.")}>Rescanner tout</Button>
-        </div>
+      <Panel title="À savoir">
+        <p className="text-sm text-muted-foreground">« Non vérifiable » signifie que la liste refuse les requêtes publiques (cas fréquent de Spamhaus sans clé DQS) : ce n'est pas un listage. Pour une IP listée, corrigez d'abord la cause (plaintes, pièges à spam) puis cliquez sur « Délister ».</p>
       </Panel>
-      <StatusBar>Réputation 92/100 · 1 liste noire active · délistage en cours</StatusBar>
     </>
   );
 }
