@@ -98,3 +98,43 @@ export const deleteDomain = createServerFn({ method: "POST" }).middleware([requi
     return { ok: true };
   });
 
+
+const LABEL: Record<string, string> = { spf: "SPF", dkim_a: "DKIM (clé A)", dkim_b: "DKIM (clé B)", dmarc: "DMARC", mta_sts: "MTA-STS", tls_rpt: "TLS-RPT", a: "Serveur mail (A)", mx: "MX" };
+
+/** Auto-fix from a Mail-Tester result: detect already-published records (awaiting provider propagation), publish only the missing ones. */
+export const autoFixDomain = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((i: { domain: string }) => ({ domain: String(i.domain ?? "").trim().toLowerCase() }))
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const { data: list } = await db.from("sending_domains").select(PUBLIC);
+    const doms = (list ?? []) as any[];
+    const d = doms.find((x) => x.domain === data.domain) ?? doms.filter((x) => data.domain.endsWith("." + x.domain)).sort((a, b) => b.domain.length - a.domain.length)[0];
+    if (!d) return { ok: false as const, domain: data.domain, message: `Le domaine « ${data.domain || "inconnu"} » n'est pas encore dans vos Domaines. Ajoutez-le d'abord.`, items: [] as { key: string; label: string; state: "done" | "pending" | "fixed" | "manual" }[] };
+    const { checkDomain, expectedRecords } = await import("./domains.server");
+    const before = await checkDomain(d);
+    const recs = expectedRecords(d);
+    const missing = recs.filter((r) => !before[r.key]?.ok);
+    let published = false;
+    let note = "";
+    if (missing.length && d.account_id && d.zone_id) {
+      const { data: acc } = await db.from("provider_accounts").select("*").eq("id", d.account_id).single();
+      if (acc) {
+        const { cfUpsert } = await import("./providers.server");
+        try { await cfUpsert(acc, d.zone_id, missing); published = true; await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", d.id); }
+        catch (e) { note = (e as Error).message; }
+      }
+    } else if (missing.length) note = "Domaine non relié à Cloudflare : correction manuelle nécessaire.";
+    // Ensure DKIM keys reach every connected server.
+    const agents = await db.from("server_agents").select("server_id").neq("status", "awaiting");
+    for (const a of agents.data ?? []) {
+      const ex = await db.from("server_domain_bindings").select("id").eq("server_id", a.server_id).eq("domain_id", d.id).maybeSingle();
+      if (!ex.data) await db.from("server_domain_bindings").insert({ server_id: a.server_id, domain_id: d.id });
+    }
+    const after = published ? await checkDomain(d) : before;
+    await db.from("sending_domains").update({ checks: after, checked_at: new Date().toISOString() }).eq("id", d.id);
+    const items = recs.map((r) => ({
+      key: r.key, label: LABEL[r.key] ?? r.key,
+      state: (before[r.key]?.ok ? "done" : published ? (after[r.key]?.ok ? "fixed" : "pending") : "manual") as "done" | "pending" | "fixed" | "manual",
+    }));
+    return { ok: true as const, domain: d.domain, message: note, items };
+  });
