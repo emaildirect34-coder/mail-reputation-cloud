@@ -67,7 +67,8 @@
 
 # Nouveaux modules (un par un)
 - [x] Validation d'emails réelle (syntaxe, fautes, MX, jetables, rôles, suppression) + nettoyage de listes
-- [ ] Pre-Flight Gate branché aux campagnes
+- [x] Pre-Flight Gate branché aux campagnes
+- [ ] Base clients 149 Go : stockage et import massif (en attente du choix utilisateur)
 - [ ] Testeur de placement Inbox/Spam/Promo
 - [ ] Alertes Slack/Webhook/Email
 - [ ] Éditeur visuel de templates
