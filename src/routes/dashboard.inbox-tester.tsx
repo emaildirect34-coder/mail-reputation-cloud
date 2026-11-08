@@ -1,82 +1,106 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FlaskConical, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
-import { StatusBar } from "@/components/dash/campaign-tabs";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Copy, FlaskConical, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
+import { placementNew, placementResult, type PlacementSeed } from "@/lib/ops.functions";
 
 export const Route = createFileRoute("/dashboard/inbox-tester")({
-  head: () => ({ meta: [{ title: "Testeur de délivrabilité — Email Direct" }] }),
+  head: () => ({
+    meta: [
+      { title: "Testeur de placement Inbox — Email Direct" },
+      { name: "description", content: "Voyez où votre email atterrit chez Gmail, Outlook, Yahoo, Orange : réception, promotions ou spam." },
+      { property: "og:title", content: "Testeur de placement Inbox — Email Direct" },
+      { property: "og:description", content: "Placement réel sur des boîtes témoins." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: InboxTester,
 });
 
-const seeds = [
-  { provider: "Gmail", address: "ed.test.gmail@gmail.com", placement: "Boîte de réception", tone: "ok" },
-  { provider: "Gmail (onglet Promo)", address: "ed.test.g2@gmail.com", placement: "Promotions", tone: "warn" },
-  { provider: "Outlook / Hotmail", address: "ed.test@outlook.com", placement: "Boîte de réception", tone: "ok" },
-  { provider: "Yahoo", address: "ed.test@yahoo.com", placement: "Spam", tone: "bad" },
-  { provider: "Proton", address: "ed.test@proton.me", placement: "Boîte de réception", tone: "ok" },
-  { provider: "iCloud", address: "ed.test@icloud.com", placement: "En attente…", tone: "neutral" },
-] as const;
+const LABEL: Record<PlacementSeed["placement"], [string, "ok" | "warn" | "bad" | "neutral"]> = {
+  inbox: ["Boîte de réception", "ok"],
+  promotions: ["Promotions", "warn"],
+  spam: ["Spam", "bad"],
+  missing: ["Non reçu", "bad"],
+  pending: ["En attente…", "neutral"],
+};
+
+type Test = { id: string; token: string; seeds: PlacementSeed[]; status?: string };
 
 function InboxTester() {
+  const fNew = useServerFn(placementNew), fRes = useServerFn(placementResult);
+  const [test, setTest] = useState<Test | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async (id: string) => {
+    const r = await fRes({ data: { id } });
+    if (r.error) setError(r.error);
+    else if (r.result) { setError(null); setTest(r.result); }
+  };
+  useEffect(() => {
+    if (!test || test.status === "done") return;
+    const t = setInterval(() => void refresh(test.id), 20000);
+    return () => clearInterval(t);
+  }, [test?.id, test?.status]);
+
+  const start = async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await fNew();
+      if (!r.configured || !r.test) setError("Le serveur Mail-Tester n'est pas connecté.");
+      else setTest(r.test);
+    } catch (e) {
+      setError((e as Error).message.includes("404") ? "Le serveur Mail-Tester ne gère pas encore le test de placement (cahier des charges §4 à livrer par Codex)." : (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const seeds = test?.seeds ?? [];
+  const done = seeds.filter((s) => s.placement !== "pending");
+  const pct = (p: PlacementSeed["placement"]) => (done.length ? Math.round((done.filter((s) => s.placement === p).length / done.length) * 100) : 0);
+  const copy = (t: string) => { void navigator.clipboard.writeText(t); toast.success("Copié"); };
+
   return (
     <>
-      <PageHeader
-        title="Testeur de délivrabilité"
-        desc="Envoyez un email de test vers 20 adresses témoins et voyez où il atterrit réellement : inbox, promotions ou spam."
-        action={<Button onClick={() => toast("Test lancé vers 20 adresses témoins.")}><Send className="h-4 w-4" /> Lancer un test</Button>}
-      />
-
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <Stat label="Score SpamAssassin" value="1.8 / 10" sub="Excellent (< 5 requis)" />
-        <Stat label="Placement inbox" value="83 %" sub="5 / 6 boîtes répondues" />
-        <Stat label="Dernier test" value="il y a 2 h" sub="Campagne « Newsletter Oct »" />
+      <PageHeader title="Testeur de placement Inbox" desc="Envoyez votre email aux boîtes témoins et voyez où il arrive vraiment." action={<Button disabled={busy} onClick={() => void start()}><FlaskConical className="h-4 w-4" /> Nouveau test</Button>} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Stat label="Boîte de réception" value={done.length ? `${pct("inbox")} %` : "—"} />
+        <Stat label="Promotions" value={done.length ? `${pct("promotions")} %` : "—"} />
+        <Stat label="Spam / non reçu" value={done.length ? `${pct("spam") + pct("missing")} %` : "—"} />
+        <Stat label="Boîtes répondues" value={`${done.length} / ${seeds.length}`} />
       </div>
+      {error && <Panel><p role="alert" className="text-sm text-destructive">{error}</p></Panel>}
 
-      <Panel title="Nouveau test">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-xs text-muted-foreground">Serveur d'envoi</label>
-            <Input defaultValue="srv-paris-01 (203.0.113.10)" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Objet du test</label>
-            <Input placeholder="Objet de votre email…" />
-          </div>
-        </div>
-        <Button className="mt-3" onClick={() => toast("20 adresses témoins générées et prêtes à recevoir le test.")}><FlaskConical className="h-4 w-4" /> Générer les 20 adresses témoins</Button>
-      </Panel>
-
-      <Panel title="Analyse du contenu">
-        <div className="space-y-3">
-          <div><div className="mb-1 flex justify-between text-xs"><span>Authentification (SPF/DKIM/DMARC)</span><span>100 %</span></div><Bar value={100} /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Ratio texte / HTML</span><span>78 %</span></div><Bar value={78} /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Mots à risque détectés</span><span>35 %</span></div><Bar value={35} /></div>
-          <div><div className="mb-1 flex justify-between text-xs"><span>Liens raccourcis / suspects</span><span>10 %</span></div><Bar value={10} /></div>
-        </div>
-      </Panel>
-
-      <Panel title="Résultats du dernier test">
-        <DataTable
-          cols={["Fournisseur", "Adresse témoin", "Placement"]}
-          rows={seeds.map((s) => [
-            <span className="font-medium">{s.provider}</span>,
-            <code className="text-xs">{s.address}</code>,
-            s.tone === "ok" ? <Pill tone="ok">{s.placement}</Pill> : s.tone === "warn" ? <Pill tone="warn">{s.placement}</Pill> : s.tone === "bad" ? <Pill tone="bad">{s.placement}</Pill> : <Pill>{s.placement}</Pill>,
-          ])}
-        />
-      </Panel>
-
-      <Panel title="Actions rapides">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast("Test relancé sur les 6 fournisseurs.")}>Relancer le test</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Version du mail corrigée pour Yahoo : lien et image ajustés.")}>Corriger la version Yahoo</Button>
-          <Button size="sm" variant="outline" onClick={() => toast("Rapport de placement exporté en PDF.")}>Exporter le rapport</Button>
-        </div>
-      </Panel>
-      <StatusBar>Placement inbox 83 % · 1 boîte en spam · score SpamAssassin 1,8</StatusBar>
+      {test ? (
+        <>
+          <Panel title="1. Envoyez votre email">
+            <p className="text-sm text-muted-foreground">Mettez ce code dans l'objet ou le texte de l'email, puis envoyez-le depuis votre serveur à toutes les adresses ci-dessous.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <code className="rounded bg-muted px-3 py-1.5 text-lg font-semibold">{test.token}</code>
+              <Button size="sm" variant="outline" onClick={() => copy(test.token)}><Copy className="h-3 w-3" /> Copier le code</Button>
+              <Button size="sm" variant="outline" onClick={() => copy(seeds.map((s) => s.address).join(", "))}><Copy className="h-3 w-3" /> Copier les adresses</Button>
+            </div>
+          </Panel>
+          <Panel title="2. Résultats" action={<Button size="sm" variant="outline" onClick={() => void refresh(test.id)}><RefreshCw className="h-3 w-3" /> Actualiser</Button>}>
+            <DataTable
+              cols={["Fournisseur", "Adresse témoin", "Placement", "Reçu"]}
+              rows={seeds.map((s) => [
+                <span className="font-medium">{s.provider}</span>,
+                <code className="text-xs">{s.address}</code>,
+                <Pill tone={LABEL[s.placement][1]}>{LABEL[s.placement][0]}</Pill>,
+                s.received_at ? new Date(s.received_at).toLocaleTimeString("fr-FR") : "—",
+              ])}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">{test.status === "done" ? "Test terminé." : "Mise à jour automatique toutes les 20 secondes."}</p>
+          </Panel>
+        </>
+      ) : (
+        <Panel><p className="text-sm text-muted-foreground">Cliquez sur « Nouveau test » pour recevoir la liste des boîtes témoins et votre code de test.</p></Panel>
+      )}
     </>
   );
 }

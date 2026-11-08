@@ -88,3 +88,23 @@ export const mailTesterResult = createServerFn({ method: 'POST' }).middleware([r
     const r = await mt('/api/v1/tests/' + data.id);
     return r.configured ? { configured: true, result: r.body as any } : { configured: false, result: null };
   });
+
+// ---- Inbox placement (seed mailboxes polled by the Mail-Tester VPS over IMAP). Contract: docs/CODEX.md §4 ----
+export type PlacementSeed = { provider: string; address: string; placement: 'inbox' | 'promotions' | 'spam' | 'missing' | 'pending'; folder?: string | null; received_at?: string | null };
+export const placementNew = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await gate(context, '/dashboard/inbox-tester');
+  const r = await mt('/api/v1/placement', { method: 'POST', body: '{}' });
+  return r.configured ? { configured: true, test: r.body as { id: string; token: string; seeds: PlacementSeed[]; expires_at: string } } : { configured: false, test: null };
+});
+export const placementResult = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(i => z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{4,64}$/) }).parse(i))
+  .handler(async ({ data, context }) => {
+    await gate(context, '/dashboard/inbox-tester');
+    try {
+      const r = await mt('/api/v1/placement/' + data.id);
+      return r.configured ? { configured: true, result: r.body as { id: string; token: string; status: 'waiting' | 'done'; seeds: PlacementSeed[] }, error: null } : { configured: false, result: null, error: null };
+    } catch (e) {
+      // VPS without §4 yet → explicit message instead of a crash.
+      return { configured: true, result: null, error: (e as Error).message.includes('404') ? 'Le serveur Mail-Tester ne gère pas encore le test de placement (contrat §4 à livrer par Codex).' : (e as Error).message };
+    }
+  });
