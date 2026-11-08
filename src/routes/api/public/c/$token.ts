@@ -18,7 +18,8 @@ export const Route = createFileRoute('/api/public/c/$token')({
           const now = new Date().toISOString();
           await db.from('campaign_messages').update({ clicked_at: now, opened_at: m.data.opened_at ?? now }).eq('id', m.data.id);
         }
-        return new Response(null, { status: 302, headers: { Location: u, 'Cache-Control': 'no-store' } });
+        const { fillClickId } = await import('@/lib/postback');
+        return new Response(null, { status: 302, headers: { Location: fillClickId(u, params.token), 'Cache-Control': 'no-store' } });
       },
     },
   },

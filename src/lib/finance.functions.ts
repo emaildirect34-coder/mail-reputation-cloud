@@ -57,4 +57,16 @@ export const recordFinanceEntries=createServerFn({method:'POST'}).middleware([re
 });
 export const updateFinanceStatus=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>entryStatus.parse(i)).handler(async({data,context})=>{
   await authorize(context,'/dashboard/finance',true);check((await context.supabase.from('finance_entries').update({status:data.status}).eq('id',data.id)).error);return {ok:true};
+});export const createPostback=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({id:z.string().uuid()}).parse(i)).handler(async({data,context})=>{
+  await authorize(context,'/dashboard/templates',true);
+  const {sha256Hex}=await import('./postback');
+  const bytes=crypto.getRandomValues(new Uint8Array(24));const token='pb_'+[...bytes].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+  const r=await supabaseAdmin.from('sponsor_postbacks').upsert({account_id:data.id,token_hash:await sha256Hex(token),hits:0,last_at:null},{onConflict:'account_id'});check(r.error);
+  return {token};
+});
+export const postbackStats=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).handler(async({context})=>{
+  if(!await authorize(context,'/dashboard/templates')) return [];
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+  const r=await supabaseAdmin.from('sponsor_postbacks').select('account_id,hits,last_at,created_at');check(r.error);return r.data??[];
 });
