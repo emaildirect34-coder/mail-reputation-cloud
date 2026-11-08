@@ -71,3 +71,18 @@ Contact columns: `email` (lowercase), `email_md5`, `domain`, `isp` (gmail|outloo
 - `POST /api/v1/segments/count` body `{ "filters": { "isp": ["gmail"], "country": ["FR"], "active_days": 90, "tags": [], "status": "active" } }` → `{ "count": n }` (must answer < 2 s, use materialized aggregates).
 - `POST /api/v1/segments/export` body `{ "filters": {...}, "campaign_id": "uuid", "limit": n, "callback_url": "https://mail-reputation-cloud.lovable.app/api/public/vault/batch" }` → `{ "export_id": "..." }`. The VPS must exclude MD5 suppressions fetched from the site and push recipients to the campaign queue in batches of 5 000 (contract for the callback to be finalized together).
 - `POST /api/v1/suppressions` body `{ "md5": ["..."] }` → marks contacts suppressed (site calls this on every new unsubscribe/complaint).
+
+## 4. Inbox placement tester (add to the Mail-Tester VPS)
+
+Goal: show where a real email lands (Inbox / Promotions / Spam) at each big mailbox provider.
+
+Seed mailboxes: real accounts owned by us (Gmail ×2, Google Workspace, Outlook.com, Yahoo, AOL, GMX, Orange, Free, SFR, La Poste, Proton via Bridge, iCloud…). Their IMAP credentials (app passwords) live only on the VPS (`/etc/mailtester/seeds.yml`), never in the dashboard.
+
+Same Bearer key as §2.
+
+- `POST /api/v1/placement` → `201 { id, token, expires_at, seeds:[{provider,address,placement:"pending"}] }`
+  `token` is a short random string (e.g. `ED-7F3K9Q`). The user must put it in the Subject or body of the test email and send it to every seed address.
+- `GET /api/v1/placement/:id` → `200 { id, token, status:"waiting"|"done", seeds:[{provider,address,placement,folder,received_at}] }`
+  `placement`: `inbox` | `promotions` (Gmail category tab via `X-GM-LABELS` `\\Category\\Promotions`, or Outlook "Other"/Focused) | `spam` (Junk/Spam/Bulk/Courrier indésirable) | `pending` | `missing` (not found after 15 min).
+  Poll each seed's INBOX + Spam folder over IMAP every 20 s, search by token, record folder, then delete the message. `status:"done"` once every seed is not `pending`.
+- Keep results 7 days. Unknown id → 404.
