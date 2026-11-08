@@ -71,12 +71,15 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`local DKIM = {`);
   for (const d of doms.data ?? []) L.push(`  [${q(d.domain)}] = { ${q(d.selector_a)}, ${q(d.selector_b)} },`);
   L.push(`}`);
-  L.push(`kumo.on('smtp_server_message_received', function(msg)`);
+  // Sign both SMTP-received and HTTP-injected (/api/inject/v1) messages; HTTP injection only fires http_message_generated.
+  L.push(`local function sign(msg)`);
   L.push(`  local from = msg:from_header(); if not from then return end`);
-  L.push(`  local dom = from.domain; local sels = DKIM[dom]; if not sels then return end`);
+  L.push(`  local dom = string.lower(from.domain); local sels = DKIM[dom]; if not sels then return end`);
   L.push(`  for _, sel in ipairs(sels) do`);
   L.push(`    msg:dkim_sign(kumo.dkim.rsa_sha256_signer { domain = dom, selector = sel, headers = { 'From','To','Subject','Date','Message-ID','List-Unsubscribe','List-Unsubscribe-Post' }, key = '/opt/kumomta/etc/dkim/' .. dom .. '/' .. sel .. '.key' })`);
-  L.push(`  end`, `end)`);
+  L.push(`  end`, `end`);
+  L.push(`kumo.on('smtp_server_message_received', function(msg) sign(msg) end)`);
+  L.push(`kumo.on('http_message_generated', function(msg) sign(msg) end)`);
   const lua = L.join('\n') + '\n';
   const dkim: AgentBundle['dkim'] = [];
   if (withKeys) for (const d of doms.data ?? []) {
