@@ -86,7 +86,7 @@ export async function catalog(a: Account): Promise<{ plans: Plan[]; regions: Reg
   }
 }
 
-export const KUMO_CLOUD_INIT = `#!/bin/bash
+export const KUMO_CLOUD_INIT_BASE = `#!/bin/bash
 set -e
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get install -y curl gnupg ca-certificates
@@ -102,7 +102,17 @@ function randomPass() {
   return "Km!" + Array.from(b, (x) => x.toString(36).padStart(2, "0")).join("").slice(0, 30) + "A9";
 }
 
-export async function deploy(a: Account, o: { plan: string; region: string; label: string }): Promise<{ id: string; ipv4: string | null }> {
+export function agentCloudInit(origin: string, token: string) {
+  return `#!/bin/bash
+set -e
+export DEBIAN_FRONTEND=noninteractive
+for i in $(seq 1 30); do apt-get update -y && apt-get install -y curl && break; sleep 10; done
+curl -fsSL ${origin}/api/public/agent/install.sh | KAG_TOKEN=${token} bash > /var/log/kumo-agent-install.log 2>&1
+`;
+}
+
+export async function deploy(a: Account, o: { plan: string; region: string; label: string; userData?: string }): Promise<{ id: string; ipv4: string | null }> {
+  const KUMO_CLOUD_INIT = o.userData ?? KUMO_CLOUD_INIT_BASE;
   switch (a.provider) {
     case "linode": {
       const r = await call(a, "/linode/instances", { method: "POST", body: JSON.stringify({ type: o.plan, region: o.region, label: o.label, image: "linode/ubuntu22.04", root_pass: randomPass(), metadata: { user_data: b64(KUMO_CLOUD_INIT) } }) });
