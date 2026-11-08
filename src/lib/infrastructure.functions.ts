@@ -87,3 +87,35 @@ export const issueAgentToken = createServerFn({method:'POST'}).middleware([requi
   });
 export const previewAgentConfig = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
   .handler(async ({data,context}) => {const db=await admin(context); const {buildBundle}=await import('./kumo.server'); const b=await buildBundle(db,data.id,false); return {lua:b.lua,hash:b.hash};});
+
+// Reverse DNS: publish mtaN.<domain> A record on Cloudflare, then set the PTR at the hosting provider.
+export const configureRdns = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
+  .handler(async ({data,context}) => {
+    const db = await admin(context);
+    const { cfUpsert, setRdns } = await import('./providers.server');
+    const srv = await db.from('managed_servers').select('id,provider,account_id,external_id,label').eq('id',data.id).single(); check(srv.error); if (!srv.data) throw new Error('Serveur introuvable'); const S = srv.data;
+    const ips = await db.from('server_ips').select('id,address').eq('server_id',data.id).eq('active',true).eq('family',4); check(ips.error);
+    const b = await db.from('server_domain_bindings').select('domain_id').eq('server_id',data.id).limit(1); check(b.error);
+    let dom: any = null;
+    if (b.data?.[0]) dom = (await db.from('sending_domains').select('domain,zone_id,account_id').eq('id',b.data[0].domain_id).single()).data;
+    if (!dom?.zone_id || !dom?.account_id) throw new Error('Associez d’abord un domaine publié sur Cloudflare à ce serveur.');
+    const cf = (await db.from('provider_accounts').select('*').eq('id',dom.account_id).single()).data;
+    const host = S.account_id ? (await db.from('provider_accounts').select('*').eq('id',S.account_id).single()).data : null;
+    if (!cf) throw new Error('Compte Cloudflare introuvable');
+    const results: { ip: string; hostname: string; dns: boolean; ptr: 'ok' | 'manual' | 'error'; error?: string | undefined }[] = [];
+    for (const [i, ip] of (ips.data ?? []).entries()) {
+      const hostname = `mta${i + 1}.${dom.domain}`;
+      const r = await cfUpsert(cf as any, dom.zone_id, [{ key: 'ptr', type: 'A', name: hostname, content: ip.address }]);
+      const dns = r[0]?.ok === true;
+      let ptr: 'ok' | 'manual' | 'error' = 'manual', error: string | undefined = dns ? undefined : r[0]?.error;
+      if (dns && host) {
+        for (let t = 0; t < 3; t++) {
+          try { ptr = (await setRdns(host as any, S.external_id, ip.address, hostname)) ? 'ok' : 'manual'; error = undefined; break; }
+          catch (e) { ptr = 'error'; error = (e as Error).message; await new Promise(res => setTimeout(res, 4000)); }
+        }
+      }
+      if (ptr === 'ok') check((await db.from('server_ips').update({ rdns: hostname }).eq('id', ip.id)).error);
+      results.push({ ip: ip.address, hostname, dns, ptr, error });
+    }
+    return { results };
+  });
