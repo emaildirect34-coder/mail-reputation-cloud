@@ -61,4 +61,6 @@
 - [ ] Vérifier synchronisation Everflow externe — nécessite un compte sponsor et sa clé affilié; les rémunérations multiples/non reconnues sont ignorées explicitement.
 - [ ] Import automatique des conversions et rapprochement des paiements sponsors — nécessite le contrat API du réseau et un compte réel; actuellement saisie/import financier, pas de connexion bancaire.
 
-- [ ] Mail-Tester : connecter le Lab à l'API du VPS Mail-Tester (en attente de l'URL et de la clé du VPS)
+- [x] Mail-Tester : connecteur Lab prêt (contrat docs/CODEX.md)
+- [ ] Mail-Tester : renseigner MAILTESTER_URL et MAILTESTER_KEY quand le serveur Codex est en ligne
+- [x] Files KumoMTA et Traffic Shaping sur données réelles
