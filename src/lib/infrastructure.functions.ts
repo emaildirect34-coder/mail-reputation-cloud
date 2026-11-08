@@ -93,16 +93,16 @@ export const configureRdns = createServerFn({method:'POST'}).middleware([require
   .handler(async ({data,context}) => {
     const db = await admin(context);
     const { cfUpsert, setRdns } = await import('./providers.server');
-    const srv = await db.from('managed_servers').select('id,provider,account_id,external_id,label').eq('id',data.id).single(); check(srv.error);
+    const srv = await db.from('managed_servers').select('id,provider,account_id,external_id,label').eq('id',data.id).single(); check(srv.error); if (!srv.data) throw new Error('Serveur introuvable'); const S = srv.data;
     const ips = await db.from('server_ips').select('id,address').eq('server_id',data.id).eq('active',true).eq('family',4); check(ips.error);
     const b = await db.from('server_domain_bindings').select('domain_id').eq('server_id',data.id).limit(1); check(b.error);
     let dom: any = null;
     if (b.data?.[0]) dom = (await db.from('sending_domains').select('domain,zone_id,account_id').eq('id',b.data[0].domain_id).single()).data;
     if (!dom?.zone_id || !dom?.account_id) throw new Error('Associez d’abord un domaine publié sur Cloudflare à ce serveur.');
     const cf = (await db.from('provider_accounts').select('*').eq('id',dom.account_id).single()).data;
-    const host = srv.data.account_id ? (await db.from('provider_accounts').select('*').eq('id',srv.data.account_id).single()).data : null;
+    const host = S.account_id ? (await db.from('provider_accounts').select('*').eq('id',S.account_id).single()).data : null;
     if (!cf) throw new Error('Compte Cloudflare introuvable');
-    const results: { ip: string; hostname: string; dns: boolean; ptr: 'ok' | 'manual' | 'error'; error?: string }[] = [];
+    const results: { ip: string; hostname: string; dns: boolean; ptr: 'ok' | 'manual' | 'error'; error?: string | undefined }[] = [];
     for (const [i, ip] of (ips.data ?? []).entries()) {
       const hostname = `mta${i + 1}.${dom.domain}`;
       const r = await cfUpsert(cf as any, dom.zone_id, [{ key: 'ptr', type: 'A', name: hostname, content: ip.address }]);
@@ -110,7 +110,7 @@ export const configureRdns = createServerFn({method:'POST'}).middleware([require
       let ptr: 'ok' | 'manual' | 'error' = 'manual', error: string | undefined = dns ? undefined : r[0]?.error;
       if (dns && host) {
         for (let t = 0; t < 3; t++) {
-          try { ptr = (await setRdns(host as any, srv.data.external_id, ip.address, hostname)) ? 'ok' : 'manual'; error = undefined; break; }
+          try { ptr = (await setRdns(host as any, S.external_id, ip.address, hostname)) ? 'ok' : 'manual'; error = undefined; break; }
           catch (e) { ptr = 'error'; error = (e as Error).message; await new Promise(res => setTimeout(res, 4000)); }
         }
       }
