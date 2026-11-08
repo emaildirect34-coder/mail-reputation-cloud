@@ -15,10 +15,12 @@ export const Route = createFileRoute('/api/public/agent/jobs')({
         if (claimed.error) return new Response('Error', { status: 500 });
         const msgs = claimed.data ?? [];
         const ids = [...new Set(msgs.map(m => m.campaign_id))];
-        const camps = ids.length ? (await a.db.from('campaigns').select('id,from_name,from_email,reply_to,subject,html').in('id', ids)).data ?? [] : [];
+        const camps = ids.length ? (await (a.db as any).from('campaigns').select('id,from_name,from_email,reply_to,subject,html,ab_variants,ab_winner').in('id', ids)).data ?? [] : [];
+        // A/B: the message's variant overrides subject / sender name.
+        const pick = (c: any, v: number | null) => { const x = Array.isArray(c.ab_variants) ? c.ab_variants[v ?? c.ab_winner ?? 0] : null; return x ? { ...c, subject: x.subject || c.subject, from_name: x.fromName || c.from_name } : c; };
         const { renderMessage } = await import('@/lib/sending.server');
         const origin = new URL(request.url).origin;
-        const jobs = msgs.flatMap(m => { const c = camps.find(x => x.id === m.campaign_id); return c ? [{ id: m.id, sender: `bounce+${m.id}@${c.from_email.split('@')[1]}`, rcpt: m.email, content: renderMessage(c, m, origin) }] : []; });
+        const jobs = msgs.flatMap(m => { const c = camps.find((x: any) => x.id === m.campaign_id); return c ? [{ id: m.id, sender: `bounce+${m.id}@${c.from_email.split('@')[1]}`, rcpt: m.email, content: renderMessage(pick(c, (m as any).variant), m, origin) }] : []; });
         return Response.json({ jobs }, { headers: { 'Cache-Control': 'no-store' } });
       },
       POST: async ({ request }) => {

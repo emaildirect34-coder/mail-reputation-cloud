@@ -51,6 +51,8 @@ import { Route as ApiPublicAgentEventsRouteImport } from './routes/api/public/ag
 import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
+import { Route as ApiPublicCTokenRouteImport } from './routes/api/public/c/$token'
+import { Route as ApiPublicTTokenRouteImport } from './routes/api/public/t/$token'
 import { Route as ApiPublicUnsubTokenRouteImport } from './routes/api/public/unsub/$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -265,6 +267,16 @@ const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
   path: '/api/public/agent/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCTokenRoute = ApiPublicCTokenRouteImport.update({
+  id: '/api/public/c/$token',
+  path: '/api/public/c/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTTokenRoute = ApiPublicTTokenRouteImport.update({
+  id: '/api/public/t/$token',
+  path: '/api/public/t/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicUnsubTokenRoute = ApiPublicUnsubTokenRouteImport.update({
   id: '/api/public/unsub/$token',
   path: '/api/public/unsub/$token',
@@ -314,6 +326,8 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRoutesByTo {
@@ -358,6 +372,8 @@ export interface FileRoutesByTo {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRoutesById {
@@ -404,6 +420,8 @@ export interface FileRoutesById {
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/c/$token': typeof ApiPublicCTokenRoute
+  '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
 }
 export interface FileRouteTypes {
@@ -451,6 +469,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/c/$token'
+    | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -495,6 +515,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/c/$token'
+    | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   id:
     | '__root__'
@@ -540,6 +562,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/c/$token'
+    | '/api/public/t/$token'
     | '/api/public/unsub/$token'
   fileRoutesById: FileRoutesById
 }
@@ -553,6 +577,8 @@ export interface RootRouteChildren {
   ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
+  ApiPublicCTokenRoute: typeof ApiPublicCTokenRoute
+  ApiPublicTTokenRoute: typeof ApiPublicTTokenRoute
   ApiPublicUnsubTokenRoute: typeof ApiPublicUnsubTokenRoute
 }
 
@@ -852,6 +878,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/c/$token': {
+      id: '/api/public/c/$token'
+      path: '/api/public/c/$token'
+      fullPath: '/api/public/c/$token'
+      preLoaderRoute: typeof ApiPublicCTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/t/$token': {
+      id: '/api/public/t/$token'
+      path: '/api/public/t/$token'
+      fullPath: '/api/public/t/$token'
+      preLoaderRoute: typeof ApiPublicTTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/unsub/$token': {
       id: '/api/public/unsub/$token'
       path: '/api/public/unsub/$token'
@@ -948,6 +988,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
+  ApiPublicCTokenRoute: ApiPublicCTokenRoute,
+  ApiPublicTTokenRoute: ApiPublicTTokenRoute,
   ApiPublicUnsubTokenRoute: ApiPublicUnsubTokenRoute,
 }
 export const routeTree = rootRouteImport
