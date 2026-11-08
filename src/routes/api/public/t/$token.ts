@@ -8,7 +8,8 @@ export const Route = createFileRoute('/api/public/t/$token')({
     handlers: {
       GET: async ({ params }) => {
         if (/^[0-9a-f]{36}$/.test(params.token)) {
-          const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
+          const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        const db = supabaseAdmin as any;
           await db.from('campaign_messages').update({ opened_at: new Date().toISOString() }).eq('unsub_token', params.token).is('opened_at', null);
         }
         return new Response(gif, { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' } });

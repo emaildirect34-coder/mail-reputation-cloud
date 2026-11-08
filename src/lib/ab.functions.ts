@@ -6,7 +6,7 @@ async function admin(ctx: { supabase: any; userId: string }) {
   const { data, error } = await ctx.supabase.rpc('has_role', { _user_id: ctx.userId, _role: 'superadmin' });
   if (error || !data) throw new Error('Accès réservé au Superadmin');
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-  return supabaseAdmin;
+  return supabaseAdmin as any; // A/B columns are newer than the generated types
 }
 const check = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
 
@@ -22,11 +22,12 @@ export const readAb = createServerFn({ method: 'POST' }).middleware([requireSupa
   const db = await admin(context);
   const camps = await db.from('campaigns').select('id,name,subject,from_name,status,total,ab_variants,ab_metric,ab_decide_at,ab_winner,created_at').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(50);
   check(camps.error);
-  const tests = [];
-  const eligible = [];
-  for (const c of camps.data ?? []) {
+  type V = { subject: string; fromName: string; assigned: number; sent: number; opened: number; clicked: number };
+  const tests: { id: string; name: string; ab_metric: string | null; ab_decide_at: string | null; ab_winner: number | null; variants: V[] }[] = [];
+  const eligible: { id: string; name: string; subject: string; from_name: string; total: number }[] = [];
+  for (const c of (camps.data ?? []) as any[]) {
     if (Array.isArray(c.ab_variants)) {
-      const variants = await Promise.all((c.ab_variants as any[]).map(async (v, i) => {
+      const variants = await Promise.all((c.ab_variants as any[]).map(async (v: any, i: number): Promise<V> => {
         const base = () => db.from('campaign_messages').select('id', { count: 'exact', head: true }).eq('campaign_id', c.id).eq('variant', i);
         const [all, sent, opened, clicked] = await Promise.all([base(), base().eq('status', 'sent'), base().not('opened_at', 'is', null), base().not('clicked_at', 'is', null)]);
         return { ...v, assigned: all.count ?? 0, sent: sent.count ?? 0, opened: opened.count ?? 0, clicked: clicked.count ?? 0 };
@@ -53,7 +54,7 @@ export const startAb = createServerFn({ method: 'POST' }).middleware([requireSup
     const ids: string[] = [];
     for (let from = 0; ; from += 1000) {
       const r = await db.from('campaign_messages').select('id').eq('campaign_id', data.campaignId).eq('status', 'queued').range(from, from + 999); check(r.error);
-      ids.push(...(r.data ?? []).map(x => x.id)); if ((r.data ?? []).length < 1000) break;
+      ids.push(...(r.data ?? []).map((x: any) => x.id)); if ((r.data ?? []).length < 1000) break;
     }
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j]!, ids[i]!]; }
     const sample = ids.slice(0, Math.max(variants.length, Math.round(ids.length * data.pct / 100)));

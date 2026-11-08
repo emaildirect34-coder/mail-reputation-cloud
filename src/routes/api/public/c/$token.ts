@@ -7,7 +7,8 @@ export const Route = createFileRoute('/api/public/c/$token')({
       GET: async ({ params, request }) => {
         const u = new URL(request.url).searchParams.get('u') ?? '';
         if (!/^[0-9a-f]{36}$/.test(params.token) || !/^https?:\/\//.test(u) || u.length > 2000) return new Response('Lien invalide', { status: 404 });
-        const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
+        const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        const db = supabaseAdmin as any;
         const m = await db.from('campaign_messages').select('id,campaign_id,opened_at,clicked_at').eq('unsub_token', params.token).maybeSingle();
         if (!m.data) return new Response('Lien invalide', { status: 404 });
         const c = await db.from('campaigns').select('html').eq('id', m.data.campaign_id).single();
