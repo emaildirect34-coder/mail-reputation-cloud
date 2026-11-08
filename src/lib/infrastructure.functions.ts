@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
-import { poolInput, assignmentInput, bindingInput, warmupInput, uuidInput, infrastructurePaths } from './infrastructure.schemas';
+import { poolInput, assignmentInput, bindingInput, warmupInput, uuidInput, effectiveDay, infrastructurePaths } from './infrastructure.schemas';
 import type { Tables } from '@/integrations/supabase/types';
 
 async function admin(ctx: { supabase: any; userId: string }) {
@@ -61,7 +61,10 @@ export const assignIpPool = createServerFn({method:'POST'}).middleware([requireS
 export const saveWarmup = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>warmupInput.parse(i))
   .handler(async ({data,context}) => {const db=await admin(context); const ip=await db.from('server_ips').select('id').eq('id',data.ipId).eq('active',true).eq('family',4).single(); check(ip.error); check((await db.from('warmup_plans').upsert({ip_id:data.ipId,isp:data.isp,daily_limits:data.dailyLimits,status:'draft',current_day:1,created_by:context.userId},{onConflict:'ip_id,isp'})).error); return {ok:true};});
 export const pauseWarmup = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
-  .handler(async ({data,context}) => {const db=await admin(context); check((await db.from('warmup_plans').update({status:'paused'}).eq('id',data.id).select('id').single()).error); return {ok:true};});
+  .handler(async ({data,context}) => {const db=await admin(context); const w=await db.from('warmup_plans').select('*').eq('id',data.id).single(); check(w.error); check((await db.from('warmup_plans').update({status:'paused',current_day:effectiveDay(w.data!)}).eq('id',data.id).select('id').single()).error); return {ok:true};});
+/** Activate or resume: the day counter restarts from the stored day and advances every 24h; KumoMTA applies only active plans. */
+export const activateWarmup = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
+  .handler(async ({data,context}) => {const db=await admin(context); check((await db.from('warmup_plans').update({status:'active',created_at:new Date().toISOString()}).eq('id',data.id).select('id').single()).error); return {ok:true};});
 
 export const bindDomainServer = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>bindingInput.parse(i))
   .handler(async ({data,context}) => {
