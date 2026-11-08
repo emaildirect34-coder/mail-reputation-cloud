@@ -138,3 +138,15 @@ export const autoFixDomain = createServerFn({ method: "POST" }).middleware([requ
     }));
     return { ok: true as const, domain: d.domain, message: note, items };
   });
+
+export const recheckDomainDns = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((i: { domain: string }) => ({ domain: String(i.domain ?? "").trim().toLowerCase() }))
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const { data: d } = await db.from("sending_domains").select(PUBLIC).eq("domain", data.domain).maybeSingle();
+    if (!d) return { checks: {} as Record<string, boolean> };
+    const { checkDomain } = await import("./domains.server");
+    const res = await checkDomain(d as any);
+    await db.from("sending_domains").update({ checks: res, checked_at: new Date().toISOString() }).eq("id", (d as any).id);
+    return { checks: Object.fromEntries(Object.entries(res).map(([k, v]) => [k, v.ok])) as Record<string, boolean> };
+  });
