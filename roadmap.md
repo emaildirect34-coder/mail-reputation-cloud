@@ -60,3 +60,5 @@
 - [x] Tableau financier avec résultat, encaissements déclarés, échéances, soldes à recevoir et eCPM basé sur livraisons mesurées; sept tests réussis, parcours connecté (offre, compte, campagne, revenu, dépense, paiement, doublon, devises et CSV), téléphone 390/538 px; données d’essai nettoyées.
 - [ ] Vérifier synchronisation Everflow externe — nécessite un compte sponsor et sa clé affilié; les rémunérations multiples/non reconnues sont ignorées explicitement.
 - [ ] Import automatique des conversions et rapprochement des paiements sponsors — nécessite le contrat API du réseau et un compte réel; actuellement saisie/import financier, pas de connexion bancaire.
+
+- [ ] Mail-Tester : connecter le Lab à l'API du VPS Mail-Tester (en attente de l'URL et de la clé du VPS)

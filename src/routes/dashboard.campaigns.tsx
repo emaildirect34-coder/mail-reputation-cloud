@@ -49,7 +49,7 @@ function Overview() {
       <MiniKpi icon={<Euro />} label="Revenus (30j)" value="71 860 €" delta="+18.4%" />
     </div>
 
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       <section className="card-lux min-w-0 p-3.5">
         <h2 className="mb-2 flex items-center gap-2 font-display text-[16px] font-bold text-primary"><BarChart3 className="size-5" />Performance des 7 derniers jours</h2>
         <LineChart labels={["18 avr.", "19", "20", "21", "22", "23", "24 avr."]} series={[
@@ -68,9 +68,6 @@ function Overview() {
         <h2 className="mb-2 font-display text-[16px] font-bold text-primary"><Euro className="mr-2 inline size-5" />Top offres sponsors</h2>
         <ul className="space-y-2.5">{offers.map(o => <li key={o.n}><div className="flex justify-between text-[12.5px]"><span className="font-semibold">{o.n}</span><span className="font-bold text-primary">{o.r.toLocaleString("fr-FR")} €</span></div><div className="mt-1 h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-neon-green" style={{ width: `${o.w}%` }} /></div></li>)}</ul>
       </section>
-    </div>
-
-    <div className="space-y-3">
       <section className="card-lux p-3.5">
         <div className="mb-2 flex items-center"><h2 className="font-display text-[16px] font-bold text-primary"><Send className="mr-2 inline size-5" />Campagnes en cours</h2><Link to="/dashboard/campaigns/list" className="ml-auto text-[12px] font-semibold text-primary">Tout voir →</Link></div>
         <ul className="space-y-2">{running.map(r => <li key={r.n} className="rounded-xl border border-border/60 p-2.5">
