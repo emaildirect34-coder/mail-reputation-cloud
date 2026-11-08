@@ -12,5 +12,9 @@ export const Route = createFileRoute('/api/public/agent/events')({ server:{ hand
   if (!parsed.success) return new Response('Bad request',{status:400});
   const result = await agent.db.rpc('ingest_delivery_events',{_server:agent.serverId,_events:parsed.data.events});
   if (result.error) return new Response('Event batch rejected',{status:422});
+  const { fireWebhooks } = await import('@/lib/webhooks.server');
+  const byType = new Map<string, typeof parsed.data.events>();
+  for (const e of parsed.data.events) byType.set(e.type, [...(byType.get(e.type) ?? []), e]);
+  await Promise.all([...byType].map(([t, evs]) => fireWebhooks(t as any, { server_id: agent.serverId, events: evs.map(e => ({ message_id: e.messageId, occurred_at: e.occurredAt, smtp_code: e.smtpCode ?? null, detail: e.detail })) })));
   return Response.json({accepted:result.data},{headers:{'Cache-Control':'no-store'}});
 } } } });

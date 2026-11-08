@@ -1,5 +1,5 @@
 // Outgoing webhooks: HMAC-SHA256 signed JSON POSTs to registered endpoints.
-export const WEBHOOK_EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'campaign.paused', 'test'] as const;
+export const WEBHOOK_EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'test'] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 export async function sign(secret: string, body: string) {

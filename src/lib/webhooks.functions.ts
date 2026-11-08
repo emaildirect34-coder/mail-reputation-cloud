@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
-const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'campaign.paused'] as const;
+const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe'] as const;
 
 async function admin(context: any) {
   const r = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
