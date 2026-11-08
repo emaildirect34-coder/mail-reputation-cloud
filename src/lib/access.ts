@@ -23,6 +23,7 @@ export const ACCESS_AREAS: { path: string; label: string }[] = [
   { path: "/dashboard/shield", label: "Protection & Urgence" },
   { path: "/dashboard/suppression", label: "Suppressions" },
   { path: "/dashboard/validation", label: "Conformité" },
+  { path: "/dashboard/vault", label: "Base clients" },
   { path: "/dashboard/webhooks", label: "Webhooks" },
   { path: "/dashboard/agent", label: "Agent IA" },
 ];

@@ -11,6 +11,7 @@ import {
   Globe, CloudCog, KeyRound, BadgeCheck, Lock, FlaskConical, MailCheck, Search, BarChart3, MailX, ScanLine,
   ShieldAlert, Ban, ClipboardCheck, FileBarChart, Users, CreditCard, Settings2, Settings, ChevronDown, Bell,
   LogOut, ShieldCheck, Zap, Rocket, Menu, Mail,
+  Database,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -65,6 +66,7 @@ const sections: Section[] = [
     { to: "/dashboard/preflight", icon: ScanLine, label: "Scanner de liens sponsors" },
     { to: "/dashboard/shield", icon: ShieldAlert, label: "Protection & Urgence" },
     { to: "/dashboard/suppression", icon: Ban, label: "Suppressions" },
+    { to: "/dashboard/vault", icon: Database, label: "Base clients" },
     { to: "/dashboard/validation", icon: ClipboardCheck, label: "Conformité" },
     { to: "/dashboard/postmaster", icon: FileBarChart, label: "Rapports DMARC" },
   ]},

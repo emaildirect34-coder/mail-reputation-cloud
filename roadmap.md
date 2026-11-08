@@ -68,7 +68,8 @@
 # Nouveaux modules (un par un)
 - [x] Validation d'emails réelle (syntaxe, fautes, MX, jetables, rôles, suppression) + nettoyage de listes
 - [x] Pre-Flight Gate branché aux campagnes
-- [ ] Base clients 149 Go : stockage et import massif (en attente du choix utilisateur)
+- [x] Base clients 149 Go : page + contrat Codex (docs/CODEX.md §3)
+- [ ] Base clients : brancher VAULT_URL/VAULT_KEY quand Codex a déployé le serveur
 - [ ] Testeur de placement Inbox/Spam/Promo
 - [ ] Alertes Slack/Webhook/Email
 - [ ] Éditeur visuel de templates
