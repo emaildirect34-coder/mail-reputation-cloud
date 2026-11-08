@@ -25,6 +25,16 @@ export const Route = createFileRoute("/dashboard/domains")({
 });
 
 const LABELS: Record<string, string> = { a: "A mail", mx: "MX", spf: "SPF", dkim_a: "DKIM 1", dkim_b: "DKIM 2", dmarc: "DMARC", mta_sts: "MTA-STS", tls_rpt: "TLS-RPT" };
+const SUB_PREFIXES = ["news", "mail", "info", "promo", "offres", "contact", "letter", "send", "mx", "go", "deals", "club", "pro", "hello", "alert", "notify", "update", "service", "client", "bonus"];
+function planDomains(zone: string, mode: "root" | "auto" | "both", count: number, custom: string): string[] {
+  if (!zone) return [];
+  const out: string[] = mode === "auto" ? [] : [zone];
+  if (mode === "root") return out;
+  const own = custom.split(/[\s,;]+/).map((s) => s.toLowerCase().replace(/[^a-z0-9-]/g, "")).filter(Boolean);
+  const pool = [...new Set([...own, ...SUB_PREFIXES])];
+  for (let i = 0; out.length < (mode === "both" ? count + 1 : count); i++) out.push(`${pool[i] ?? `m${i - pool.length + 1}`}.${zone}`);
+  return out;
+}
 const sel = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
 
 function Domains() {
@@ -50,6 +60,15 @@ function Domains() {
   useEffect(() => { setCfAcc(cur?.account_id ?? ""); setZone(cur?.zone_id ?? ""); setIp(cur?.ip ?? ""); }, [cur?.id]);
   const zones = useQuery({ queryKey: ["zones", cfAcc], queryFn: () => fZones({ data: { id: cfAcc } }), enabled: !!cfAcc });
 
+  const [manual, setManual] = useState(false);
+  const [addAcc, setAddAcc] = useState(""); const [addZone, setAddZone] = useState("");
+  const [mode, setMode] = useState<"root" | "auto" | "both">("auto");
+  const [count, setCount] = useState(3); const [custom, setCustom] = useState("");
+  useEffect(() => { if (!addAcc && cfAccounts[0]) setAddAcc(cfAccounts[0].id); }, [cfAccounts.length]);
+  const addZones = useQuery({ queryKey: ["zones", addAcc], queryFn: () => fZones({ data: { id: addAcc } }), enabled: !!addAcc });
+  const zoneName = (addZones.data ?? []).find((z) => z.id === addZone)?.name ?? "";
+  const planned = planDomains(zoneName, mode, count, custom);
+
   const run = async (k: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(k);
     try { await fn(); toast.success(ok); await qc.invalidateQueries({ queryKey: ["domains"] }); }
@@ -73,11 +92,51 @@ function Domains() {
       </div>
 
       <Panel title="Ajouter un domaine">
-        <form className="grid gap-2 sm:grid-cols-[1fr_200px_auto]" onSubmit={(e) => { e.preventDefault(); run("add", async () => { await fAdd({ data: { domain: form.domain, ip: form.ip || undefined } }); setForm({ domain: "", ip: "" }); }, "Domaine ajouté, 2 clés DKIM générées"); }}>
-          <Input placeholder="ex. news.monsite.fr" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} required />
-          <Input placeholder="IP d'envoi (optionnel)" value={form.ip} onChange={(e) => setForm({ ...form, ip: e.target.value })} />
-          <Button disabled={busy === "add"}><Plus className="h-4 w-4" /> Ajouter</Button>
-        </form>
+        {manual || cfAccounts.length === 0 ? (
+          <form className="grid gap-2 sm:grid-cols-[1fr_200px_auto]" onSubmit={(e) => { e.preventDefault(); run("add", async () => { await fAdd({ data: { domain: form.domain, ip: form.ip || undefined } }); setForm({ domain: "", ip: "" }); }, "Domaine ajouté, 2 clés DKIM générées"); }}>
+            <Input placeholder="ex. news.monsite.fr" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} required />
+            <Input placeholder="IP d'envoi (optionnel)" value={form.ip} onChange={(e) => setForm({ ...form, ip: e.target.value })} />
+            <Button disabled={busy === "add"}><Plus className="h-4 w-4" /> Ajouter</Button>
+          </form>
+        ) : (
+          <div className="grid gap-3">
+            <div className="grid gap-2 md:grid-cols-3">
+              <label className="text-xs font-semibold text-muted-foreground">Compte Cloudflare
+                <select className={sel} value={addAcc} onChange={(e) => { setAddAcc(e.target.value); setAddZone(""); }}>
+                  <option value="">— choisir —</option>{cfAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select></label>
+              <label className="text-xs font-semibold text-muted-foreground">Domaine Cloudflare
+                <select aria-label="Domaine Cloudflare" className={sel} value={addZone} onChange={(e) => setAddZone(e.target.value)} disabled={!addAcc}>
+                  <option value="">{addZones.isFetching ? "Chargement…" : "— choisir un domaine —"}</option>{(addZones.data ?? []).map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select></label>
+              <label className="text-xs font-semibold text-muted-foreground">IP d'envoi (optionnel)
+                <Input value={form.ip} onChange={(e) => setForm({ ...form, ip: e.target.value })} placeholder="203.0.113.10" /></label>
+            </div>
+            {addZones.error && <p role="alert" className="text-sm text-destructive">{addZones.error.message}</p>}
+            <div className="grid gap-2 md:grid-cols-3">
+              <label className="text-xs font-semibold text-muted-foreground">Mode d'envoi
+                <select className={sel} value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>
+                  <option value="root">Domaine principal seulement</option>
+                  <option value="auto">Sous-domaines automatiques</option>
+                  <option value="both">Domaine principal + sous-domaines</option>
+                </select></label>
+              {mode !== "root" && <label className="text-xs font-semibold text-muted-foreground">Nombre de sous-domaines
+                <Input type="number" min={1} max={50} value={count} onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} /></label>}
+              {mode !== "root" && <label className="text-xs font-semibold text-muted-foreground">Préfixes personnalisés (optionnel)
+                <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="news, promo, offres" /></label>}
+            </div>
+            {zoneName && <div className="flex flex-wrap gap-1">{planned.map((d) => <Pill key={d}>{d}</Pill>)}</div>}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled={!zoneName || busy === "add"} onClick={() => run("add", async () => {
+                const exist = new Set(domains.map((d) => d.domain)); let n = 0;
+                for (const d of planned) { if (exist.has(d)) continue; await fAdd({ data: { domain: d, ip: form.ip || undefined, accountId: addAcc, zoneId: addZone } }); n++; }
+                if (!n) throw new Error("Tous ces domaines existent déjà");
+              }, `${planned.length} domaine(s) ajouté(s) avec double DKIM`)}><Plus className="h-4 w-4" /> Ajouter {planned.length > 1 ? `${planned.length} domaines` : "ce domaine"}</Button>
+              <Button variant="ghost" size="sm" onClick={() => setManual(true)}>Saisie manuelle</Button>
+            </div>
+          </div>
+        )}
+        {manual && cfAccounts.length > 0 && <Button variant="ghost" size="sm" className="mt-2" onClick={() => setManual(false)}>Choisir depuis Cloudflare</Button>}
       </Panel>
 
       {cur && (
