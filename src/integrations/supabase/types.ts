@@ -996,6 +996,51 @@ export type Database = {
           },
         ]
       }
+      webhook_endpoints: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          events: string[]
+          fail_count: number
+          id: string
+          last_error: string | null
+          last_sent_at: string | null
+          last_status: number | null
+          secret: string
+          sent_count: number
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          fail_count?: number
+          id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
+          last_status?: number | null
+          secret: string
+          sent_count?: number
+          url: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          fail_count?: number
+          id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
+          last_status?: number | null
+          secret?: string
+          sent_count?: number
+          url?: string
+        }
+        Relationships: []
+      }
       worker_tasks: {
         Row: {
           allowed_paths: string[]
