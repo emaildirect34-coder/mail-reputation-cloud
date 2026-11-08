@@ -284,7 +284,7 @@ const GROUPS: { title: string; desc: string; keys: string[] }[] = [
   { title: "Bonus avancés", desc: "Pour aller au-delà du 10/10", keys: ["mta_sts", "dane_tlsa", "bimi_vmc"] },
 ];
 
-function CheckCard({ k, v, pts }: { k: string; v: any; pts?: number }) {
+function CheckCard({ k, v, pts }: { k: string; v: any; pts?: number | undefined }) {
   const [open, setOpen] = useState(!v.pass);
   const [copied, setCopied] = useState(false);
   const info = INFO[k] ?? { name: k.toUpperCase(), why: "" };
