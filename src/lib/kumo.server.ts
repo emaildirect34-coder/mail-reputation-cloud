@@ -17,7 +17,7 @@ export type AgentBundle = { lua: string; hash: string; dkim: { domain: string; s
 export async function buildBundle(db: any, serverId: string, withKeys: boolean): Promise<AgentBundle> {
   const [srv, ips, pools, binds] = await Promise.all([
     db.from('managed_servers').select('id,label,ipv4').eq('id', serverId).single(),
-    db.from('server_ips').select('id,address,family,pool_id,rdns').eq('server_id', serverId).eq('active', true),
+    db.from('server_ips').select('id,address,family,pool_id,rdns').eq('server_id', serverId).eq('active', true).is('quarantined_at', null),
     db.from('vmta_pools').select('id,name,status'),
     db.from('server_domain_bindings').select('id,domain_id').eq('server_id', serverId),
   ]);

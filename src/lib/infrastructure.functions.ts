@@ -119,3 +119,7 @@ export const configureRdns = createServerFn({method:'POST'}).middleware([require
     }
     return { results };
   });
+
+// Blacklist check now: quarantines listed IPs (removed from KumoMTA config) and releases clean ones.
+export const checkIpHealth = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
+  .handler(async ({data,context}) => { const db = await admin(context); const { healServerIps } = await import('./ip-health.server'); return { results: await healServerIps(db, data.id, true) }; });

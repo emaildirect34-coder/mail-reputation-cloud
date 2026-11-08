@@ -51,7 +51,7 @@ function interpret(a: string[] | null): Pick<ListResult, 'status' | 'code'> {
 
 export function isIPv4(s: string) { return /^(\d{1,3}\.){3}\d{1,3}$/.test(s) && s.split('.').every(n => +n <= 255); }
 
-async function scanTarget(target: string) {
+export async function scanTarget(target: string) {
   const ip = isIPv4(target);
   const rev = ip ? target.split('.').reverse().join('.') : target.toLowerCase();
   const lists = ip ? IP_LISTS : DOMAIN_LISTS;
