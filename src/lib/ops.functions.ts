@@ -69,7 +69,7 @@ export const readShaping = createServerFn({ method: 'POST' }).middleware([requir
 
 // ---- Mail-Tester VPS connector (built by Codex). Contract: docs/CODEX.md ----
 async function mt(path: string, init?: RequestInit) {
-  const url = process.env.MAILTESTER_URL, key = process.env.MAILTESTER_KEY;
+  const url = process.env['MAILTESTER_URL'], key = process.env['MAILTESTER_KEY'];
   if (!url || !key) return { configured: false as const };
   const r = await fetch(url.replace(/\/$/, '') + path, { ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } });
   const text = await r.text();
