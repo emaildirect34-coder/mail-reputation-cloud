@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePostback, fillClickId } from '@/lib/postback';
+import { parsePostback, fillClickId } from '../lib/postback';
 const t = 'a'.repeat(36);
 describe('postback', () => {
   it('parses payout in cents and defaults to approved', () => { expect(parsePostback(new URLSearchParams(`click_id=${t}&payout=12.5&txid=X1`))).toEqual({ clickId: t, txid: 'X1', amountCents: 1250, status: 'approved', currency: null }); });
