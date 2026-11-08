@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           campaign_id: string
           claimed_at: string | null
+          clicked_at: string | null
           contact_id: string | null
           created_at: string
           delivery_state: string
@@ -25,14 +26,17 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          opened_at: string | null
           sent_at: string | null
           server_id: string
           status: string
           unsub_token: string
+          variant: number | null
         }
         Insert: {
           campaign_id: string
           claimed_at?: string | null
+          clicked_at?: string | null
           contact_id?: string | null
           created_at?: string
           delivery_state?: string
@@ -40,14 +44,17 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          opened_at?: string | null
           sent_at?: string | null
           server_id: string
           status?: string
           unsub_token?: string
+          variant?: number | null
         }
         Update: {
           campaign_id?: string
           claimed_at?: string | null
+          clicked_at?: string | null
           contact_id?: string | null
           created_at?: string
           delivery_state?: string
@@ -55,10 +62,12 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          opened_at?: string | null
           sent_at?: string | null
           server_id?: string
           status?: string
           unsub_token?: string
+          variant?: number | null
         }
         Relationships: [
           {
@@ -86,6 +95,10 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          ab_decide_at: string | null
+          ab_metric: string | null
+          ab_variants: Json | null
+          ab_winner: number | null
           auto_pause_reason: string | null
           created_at: string
           created_by: string | null
@@ -104,6 +117,10 @@ export type Database = {
           total: number
         }
         Insert: {
+          ab_decide_at?: string | null
+          ab_metric?: string | null
+          ab_variants?: Json | null
+          ab_winner?: number | null
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -122,6 +139,10 @@ export type Database = {
           total?: number
         }
         Update: {
+          ab_decide_at?: string | null
+          ab_metric?: string | null
+          ab_variants?: Json | null
+          ab_winner?: number | null
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -1031,6 +1052,7 @@ export type Database = {
         Returns: {
           campaign_id: string
           claimed_at: string | null
+          clicked_at: string | null
           contact_id: string | null
           created_at: string
           delivery_state: string
@@ -1038,10 +1060,12 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          opened_at: string | null
           sent_at: string | null
           server_id: string
           status: string
           unsub_token: string
+          variant: number | null
         }[]
         SetofOptions: {
           from: "*"
@@ -1050,6 +1074,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      decide_ab_winners: { Args: never; Returns: undefined }
       delivery_log_summary: {
         Args: never
         Returns: {
