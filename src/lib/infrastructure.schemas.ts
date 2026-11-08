@@ -25,3 +25,37 @@ export const warmupPresets: Record<string, number[]> = {
   'Free / SFR': [20, 40, 70, 120, 200, 300, 450, 650, 900, 1200, 1600, 2100, 2700, 3500, 4500, 6000, 8000],
   Autres: [100, 200, 400, 800, 1500, 2500, 4000, 6000, 9000, 13000, 18000, 25000],
 };
+
+// Dynamic per-ISP regulation from the last hour of delivery events (shared by the agent Lua and the Shaping page).
+export const ISP_DOMAINS: Record<string, string[]> = {
+  Gmail: ['gmail.com', 'googlemail.com'],
+  Microsoft: ['outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'hotmail.fr', 'live.fr', 'outlook.fr'],
+  Yahoo: ['yahoo.com', 'yahoo.fr', 'aol.com'],
+  Orange: ['orange.fr', 'wanadoo.fr'],
+  'Free / SFR': ['free.fr', 'sfr.fr', 'neuf.fr'],
+};
+export function ispOf(recipient: string) {
+  const d = recipient.split('@')[1]?.toLowerCase() ?? '';
+  return Object.entries(ISP_DOMAINS).find(([, ds]) => ds.includes(d))?.[0] ?? null;
+}
+export type IspHealth = { isp: string; total: number; deferred: number; bounced: number; complaints: number; factor: number; reason: string };
+export function ispHealth(events: { recipient: string; event_type: string }[]): Record<string, IspHealth> {
+  const out: Record<string, IspHealth> = {};
+  for (const isp of Object.keys(ISP_DOMAINS)) out[isp] = { isp, total: 0, deferred: 0, bounced: 0, complaints: 0, factor: 1, reason: 'Normal' };
+  for (const e of events) {
+    const isp = ispOf(e.recipient); if (!isp) continue;
+    const h = out[isp]; h.total++;
+    if (e.event_type === 'deferred') h.deferred++;
+    else if (e.event_type === 'bounce') h.bounced++;
+    else if (e.event_type === 'complaint') h.complaints++;
+  }
+  for (const h of Object.values(out)) {
+    if (h.total < 20) { h.reason = h.total ? 'Pas assez de volume' : 'Aucun envoi récent'; continue; }
+    const c = h.complaints / h.total, b = h.bounced / h.total, d = h.deferred / h.total;
+    if (c > 0.003) { h.factor = 0.25; h.reason = `Plaintes ${(c * 100).toFixed(2)} %`; }
+    else if (b > 0.05) { h.factor = 0.5; h.reason = `Rebonds ${(b * 100).toFixed(1)} %`; }
+    else if (d > 0.2) { h.factor = 0.5; h.reason = `Reports ${(d * 100).toFixed(0)} %`; }
+    else if (d > 0.1) { h.factor = 0.75; h.reason = `Reports ${(d * 100).toFixed(0)} %`; }
+  }
+  return out;
+}
