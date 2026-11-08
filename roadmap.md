@@ -72,7 +72,8 @@
 - [ ] Base clients : brancher VAULT_URL/VAULT_KEY quand Codex a déployé le serveur
 - [x] Scanner réel Réputation & Blacklists
 - [x] rDNS/PTR automatique
-- [ ] Testeur de placement Inbox/Spam/Promo
+- [x] Testeur de placement Inbox/Spam/Promo (page + contrat §4)
+- [ ] Placement : Codex doit livrer §4 sur le VPS Mail-Tester avec les boîtes témoins
 - [ ] Alertes Slack/Webhook/Email
 - [ ] Éditeur visuel de templates
 - [ ] Optimiseur IA d'objets
