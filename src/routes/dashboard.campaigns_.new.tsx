@@ -11,6 +11,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { campaignOffers } from '@/lib/finance.functions';
 import { EmailPreview, MACROS } from '@/components/dash/email-preview';
+import { SubjectOptimizer } from '@/components/dash/subject-optimizer';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -175,6 +176,12 @@ function Builder() {
           <Row label="From Email">{inp("fromEmail", "", "email")}</Row>
           <Row label="Reply To">{inp("replyTo", "", "email")}</Row>
           <Row label="Subject"><div className="flex items-center gap-2">{inp("subject")}<AiDiagnostic compact input={{skill:'subject',subject:d.subject,body:d.body}} before={d.subject} onApply={v=>u('subject',v)}/></div></Row>
+          <SubjectOptimizer subject={d.subject} body={d.body} offer={d.offer} onApply={(s, p) => setD(prev => {
+            const tag = `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${p.replace(/[<>&]/g, '')}</div>`;
+            const re = /<div style="display:none;max-height:0;overflow:hidden;opacity:0">[\s\S]*?<\/div>/;
+            const body = re.test(prev.body) ? prev.body.replace(re, tag) : /<body[^>]*>/i.test(prev.body) ? prev.body.replace(/<body[^>]*>/i, m => `${m}\n    ${tag}`) : tag + prev.body;
+            return { ...prev, subject: s, body };
+          })} />
           <Row label="Content Type">{sel("contentType", ["Text/Html", "Text/Plain", "Multipart"])}</Row>
           <Row label="Charset">{sel("charset", ["UTF-8", "ISO-8859-1"])}</Row>
           <Row label="C.T Encoding">{sel("encoding", ["8Bit Encoding", "Quoted-Printable", "Base64"])}</Row>
