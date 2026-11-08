@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
-const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe'] as const;
+const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'daily_report'] as const;
 
 async function admin(context: any) {
   const r = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
@@ -45,3 +45,12 @@ export const testWebhook = createServerFn({ method: 'POST' }).middleware([requir
     const { deliver } = await import('./webhooks.server');
     return deliver(context.supabase, ep.data, 'test', { message: 'Test depuis Email Direct' });
   });
+
+export const sendReportNow = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  const role = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
+  if (!role.data) throw new Error('Réservé aux Superadmins');
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { sendDailyReport } = await import('./daily-report.server');
+  const { reportText } = await import('./daily-report');
+  return { text: reportText(await sendDailyReport(supabaseAdmin)) };
+});
