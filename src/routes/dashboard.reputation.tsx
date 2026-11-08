@@ -47,7 +47,7 @@ function Reputation() {
         <Stat label="Score de santé" value={checks ? `${health} / 100` : "—"} sub={m.data ? `Scan ${new Date(m.data.scannedAt).toLocaleTimeString("fr-FR")}` : "Lancez un scan"} />
         <Stat label="Cibles scannées" value={String(scans.length)} />
         <Stat label="Vérifications" value={String(checks)} />
-        <Stat label="Cibles listées" value={String(listedTargets.length)} sub={listedTargets.map((s) => s.target).join(", ") || undefined} />
+        <Stat label="Cibles listées" value={String(listedTargets.length)} sub={listedTargets.map((s) => s.target).join(", ") || "Aucune"} />
       </div>
 
       <Panel title="Vérifier une IP ou un domaine">
