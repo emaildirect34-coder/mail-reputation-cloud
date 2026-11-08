@@ -29,6 +29,14 @@ def main():
                     if num <= skip: continue
                     if not line.endswith('\n'): break
                     record = json.loads(line)
+                    if record.get('type') == 'Reception' and str(record.get('recipient','')).lower().startswith('unsubscribe@'):
+                        # RFC 8058 mailto fallback: Subject carries the unsubscribe token.
+                        subj = str((record.get('headers') or {}).get('Subject',''))
+                        tok = re.search(r'\b([0-9a-f]{36})\b', subj)
+                        if tok:
+                            try: urllib.request.urlopen(urllib.request.Request(base.rsplit('/agent',1)[0]+'/unsub/'+tok.group(1), data=b'', method='POST'), timeout=15)
+                            except Exception: pass
+                        continue
                     kind = kinds.get(record.get('type'))
                     sender = str(record.get('sender',''))
                     if record.get('type') == 'Feedback':

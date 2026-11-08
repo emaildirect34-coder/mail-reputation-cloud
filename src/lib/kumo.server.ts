@@ -51,7 +51,7 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`  kumo.define_spool { name = 'meta', path = '/var/spool/kumomta/meta' }`);
   L.push(`  kumo.start_esmtp_listener { listen = '0.0.0.0:25', relay_hosts = { '127.0.0.1' } }`);
   L.push(`  kumo.start_http_listener { listen = '127.0.0.1:8000' }`);
-  L.push(`  kumo.configure_local_logs { log_dir = '/var/log/kumomta', max_segment_duration = '1 minute' }`, `end)`, '');
+  L.push(`  kumo.configure_local_logs { log_dir = '/var/log/kumomta', max_segment_duration = '1 minute', headers = { 'Subject' } }`, `end)`, '');
   L.push(`local SOURCES = {`);
   for (const ip of v4) L.push(`  [${q(src(ip.address))}] = { source_address = ${q(ip.address)}, ehlo_domain = ${q(ip.rdns ?? srv.data.label)} },`);
   L.push(`}`, `kumo.on('get_egress_source', function(name) return kumo.make_egress_source(SOURCES[name]) end)`, '');
@@ -78,7 +78,15 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`  for _, sel in ipairs(sels) do`);
   L.push(`    msg:dkim_sign(kumo.dkim.rsa_sha256_signer { domain = dom, selector = sel, headers = { 'From','To','Subject','Date','Message-ID','List-Unsubscribe','List-Unsubscribe-Post' }, key = '/opt/kumomta/etc/dkim/' .. dom .. '/' .. sel .. '.key' })`);
   L.push(`  end`, `end`);
-  L.push(`kumo.on('smtp_server_message_received', function(msg) sign(msg) end)`);
+  // Inbound for our sending domains: ISP FBL (ARF) and async bounces are logged then dropped; unsubscribe@ mails are logged (Subject = token) then dropped.
+  L.push(`kumo.on('get_listener_domain', function(domain, listener, conn_meta)`);
+  L.push(`  if DKIM[string.lower(domain)] then return kumo.make_listener_domain { relay_to = true, log_arf = true, log_oob = true } end`);
+  L.push(`end)`);
+  L.push(`kumo.on('smtp_server_message_received', function(msg)`);
+  L.push(`  local rcpt = msg:recipient(); local dom = rcpt and string.lower(rcpt.domain) or ''`);
+  L.push(`  if DKIM[dom] then msg:set_meta('queue', 'null'); return end`);
+  L.push(`  sign(msg)`);
+  L.push(`end)`);
   L.push(`kumo.on('http_message_generated', function(msg) sign(msg) end)`);
   const lua = L.join('\n') + '\n';
   const dkim: AgentBundle['dkim'] = [];
