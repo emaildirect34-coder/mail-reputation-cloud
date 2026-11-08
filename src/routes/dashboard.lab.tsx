@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
 import { mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
+import { autoFixDomain } from "@/lib/domains.functions";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
 
 export const Route = createFileRoute("/dashboard/lab")({
@@ -332,6 +333,7 @@ function Report({ res, checks }: { res: any; checks: [string, any][] }) {
   const groups = others.length ? [...GROUPS, { title: "Autres contrôles", desc: "", keys: others }] : GROUPS;
   return (
     <div className="mt-4 space-y-3">
+      <AutoFix res={res} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="rounded-lg border border-border p-4 lg:col-span-1">
           <p className="text-xs text-muted-foreground">Score global</p>
@@ -364,6 +366,57 @@ function Report({ res, checks }: { res: any; checks: [string, any][] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function senderDomain(res: any): string {
+  const h = res?.headers;
+  const raw = String(res?.from ?? res?.sender ?? res?.mail_from ?? (Array.isArray(h) ? (h.find((x: any) => /^from$/i.test(x?.name ?? x?.[0] ?? ""))?.value ?? "") : (h?.From ?? h?.from ?? (typeof h === "string" ? (h.match(/^From:.*$/im)?.[0] ?? "") : ""))) ?? "");
+  return (raw.match(/@([a-z0-9.-]+\.[a-z]{2,})/i)?.[1] ?? "").toLowerCase();
+}
+
+const STATE: Record<string, [string, "ok" | "warn" | "bad" | "neutral"]> = {
+  done: ["Déjà en place — en attente de validation par Gmail/Yahoo/Outlook", "warn"],
+  fixed: ["Corrigé automatiquement", "ok"],
+  pending: ["Publié — propagation DNS en cours", "warn"],
+  manual: ["À corriger manuellement", "bad"],
+};
+
+function AutoFix({ res }: { res: any }) {
+  const run = useServerFn(autoFixDomain);
+  const [domain, setDomain] = useState(senderDomain(res));
+  const [busy, setBusy] = useState(false);
+  const [out, setOut] = useState<Awaited<ReturnType<typeof autoFixDomain>> | null>(null);
+  const [err, setErr] = useState("");
+  const go = async () => {
+    setBusy(true); setErr(""); setOut(null);
+    try { setOut(await run({ data: { domain } })); } catch (e) { setErr((e as Error).message); }
+    setBusy(false);
+  };
+  return (
+    <div className="rounded-lg border border-success/40 bg-success/10 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={go} disabled={busy || !domain} className="bg-success text-success-foreground hover:bg-success/90">
+          <Wand2 className="mr-1 h-4 w-4" />{busy ? "Vérification et correction…" : "Automatiser les corrections"}
+        </Button>
+        <Input value={domain} onChange={(e) => setDomain(e.target.value.trim())} placeholder="domaine expéditeur" className="max-w-xs" />
+        <span className="text-xs text-muted-foreground">Vérifie d'abord ce qui est déjà fait, puis publie seulement ce qui manque.</span>
+      </div>
+      {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
+      {out && (
+        <div className="mt-3 space-y-2">
+          {out.message && <p className="text-sm text-muted-foreground">{out.message}</p>}
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {out.items.map((i) => (
+              <div key={i.key} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
+                <span className="font-medium">{i.label}</span><Pill tone={STATE[i.state][1]}>{STATE[i.state][0]}</Pill>
+              </div>
+            ))}
+          </div>
+          {out.items.some((i) => i.state === "done") && <p className="text-xs text-muted-foreground">Les éléments « déjà en place » sont bien publiés : les fournisseurs peuvent mettre jusqu'à 48 h pour les prendre en compte. Refaites un test plus tard.</p>}
+        </div>
+      )}
     </div>
   );
 }
