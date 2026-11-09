@@ -33,7 +33,7 @@ async function readFile(f: File): Promise<string> {
 
 const KIND: Record<SourceKind, { label: string; tone: string }> = {
   own: { label: "Votre serveur", tone: "ok" },
-  forwarder: { label: "Tiers authentifié", tone: "info" },
+  forwarder: { label: "Tiers authentifié", tone: "warn" },
   spoof: { label: "Usurpation", tone: "bad" },
 };
 
