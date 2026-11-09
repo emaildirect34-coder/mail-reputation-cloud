@@ -17,7 +17,7 @@ const INNER = /\{([^{}]*\|[^{}]*)\}/;
 export function spin(s: string, seed: string) {
   const r = rng(seed);
   let out = s, guard = 0;
-  while (INNER.test(out) && guard++ < 10000) out = out.replace(INNER, (_, body: string) => { const o = body.split('|'); return o[Math.floor(r() * o.length)]; });
+  while (INNER.test(out) && guard++ < 10000) out = out.replace(INNER, (_, body: string) => { const o = body.split('|'); return o[Math.floor(r() * o.length)] ?? ''; });
   return out;
 }
 
@@ -31,8 +31,8 @@ export function countVariants(s: string) {
   let out = fillFallbacks(s, {}), guard = 0;
   while (INNER.test(out) && guard++ < 10000) out = out.replace(INNER, (_, body: string) => {
     const parts = body.split('|');
-    const n = parts.reduce((a, p) => a + [...p.matchAll(/\u0000(\d+)\u0000/g)].reduce((m, x) => m * vals[+x[1]], 1), 0);
+    const n = parts.reduce((a, p) => a + [...p.matchAll(/\u0000(\d+)\u0000/g)].reduce((m, x) => m * (vals[Number(x[1])] ?? 1), 1), 0);
     vals.push(n); return `\u0000${vals.length - 1}\u0000`;
   });
-  return Math.min([...out.matchAll(/\u0000(\d+)\u0000/g)].reduce((m, x) => m * vals[+x[1]], 1), 1e12);
+  return Math.min([...out.matchAll(/\u0000(\d+)\u0000/g)].reduce((m, x) => m * (vals[Number(x[1])] ?? 1), 1), 1e12);
 }
