@@ -1,4 +1,5 @@
 // Server-only: builds the final RFC 5322 message for one recipient.
+import { expand } from './spintax';
 const enc = (s: string) => /^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${btoa(String.fromCharCode(...new TextEncoder().encode(s)))}?=`;
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
@@ -8,6 +9,9 @@ export function renderMessage(c: { from_name: string; from_email: string; reply_
     .replaceAll('{first_name}', html ? esc(m.first_name ?? '') : (m.first_name ?? ''))
     .replaceAll('{to}', m.email).replaceAll('{unsubscribe_url}', unsub)
     .replaceAll('{from_name}', c.from_name).replaceAll('{from_email}', c.from_email);
+  const vars = { first_name: m.first_name ?? '', to: m.email, from_name: c.from_name, from_email: c.from_email };
+  const varsHtml = { ...vars, first_name: esc(vars.first_name) };
+  c = { ...c, html: expand(c.html, varsHtml, m.id + ':b'), subject: expand(c.subject, vars, m.id + ':s') };
   const domain = c.from_email.split('@')[1] ?? 'localhost';
   // Click tracking only rewrites links written literally in the template, so the redirect endpoint can verify them.
   const track = `${trackOrigin}/api/public/c/${m.unsub_token}?u=`;

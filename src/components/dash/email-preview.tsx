@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Monitor, Smartphone, Moon, Sun, Maximize2, X } from "lucide-react";
+import { Monitor, Smartphone, Moon, Sun, Maximize2, X, Shuffle } from "lucide-react";
+import { expand, countVariants } from "@/lib/spintax";
 
 // Macros actually replaced at send time (see renderMessage).
 export const MACROS = [
@@ -10,8 +11,9 @@ export const MACROS = [
   { tag: "{unsubscribe_url}", label: "Lien désinscription", sample: "#desinscription" },
 ];
 
-export function fillSample(html: string) {
-  return MACROS.reduce((s, m) => s.replaceAll(m.tag, m.sample), html);
+export function fillSample(html: string, seed = "preview") {
+  const vars = Object.fromEntries(MACROS.map(m => [m.tag.slice(1, -1), m.sample]));
+  return MACROS.reduce((s, m) => s.replaceAll(m.tag, m.sample), expand(html, vars, seed));
 }
 
 // Approximates mail-app dark mode (Gmail/Apple Mail invert light backgrounds).
@@ -26,15 +28,16 @@ function stats(html: string) {
 }
 
 export function EmailPreview({ html, subject, fromName }: { html: string; subject: string; fromName: string }) {
-  const [mobile, setMobile] = useState(false), [dark, setDark] = useState(false), [full, setFull] = useState(false);
-  const doc = fillSample(html) + (dark ? DARK : "");
+  const [mobile, setMobile] = useState(false), [dark, setDark] = useState(false), [full, setFull] = useState(false), [seed, setSeed] = useState(0);
+  const doc = fillSample(html, `p${seed}`) + (dark ? DARK : "");
+  const variants = countVariants(subject) * countVariants(html);
   const s = stats(html);
   const btn = (on: boolean) => `grid size-7 place-items-center rounded-md border border-border ${on ? "bg-primary text-primary-foreground" : "bg-card"}`;
   const frame = (h: string) => (
     <div className={`mx-auto overflow-hidden rounded-xl border border-border/60 bg-card transition-all ${mobile ? "max-w-[375px]" : "w-full"}`}>
       <div className="border-b border-border/60 px-3 py-2 text-[12px]">
         <p className="font-bold text-foreground">{fromName || "Expéditeur"}</p>
-        <p className="truncate text-muted-foreground">{fillSample(subject) || "(sans objet)"}</p>
+        <p className="truncate text-muted-foreground">{fillSample(subject, `s${seed}`) || "(sans objet)"}</p>
       </div>
       <iframe title="Aperçu de l'email" sandbox="" srcDoc={doc} className={`block w-full border-0 bg-background ${h}`} />
     </div>
@@ -46,6 +49,8 @@ export function EmailPreview({ html, subject, fromName }: { html: string; subjec
         <button type="button" aria-label="Mobile" className={btn(mobile)} onClick={() => setMobile(true)}><Smartphone className="size-3.5" /></button>
         <button type="button" aria-label="Mode sombre" className={btn(dark)} onClick={() => setDark(v => !v)}>{dark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}</button>
         <button type="button" aria-label="Plein écran" className={btn(false)} onClick={() => setFull(true)}><Maximize2 className="size-3.5" /></button>
+        <button type="button" aria-label="Autre variation" title="Générer une autre variation" className={btn(false)} onClick={() => setSeed(v => v + 1)}><Shuffle className="size-3.5" /></button>
+        <span className={`rounded px-1.5 py-0.5 text-[10.5px] font-semibold ${variants > 1 ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>{variants >= 1e12 ? "1000 Md+" : variants.toLocaleString("fr-FR")} variation{variants > 1 ? "s" : ""}</span>
         <span className="ml-auto text-[11px] text-muted-foreground">{mobile ? "Mobile 375 px" : "Ordinateur"}{dark ? " · sombre" : ""}</span>
       </div>
       {frame("h-56")}
