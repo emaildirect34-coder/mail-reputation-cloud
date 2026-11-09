@@ -12,18 +12,18 @@ describe('dmarc', () => {
     expect(r.orgName).toBe('google.com');
     expect(r.domain).toBe('loviyo.com');
     expect(r.records).toHaveLength(2);
-    expect(r.records[0].count).toBe(120);
+    expect(r.records[0]!.count).toBe(120);
   });
   it('passes when DKIM or SPF passes', () => {
     const r = parseDmarcXml(xml);
-    expect(passes(r.records[0])).toBe(true);
-    expect(passes(r.records[1])).toBe(false);
+    expect(passes(r.records[0]!)).toBe(true);
+    expect(passes(r.records[1]!)).toBe(false);
   });
   it('classifies own IPs and spoofers', () => {
     const r = parseDmarcXml(xml);
     const own = new Set(['187.7.66.53']);
-    expect(classify(r.records[0], own)).toBe('own');
-    expect(classify(r.records[1], own)).toBe('spoof');
+    expect(classify(r.records[0]!, own)).toBe('own');
+    expect(classify(r.records[1]!, own)).toBe('spoof');
   });
   it('rejects non-DMARC files', () => {
     expect(() => parseDmarcXml('<html></html>')).toThrow();

@@ -49,8 +49,8 @@ function Dmarc() {
   });
 
   const reports = (q.data?.reports ?? []).filter((r: any) => domain === "all" || r.domain === domain);
-  const domains = [...new Set((q.data?.reports ?? []).map((r: any) => r.domain as string))];
-  const own = useMemo(() => new Set(q.data?.ownIps ?? []), [q.data]);
+  const domains = [...new Set<string>((q.data?.reports ?? []).map((r: any) => r.domain as string))];
+  const own = useMemo(() => new Set<string>(q.data?.ownIps ?? []), [q.data]);
   const total = reports.reduce((n: number, r: any) => n + r.total, 0);
   const passed = reports.reduce((n: number, r: any) => n + r.passed, 0);
 
