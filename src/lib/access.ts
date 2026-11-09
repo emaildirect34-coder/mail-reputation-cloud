@@ -18,6 +18,7 @@ export const ACCESS_AREAS: { path: string; label: string }[] = [
   { path: "/dashboard/inbox-tester", label: "Testeur Inbox" },
   { path: "/dashboard/gmail-postmaster", label: "Gmail Postmaster" },
   { path: "/dashboard/reputation", label: "Réputation FAI" },
+  { path: "/dashboard/dmarc", label: "Rapports DMARC" },
   { path: "/dashboard/postmaster", label: "Postmaster" },
   { path: "/dashboard/preflight", label: "Pre-Flight" },
   { path: "/dashboard/shield", label: "Protection & Urgence" },

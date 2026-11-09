@@ -17,6 +17,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
 import { Route as DashboardCampaignsRouteImport } from './routes/dashboard.campaigns'
+import { Route as DashboardDmarcRouteImport } from './routes/dashboard.dmarc'
 import { Route as DashboardDnsRouteImport } from './routes/dashboard.dns'
 import { Route as DashboardDomainsRouteImport } from './routes/dashboard.domains'
 import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance'
@@ -97,6 +98,11 @@ const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
 const DashboardCampaignsRoute = DashboardCampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardDmarcRoute = DashboardDmarcRouteImport.update({
+  id: '/dmarc',
+  path: '/dmarc',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardDnsRoute = DashboardDnsRouteImport.update({
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dmarc': typeof DashboardDmarcRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dmarc': typeof DashboardDmarcRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
+  '/dashboard/dmarc': typeof DashboardDmarcRoute
   '/dashboard/dns': typeof DashboardDnsRoute
   '/dashboard/domains': typeof DashboardDomainsRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dmarc'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/finance'
@@ -521,6 +531,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dmarc'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/finance'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
+    | '/dashboard/dmarc'
     | '/dashboard/dns'
     | '/dashboard/domains'
     | '/dashboard/finance'
@@ -690,6 +702,13 @@ declare module '@tanstack/react-router' {
       path: '/campaigns'
       fullPath: '/dashboard/campaigns'
       preLoaderRoute: typeof DashboardCampaignsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/dmarc': {
+      id: '/dashboard/dmarc'
+      path: '/dmarc'
+      fullPath: '/dashboard/dmarc'
+      preLoaderRoute: typeof DashboardDmarcRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/dns': {
@@ -986,6 +1005,7 @@ interface DashboardRouteChildren {
   DashboardAgentRoute: typeof DashboardAgentRoute
   DashboardApiKeysRoute: typeof DashboardApiKeysRoute
   DashboardCampaignsRoute: typeof DashboardCampaignsRoute
+  DashboardDmarcRoute: typeof DashboardDmarcRoute
   DashboardDnsRoute: typeof DashboardDnsRoute
   DashboardDomainsRoute: typeof DashboardDomainsRoute
   DashboardFinanceRoute: typeof DashboardFinanceRoute
@@ -1023,6 +1043,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgentRoute: DashboardAgentRoute,
   DashboardApiKeysRoute: DashboardApiKeysRoute,
   DashboardCampaignsRoute: DashboardCampaignsRoute,
+  DashboardDmarcRoute: DashboardDmarcRoute,
   DashboardDnsRoute: DashboardDnsRoute,
   DashboardDomainsRoute: DashboardDomainsRoute,
   DashboardFinanceRoute: DashboardFinanceRoute,

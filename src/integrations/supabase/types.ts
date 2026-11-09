@@ -347,6 +347,48 @@ export type Database = {
           },
         ]
       }
+      dmarc_reports: {
+        Row: {
+          created_at: string
+          date_begin: string | null
+          date_end: string | null
+          domain: string
+          id: string
+          org_name: string
+          passed: number
+          policy: string | null
+          records: Json
+          report_id: string
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          date_begin?: string | null
+          date_end?: string | null
+          domain: string
+          id?: string
+          org_name: string
+          passed?: number
+          policy?: string | null
+          records?: Json
+          report_id: string
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          date_begin?: string | null
+          date_end?: string | null
+          domain?: string
+          id?: string
+          org_name?: string
+          passed?: number
+          policy?: string | null
+          records?: Json
+          report_id?: string
+          total?: number
+        }
+        Relationships: []
+      }
       finance_entries: {
         Row: {
           account_id: string
