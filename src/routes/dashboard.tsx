@@ -60,6 +60,7 @@ const sections: Section[] = [
     { to: "/dashboard/lab", icon: Search, label: "DNS Lab" },
     { to: "/dashboard/gmail-postmaster", icon: BarChart3, label: "Gmail Postmaster" },
     { to: "/dashboard/reputation", icon: BarChart3, label: "Réputation FAI" },
+    { to: "/dashboard/dmarc", icon: ShieldAlert, label: "Rapports DMARC" },
     { to: "/dashboard/postmaster", icon: MailX, label: "Bounces & Plaintes" },
   ]},
   { title: "Security Center", items: [
