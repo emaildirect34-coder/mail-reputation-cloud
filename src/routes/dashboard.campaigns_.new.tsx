@@ -6,12 +6,15 @@ import { Switch } from "@/components/ui/switch";
 import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
 import { LaunchPanel } from "@/components/dash/launch-panel";
+import { CampaignInboxTest } from "@/components/dash/campaign-inbox-test";
 import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { campaignOffers } from '@/lib/finance.functions';
 import { EmailPreview, MACROS } from '@/components/dash/email-preview';
+import { VisualEmailEditor } from '@/components/dash/visual-email-editor';
 import { SubjectOptimizer } from '@/components/dash/subject-optimizer';
+import { renderWeeklyDigest } from '@/lib/weekly-digest';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
   head: () => ({ meta: [
@@ -25,12 +28,14 @@ export const Route = createFileRoute("/dashboard/campaigns_/new")({
 });
 
 const initial = {
-  name: "__NO_NAME__", schedule: "", offer: "", sponsorOfferId:"", geo: "Tous les pays (par défaut)", sendTests: "Oui", testPeriod: "1000", tests: "mail.cortexapp@gmail.com", testRotation: "1", clickProtect: "Activée",
+  name: "__NO_NAME__", schedule: "", scheduleMode: "account", vmtaPoolId: "", topic: "", offer: "", sponsorOfferId:"", geo: "Tous les pays (par défaut)", sendTests: "Oui", testPeriod: "1000", tests: "mail.cortexapp@gmail.com", testRotation: "1", clickProtect: "Activée",
   returnPath: "contact@domain.com", fromName: "Email Direct", fromEmail: "contact@domain.com", replyTo: "reply@domain.com", subject: "{subject} - Offre spéciale",
   contentType: "Text/Html", charset: "UTF-8", encoding: "8Bit Encoding", processing: "Default Process",
   header: "Date: {smtp_date}\nSender: contact@domain.com\nMessage-Id: <{n,15}.{n,1}.{A,3}{n,10}@{domain}>\nTo: {to}\nFrom: \"{from_name}\" <{from_email}>\nSubject: {subject}\nContent-Type: {content_type}; charset=\"{charset}\"",
   payload: "", bodyDomain: "trackcom.site", suffix: "", imgDef: "Pixel",
   body: '<!DOCTYPE html>\n<html>\n  <body style="font-family: Arial, sans-serif;">\n    <h1>HELLO</h1>\n    <p>Ceci est un exemple d\'email de campagne.</p>\n  </body>\n</html>',
+  ampHtml: "",
+  digestMode: "off", digestText: "",
   rotation: "1", script: "Queue (x/time)", ipAfter: "1", speed: "0", speedUnit: "Minute", batch: "100", pause: "1", pauseUnit: "Minute",
   autoReply: "Désactivée", randomReply: "Désactivée", replyRotation: "1", accounts: "",
 };
@@ -63,6 +68,8 @@ function Builder() {
   const readOffers=useServerFn(campaignOffers);
   const sponsorOffers=useQuery({queryKey:['campaign-offers'],queryFn:()=>readOffers()});
   const [d, setD] = useState<Draft>(initial);
+  const [writingGoal, setWritingGoal] = useState('');
+  const [writingAudience, setWritingAudience] = useState('');
   const [chosen, setChosen] = useState<string[]>([]);
   const [selL, setSelL] = useState<string | null>(allServers[0] ?? null);
   const [selR, setSelR] = useState<string | null>(null);
@@ -73,8 +80,16 @@ function Builder() {
   const [preview, setPreview] = useState(initial.body);
   const [lastTest, setLastTest] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
+  const digestMode = d.digestMode === 'on';
+  let content = d.body;
+  let digestError = '';
+  if (digestMode) {
+    try { content = renderWeeklyDigest(d.digestText); }
+    catch (error) { content = ''; digestError = (error as Error).message; }
+  }
+  const sendDraft = digestMode ? { ...d, body: content, ampHtml: '', sponsorOfferId: '' } : { ...d, digestText: '' };
   useEffect(() => { setHasDraft(Boolean(localStorage.getItem(storageKey))); }, []);
-  useEffect(() => { if (live) setPreview(d.body); }, [d.body, live]);
+  useEffect(() => { if (live) setPreview(content); }, [content, live]);
   const u = (k: keyof Draft, v: string) => setD(p => ({ ...p, [k]: v }));
   const inp = (k: keyof Draft, ph = "", type = "text") => <input aria-label={k} type={type} value={d[k]} placeholder={ph} onChange={e => u(k, e.target.value)} className={inCls} />;
   const sel = (k: keyof Draft, opts: string[]) => <select aria-label={k} value={d[k]} onChange={e => u(k, e.target.value)} className={inCls}>{opts.map(o => <option key={o} value={o}>{o || "Sélectionner une offre..."}</option>)}</select>;
@@ -82,7 +97,7 @@ function Builder() {
 
   const checks = [
     { l: "Structure", ok: Boolean(d.name && d.name !== "__NO_NAME__" && d.offer) },
-    { l: "Contenu", ok: d.body.trim().length > 20 },
+    { l: "Contenu", ok: content.trim().length > 20 },
     { l: "En-têtes", ok: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.fromEmail) && Boolean(d.subject) },
     { l: "Délivrabilité", ok: chosen.length > 0 },
     { l: "Sécurité", ok: d.clickProtect === "Activée" },
@@ -123,6 +138,7 @@ function Builder() {
         <TrendingUp className="size-8 text-neon-green" />
       </div>
       <div className="ml-auto flex flex-wrap justify-end gap-2">
+        <CampaignInboxTest draft={sendDraft} />
         <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
         <button onClick={() => save(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-neon-green px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary-foreground"><Send className="size-4" />Enregistrer & Publier</button>
         <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
@@ -148,6 +164,12 @@ function Builder() {
         <Col id="offre" title="Offre" icon={<Tag />}>
           <Row label="Nom de la campagne" w="w-32">{inp("name")}</Row>
           <Row label="Planifier le" w="w-32"><div className="relative"><CalendarDays className="pointer-events-none absolute left-2 top-1.5 size-4 text-muted-foreground" /><input aria-label="Planifier le" type="datetime-local" value={d.schedule} onChange={e => u("schedule", e.target.value)} className={`${inCls} pl-8`} /></div></Row>
+          {d.schedule && <Row label="Fuseau d’envoi" w="w-32">
+            <select aria-label="Fuseau d’envoi" value={d.scheduleMode} onChange={e => u("scheduleMode", e.target.value)} className={inCls}>
+              <option value="account">Fuseau du compte</option>
+              <option value="recipient">Fuseau de chaque destinataire</option>
+            </select>
+          </Row>}
           <Sub title="Sélectionner l'offre" icon={<Pointer />}>
             <select aria-label="Offre sponsor" className={inCls} value={d.sponsorOfferId} onChange={e=>{const o=sponsorOffers.data?.find(o=>o.id===e.target.value);setD(p=>({...p,sponsorOfferId:o?.id??'',offer:o?.name??'',subject:o?.subject||p.subject,body:o?.html||p.body}));}}><option value="">Sélectionner une offre...</option>{(sponsorOffers.data??[]).map(o=><option key={o.id} value={o.id}>{o.name} · {o.payout} {o.currency}</option>)}</select>
             {sponsorOffers.error&&<p role="alert" className="text-xs text-destructive">{sponsorOffers.error.message}</p>}
@@ -202,6 +224,23 @@ function Builder() {
       {/* Corps */}
       <div className="contents">
         <Col id="corps" title="Corps de l'Email (HTML)" icon={<Code2 />} right={<AiDiagnostic compact input={{skill:'content',subject:d.subject,body:d.body}} before={d.body} onApply={v=>u('body',v)}/> }>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={digestMode} onChange={event => u('digestMode', event.target.checked ? 'on' : 'off')} />Créer un récapitulatif hebdomadaire</label>
+          {digestMode && <div className="space-y-2 text-sm">
+            <p>Ajoutez une rubrique par bloc. Commencez par le titre, puis le résumé et éventuellement une URL HTTPS sur la dernière ligne. Séparez les rubriques par une ligne vide.</p>
+            <textarea aria-label="Rubriques du récapitulatif" value={d.digestText} maxLength={20_000} onChange={event => u('digestText', event.target.value)} className="min-h-40 w-full rounded-md border border-border bg-card p-2" placeholder={'Actualité de la semaine\nVoici notre nouveauté…\n\nÀ lire\nVoici notre deuxième sujet…'} />
+            {digestError && <p role="status" className="text-destructive">{digestError}</p>}
+            <p className="text-xs text-muted-foreground">Ce format est envoyé uniquement aux abonnés au récapitulatif. Chaque édition peut être programmée depuis le constructeur.</p>
+          </div>}
+          <div hidden={digestMode} className={digestMode ? 'hidden' : 'space-y-2'}>
+          <VisualEmailEditor onApply={html => { u('body', html); setPreview(html); }} />
+          <details className="rounded-md border border-border p-2 text-sm">
+            <summary className="cursor-pointer font-semibold">Rédiger avec l’IA</summary>
+            <div className="mt-2 space-y-2">
+              <label className="block">Objectif<input className={inCls} value={writingGoal} onChange={e => setWritingGoal(e.target.value)} maxLength={500} /></label>
+              <label className="block">Audience<textarea className={inCls} value={writingAudience} onChange={e => setWritingAudience(e.target.value)} maxLength={2000} /></label>
+              <AiDiagnostic input={{ skill: 'draft', subject: writingGoal, body: writingAudience }} before={d.body} onApply={v => u('body', v)} />
+            </div>
+          </details>
           <div className="flex justify-center gap-1">
             <label className="grid size-7 cursor-pointer place-items-center rounded-md border border-border bg-card" title="Importer"><Upload className="size-3.5" /><input type="file" accept=".html,.htm" className="sr-only" onChange={async e => { const f = e.target.files?.[0]; if (f) { u("body", await f.text()); toast.success("HTML importé."); } }} /></label>
             <IconBtn label="Nouveau" tone="primary" onClick={() => u("body", initial.body)}><span className="text-sm font-bold">+</span></IconBtn>
@@ -210,6 +249,29 @@ function Builder() {
           <div className="flex flex-wrap gap-1">{MACROS.map(m => <button type="button" key={m.tag} title={`Insérer ${m.tag}`} className="rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold text-primary" onClick={() => { const t = document.querySelector<HTMLTextAreaElement>('[aria-label="Contenu HTML"]'); const a = t?.selectionStart ?? d.body.length, b = t?.selectionEnd ?? a; const ins = m.tag === "{unsubscribe_url}" ? '<a href="{unsubscribe_url}">Se désinscrire</a>' : m.tag; u("body", d.body.slice(0, a) + ins + d.body.slice(b)); }}>+ {m.label}</button>)}{[["Salutation", "{Bonjour|Salut|Hello} {first_name|à vous}"], ["Accroche", "{Découvrez|Profitez de|Ne manquez pas} {notre offre|cette opportunité}"], ["Bouton", "{J'en profite|Voir l'offre|Je découvre}"]].map(([l, t]) => <button type="button" key={l} title={`Insérer un spintax ${t}`} className="rounded border border-dashed border-primary/50 bg-card px-1.5 py-0.5 text-[10.5px] font-semibold text-primary" onClick={() => { const el = document.querySelector<HTMLTextAreaElement>('[aria-label="Contenu HTML"]'); const a = el?.selectionStart ?? d.body.length, b = el?.selectionEnd ?? a; u("body", d.body.slice(0, a) + t + d.body.slice(b)); }}>✦ {l}</button>)}</div>
           <p className="text-[10.5px] text-muted-foreground">Spintax : <code>{"{Bonjour|Salut}"}</code> (imbricable) · repli : <code>{"{first_name|Cher client}"}</code> — fonctionne aussi dans l'objet.</p>
           <textarea aria-label="Contenu HTML" value={d.body} onChange={e => u("body", e.target.value)} className="h-36 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-[11.5px] leading-5 text-primary focus:outline-none focus:ring-1 focus:ring-ring" />
+          <details className="rounded-md border border-border p-2 text-sm">
+            <summary className="cursor-pointer font-semibold">AMP for Email (facultatif){d.ampHtml.trim() && " · Activé"}</summary>
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-muted-foreground">Collez un document AMP4EMAIL complet. Le corps HTML ci-dessus sert de version de secours. Laissez le champ vide pour envoyer uniquement la version classique.</p>
+              <Row label="Document AMP4EMAIL">{area("ampHtml", "h-36", "<!doctype html>", true)}</Row>
+              <div className="flex flex-wrap gap-2">
+                {!d.ampHtml.trim() && <Chip onClick={async () => {
+                  try {
+                    const { AMP_EMAIL_EXAMPLE } = await import('@/lib/amp-email');
+                    setD(draft => draft.ampHtml.trim() ? draft : { ...draft, ampHtml: AMP_EMAIL_EXAMPLE });
+                  } catch { toast.error('Le modèle AMP est indisponible.'); }
+                }}><FileCode2 /> Insérer un exemple</Chip>}
+                {d.ampHtml.trim() && <Chip onClick={async () => {
+                  try {
+                    const { prepareAmpEmail } = await import('@/lib/amp-email');
+                    prepareAmpEmail(d.ampHtml);
+                    toast.success('Structure AMP vérifiée.');
+                  } catch (error) { toast.error(error instanceof Error ? error.message : 'Le document AMP est invalide.'); }
+                }}><ShieldCheck /> Pré-vérifier le document</Chip>}
+              </div>
+              <p className="text-xs text-muted-foreground">L’affichage interactif dépend du client de messagerie et de l’autorisation de l’expéditeur. <a className="underline" href="https://amp.dev/documentation/guides-and-tutorials/email/learn/validation-workflow/validate_emails/" target="_blank" rel="noreferrer">Validation officielle AMP</a></p>
+            </div>
+          </details>
           <Row label="Rotation du corps">{inp("rotation", "", "number")}</Row>
           <div className="flex flex-wrap gap-1.5">
             <Chip onClick={() => toast(`${(d.body.match(/href=/g) ?? []).length} lien(s) détecté(s).`)}><Link2 />Liens</Chip>
@@ -220,10 +282,11 @@ function Builder() {
             <Chip onClick={() => { u("body", d.body.replace(/href="(?!\{)[^"]*"/g, 'href="{offer_url}"')); toast.success("Liens remplacés par {offer_url}."); }}><RefreshCw />Remplacer liens</Chip>
             <Chip onClick={() => { u("body", d.body.replace(/src="[^"]*"/g, 'src="{image_url}"')); toast.success("Images remplacées par {image_url}."); }}><Image />Remplacer images</Chip>
           </div>
+          </div>
         </Col>
         <Col title="Aperçu HTML" icon={<Search />}>
           <EmailPreview html={preview} subject={d.subject} fromName={d.fromName} />
-          <div className="flex items-center justify-between"><IconBtn label="Rafraîchir" tone="primary" onClick={() => setPreview(d.body)}><RefreshCw /></IconBtn><label className="flex items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} className="size-4 accent-primary" />Activer l'aperçu en temps réel</label></div>
+          <div className="flex items-center justify-between"><IconBtn label="Rafraîchir" tone="primary" onClick={() => setPreview(content)}><RefreshCw /></IconBtn><label className="flex items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} className="size-4 accent-primary" />Activer l'aperçu en temps réel</label></div>
         </Col>
       </div>
 
@@ -264,7 +327,7 @@ function Builder() {
       </div>
     </div>
 
-    <LaunchPanel d={d} testMode={testMode} />
+    <LaunchPanel d={sendDraft} testMode={testMode} onPoolChange={id => u("vmtaPoolId", id)} onTopicChange={topic => u("topic", topic)} />
 
     {/* Préflight */}
     <section id="preflight" className="card-lux mb-3 break-inside-avoid scroll-mt-24 p-3.5">

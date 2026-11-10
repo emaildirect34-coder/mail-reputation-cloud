@@ -47,6 +47,17 @@ function Queues() {
           rows={(d?.rows ?? []).map((r) => [r.domain, r.server, n(r.queued), n(r.claimed), n(r.deferred), n(r.failed),
             <Pill tone={r.failed > r.queued / 10 ? "bad" : r.deferred > 0 ? "warn" : "ok"}>{r.failed > r.queued / 10 ? "Bloqué" : r.deferred > 0 ? "Ralenti" : "Fluide"}</Pill>])} />}
       </Panel>
+      {d?.uncertain && <Panel title={`À vérifier · ${n(d.uncertain.count)}`}>
+        {d.uncertain.count ? <>
+          <p className="mb-2 text-sm text-muted-foreground">L’accusé d’injection manque. Ces messages restent hors des nouvelles tentatives. L’identifiant permet de les retrouver dans les journaux.</p>
+          <DataTable cols={['Campagne', 'Destinataire', 'Serveur', 'Depuis', 'Identifiant du message']}
+            rows={d.uncertain.rows.map(row => [
+              row.campaign, row.recipient, row.server, row.at ? new Date(row.at).toLocaleString('fr-FR') : '—',
+              <code className="select-all">{row.id}</code>,
+            ])} />
+          {d.uncertain.count > d.uncertain.rows.length && <p className="mt-2 text-sm text-muted-foreground">Les 50 derniers messages sont affichés.</p>}
+        </> : <p className="text-sm text-muted-foreground">Aucune injection à vérifier.</p>}
+      </Panel>}
       <Panel title="Campagnes actives — actions">
         {d && d.campaigns.length === 0 ? <p className="text-sm text-muted-foreground">Aucune campagne en cours.</p> :
         <DataTable cols={["Campagne", "Statut", "Raison", ""]}

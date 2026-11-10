@@ -14,5 +14,7 @@ export function parsePostback(p: URLSearchParams): Postback | { error: string } 
   const c = pick(p, ['currency', 'cur']).toUpperCase();
   return { clickId, txid, amountCents, status, currency: c === 'EUR' || c === 'USD' || c === 'GBP' ? c : null };
 }
-export const fillClickId = (url: string, token: string) => url.replaceAll('{click_id}', token).replaceAll('%7Bclick_id%7D', token).replaceAll('%7bclick_id%7d', token);
+const clickMacro = /\{click_id\}|%7bclick_id%7d/gi;
+export const hasClickId = (url: string) => url.search(clickMacro) >= 0;
+export const fillClickId = (url: string, token: string) => url.replace(clickMacro, token);
 export async function sha256Hex(s: string) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }

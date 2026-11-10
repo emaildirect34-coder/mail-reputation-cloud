@@ -1,0 +1,17 @@
+[Unit]
+Description=Refresh the signed Email Direct suppression snapshot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/kumo-agent/suppression-bloom.env
+ExecStart=/usr/bin/python3 /usr/local/lib/email-direct/suppression-bloom.py refresh ${SUPPRESSION_BLOOM_SNAPSHOT} ${SUPPRESSION_BLOOM_URL}
+StateDirectory=email-direct
+StateDirectoryMode=0700
+TimeoutStartSec=2min
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=

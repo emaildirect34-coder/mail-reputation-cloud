@@ -28,7 +28,8 @@ export const listAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = await admin(context);
-    const { data } = await db.from("provider_accounts").select("id, provider, label, auth_type, email, status, info, created_at, checked_at").order("created_at");
+    const { data, error } = await db.from("provider_accounts").select("id, provider, label, auth_type, email, status, info, created_at, checked_at").order("created_at");
+    if (error) throw new Error("Impossible de charger les comptes fournisseurs.");
     return (data ?? []).map((a: any) => ({ ...a, info: (a.info ?? {}) as Record<string, string | number | null> }));
   });
 

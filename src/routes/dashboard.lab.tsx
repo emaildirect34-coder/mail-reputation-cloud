@@ -4,9 +4,12 @@ import { Copy, Mail, RefreshCw, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
-import { mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
-import { autoFixDomain, recheckDomainDns } from "@/lib/domains.functions";
+import { inspectDmarcAuthorization, inspectDmarcPolicy, mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
+import { dmarcPolicies, dmarcRecord } from "@/lib/dmarc-policy";
+import { autoFixDomain, publishExternalDmarcAuthorization, recheckDomainDns } from "@/lib/domains.functions";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
+import { DanePanel } from "@/components/dash/dane-panel";
+import { prepareBimiSvg } from "@/lib/bimi-svg";
 
 export const Route = createFileRoute("/dashboard/lab")({
   head: () => ({
@@ -155,81 +158,283 @@ function Dkim() {
 }
 
 function Dmarc() {
-  const [p, setP] = useState("quarantine");
-  const [pct, setPct] = useState(100);
+  type Policy = typeof dmarcPolicies[number];
+  const [domain, setDomain] = useState("");
+  const [aggregate, setAggregate] = useState("");
+  const [policy, setPolicy] = useState<Policy>("none");
+  const [children, setChildren] = useState<Policy | "">("");
+  const [organizational, setOrganizational] = useState(false);
+  const [strict, setStrict] = useState(false);
+  const [result, setResult] = useState<Awaited<ReturnType<typeof inspectDmarcPolicy>> | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState("");
+  const inspect = useServerFn(inspectDmarcPolicy);
+  const inspectAuthorization = useServerFn(inspectDmarcAuthorization);
+  const publishAuthorization = useServerFn(publishExternalDmarcAuthorization);
+  const [authorization, setAuthorization] = useState<Awaited<ReturnType<typeof inspectDmarcAuthorization>> | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedName, setPublishedName] = useState('');
+  const record = dmarcRecord({ domain, policy, children, aggregate, organizational, strict });
+
+  async function check() {
+    setChecking(true);
+    setError("");
+    setResult(null);
+    setAuthorization(null);
+    setPublishedName('');
+    try {
+      const [policyResult, authorizationResult] = await Promise.all([
+        inspect({ data: domain }),
+        record?.authorization ? inspectAuthorization({ data: { domain, aggregate } }) : null,
+      ]);
+      setResult(policyResult);
+      setAuthorization(authorizationResult);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Vérification DNS indisponible.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function publish() {
+    if (!record?.authorization || authorization?.name !== record.authorization || !authorization.canPublish) return;
+    setPublishing(true);
+    setError('');
+    try {
+      await publishAuthorization({ data: { domain, aggregate } });
+      setPublishedName(record.authorization);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Publication Cloudflare impossible.');
+    } finally { setPublishing(false); }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Générateur DMARC">
+      <Panel title="Politique DMARC du domaine expéditeur">
         <div className="space-y-3">
-          <div className="flex gap-2">
-            {["none", "quarantine", "reject"].map((v) => (
-              <Button key={v} size="sm" variant={p === v ? "default" : "outline"} onClick={() => setP(v)}>p={v}</Button>
-            ))}
-          </div>
-          <div><label className="text-xs text-muted-foreground">Pourcentage appliqué : {pct}%</label><input type="range" min={0} max={100} value={pct} onChange={(e) => setPct(+e.target.value)} className="w-full accent-primary" /></div>
-          <Code>{`_dmarc  TXT  "v=DMARC1; p=${p}; pct=${pct}; adkim=s; aspf=s; rua=mailto:rua@reports.emaildirect.io; ruf=mailto:ruf@reports.emaildirect.io; fo=1"`}</Code>
+          <label className="block text-sm">Domaine utilisé dans l’adresse « De »
+            <Input value={domain} disabled={publishing} onChange={event => { setDomain(event.target.value); setAuthorization(null); setPublishedName(''); }} placeholder="marketing.example.com" maxLength={253} />
+          </label>
+          <label className="block text-sm">Boîte dédiée aux rapports agrégés (facultatif)
+            <Input type="email" value={aggregate} disabled={publishing} onChange={event => { setAggregate(event.target.value); setAuthorization(null); setPublishedName(''); }} placeholder="rapports-marketing@example.com" maxLength={254} />
+          </label>
+          <label className="block text-sm">Politique de ce domaine (p)
+            <select className="block w-full rounded-md border border-border bg-background px-2 py-1" value={policy} onChange={event => setPolicy(event.target.value as Policy)}>
+              {dmarcPolicies.map(value => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm">Politique des sous-domaines héritiers (sp)
+            <select className="block w-full rounded-md border border-border bg-background px-2 py-1" value={children} onChange={event => setChildren(event.target.value as Policy | "")}>
+              <option value="">Hériter de p</option>
+              {dmarcPolicies.map(value => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={organizational} onChange={event => setOrganizational(event.target.checked)} />Déclarer cette branche comme domaine organisationnel (psd=n)</label>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={strict} onChange={event => setStrict(event.target.checked)} />Exiger l’alignement exact du domaine SPF ou DKIM</label>
+          {record ? <Code>{`${record.name}  TXT  ${record.value.match(/.{1,255}/g)!.map(chunk => `"${chunk}"`).join(" ")}`}</Code> : <p className="text-xs text-muted-foreground">Renseignez le domaine et corrigez, si nécessaire, l’adresse de rapports pour générer le TXT.</p>}
+          {record?.authorization && <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Si la boîte relève d’une autre organisation, le destinataire des rapports doit autoriser cet envoi dans son DNS.</p>
+            <Code>{`${record.authorization}  TXT  "v=DMARC1"`}</Code>
+            {publishedName === record.authorization ? <p className="text-sm" role="status">Autorisation présente dans Cloudflare. Vérifiez sa propagation dans le DNS public.</p> : authorization?.name === record.authorization && <>
+              <p className="text-sm" role="status">{authorization.status === 'authorized' ? 'Autorisation trouvée dans le DNS.' : authorization.status === 'missing' ? 'Aucune autorisation valide trouvée dans le DNS.' : 'Autorisation indéterminée. Réessayez le contrôle DNS.'}</p>
+              {authorization.canPublish && authorization.status === 'missing' && <Button type="button" variant="outline" disabled={publishing || checking} onClick={() => void publish()}>{publishing ? 'Publication…' : 'Publier l’autorisation sur Cloudflare'}</Button>}
+            </>}
+          </div>}
+          <p className="text-xs text-muted-foreground">Le tag <code>sp</code> ne s’applique aux descendants que si ce domaine est retenu pour leur politique héritée. L’option <code>psd=n</code> modifie aussi le périmètre d’alignement relâché chez les récepteurs qui la prennent en charge.</p>
+          <p className="text-xs text-muted-foreground">Publiez un seul TXT DMARC par nom. Vérifiez l’alignement de vos flux légitimes avant de choisir quarantine ou reject.</p>
         </div>
       </Panel>
-      <Panel title="Vérificateur DMARC & simulation p=reject">
-        <div className="mb-3 flex gap-2"><Input defaultValue="emaildirect.io" /><Button>Vérifier</Button></div>
-        <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">Politique actuelle <Pill tone="ok">reject</Pill></li>
-          <li className="flex justify-between">Alignement DKIM / SPF <Pill tone="ok">strict / strict</Pill></li>
-          <li className="flex justify-between">Prêt pour BIMI <Pill tone="ok">Oui</Pill></li>
-        </ul>
-        <p className="mt-3 text-xs text-muted-foreground">Simulation sur 30 jours de rapports RUA : 99,6 % des messages légitimes passeraient en p=reject.</p>
+      <Panel title="Vérification DNS de la politique publiée">
+        <Button disabled={checking || publishing || !domain.trim()} onClick={() => void check()}>{checking ? "Vérification…" : "Vérifier le domaine"}</Button>
+        {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+        {result && <div className="mt-3 space-y-2 text-sm" aria-live="polite">
+          <p><strong>{result.author}</strong></p>
+          {result.record && <>
+            <p>Politique {result.record.domain === result.author ? "directe" : "héritée"} depuis <code>_dmarc.{result.record.domain}</code></p>
+            <Code>{result.record.text}</Code>
+            <p>Traitement demandé en cas d’échec selon RFC 9989. <Pill tone={result.policy === "reject" ? "ok" : "warn"}>{result.policy ?? "Indéterminé"}</Pill></p>
+            {result.record.testing && <p>Le mode de test <code>t=y</code> réduit la sévérité d’un niveau selon RFC 9989.</p>}
+            {result.record.legacyPct && <p>Des récepteurs utilisant RFC 7489 peuvent encore tenir compte de <code>pct={result.record.legacyPct}</code>.</p>}
+          </>}
+          {!result.record && <p>{result.uncertain ? "Politique indéterminée. Vérifiez les enregistrements signalés ou relancez le contrôle DNS." : "Aucun enregistrement DMARC exploitable trouvé."}</p>}
+          {result.conflicts.length > 0 && <p>Enregistrements multiples ou mal formés à vérifier. {result.conflicts.join(", ")}</p>}
+        </div>}
+        <p className="mt-3 text-xs text-muted-foreground">Le contrôle remonte les parents selon RFC 9989. Un ancien récepteur peut suivre une autre règle d’héritage. Un TXT explicite sur chaque domaine utilisé dans « De » rend la politique plus prévisible. DMARC règle le traitement des échecs d’authentification. La réputation est évaluée séparément par chaque récepteur.</p>
       </Panel>
     </div>
   );
 }
 
 function Bimi() {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Vérificateur BIMI / VMC">
-        <div className="mb-3 flex gap-2"><Input defaultValue="emaildirect.io" /><Button>Vérifier</Button></div>
-        <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">Enregistrement default._bimi <Pill tone="ok">Trouvé</Pill></li>
-          <li className="flex justify-between">Logo SVG Tiny P/S <Pill tone="ok">Conforme</Pill></li>
-          <li className="flex justify-between">Certificat VMC / CMC <Pill tone="warn">Manquant (Gmail)</Pill></li>
-          <li className="flex justify-between">DMARC p=quarantine/reject <Pill tone="ok">OK</Pill></li>
-        </ul>
-        <Code>{"default._bimi  TXT  \"v=BIMI1; l=https://emaildirect.io/bimi.svg; a=\""}</Code>
-      </Panel>
-      <Panel title="Aperçu dans la boîte">
-        <div className="space-y-2">
-          {["Gmail", "Apple Mail", "Yahoo"].map((c) => (
-            <div key={c} className="flex items-center gap-3 rounded-md border border-border p-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">ED</div>
-              <div className="flex-1"><p className="text-sm font-medium">Email Direct</p><p className="text-xs text-muted-foreground">Votre rapport mensuel est prêt</p></div>
-              <span className="text-xs text-muted-foreground">{c}</span>
-            </div>
-          ))}
-        </div>
-      </Panel>
-    </div>
-  );
+  const [domain, setDomain] = useState("");
+  const [logo, setLogo] = useState("");
+  const [certificate, setCertificate] = useState("");
+  const [svgFile, setSvgFile] = useState<File | null>(null);
+  const [chainFile, setChainFile] = useState<File | null>(null);
+  const [rootsFile, setRootsFile] = useState<File | null>(null);
+  const [certificateCheck, setCertificateCheck] = useState<{ ok: boolean; message: string } | null>(null);
+  const [checkingCertificate, setCheckingCertificate] = useState(false);
+  const [review, setReview] = useState<{ errors: string[]; warnings: string[] } | null>(null);
+  const [brand, setBrand] = useState('');
+  const [conversionError, setConversionError] = useState('');
+  const [eligibility, setEligibility] = useState('');
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const inspectPolicy = useServerFn(inspectDmarcPolicy);
+  const host = domain.trim().toLowerCase().replace(/\.$/, "");
+  const domainValid = host.length <= 253 && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]+$/.test(host);
+  function https(value: string) {
+    try {
+      const url = new URL(value.trim());
+      return url.protocol === "https:" && !url.username && !url.password && !/[;"]/.test(url.href) ? url.href : "";
+    } catch { return ""; }
+  }
+  const logoUrl = https(logo);
+  const certificateUrl = https(certificate);
+  const record = domainValid && logoUrl && (!certificate.trim() || certificateUrl)
+    ? `default._bimi.${host}. IN TXT "v=BIMI1; l=${logoUrl}; a=${certificateUrl}"`
+    : "";
+
+  async function verifyCertificate() {
+    if (!domainValid || !svgFile || !chainFile || !rootsFile || checkingCertificate) return;
+    setCheckingCertificate(true);
+    setCertificateCheck(null);
+    try {
+      const { inspectBimiCertificate } = await import("@/lib/bimi-certificate");
+      const result = await inspectBimiCertificate(host, svgFile, chainFile, rootsFile);
+      const expires = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "UTC" }).format(result.expires);
+      setCertificateCheck({ ok: true, message: `Chaîne, domaine et logo vérifiés. Le certificat expire le ${expires}.` });
+    } catch (error) {
+      setCertificateCheck({ ok: false, message: error instanceof Error ? error.message : "Le certificat est illisible." });
+    } finally {
+      setCheckingCertificate(false);
+    }
+  }
+
+  async function convertLogo() {
+    if (!svgFile || svgFile.size > 256_000) return;
+    setConversionError('');
+    try {
+      const output = prepareBimiSvg(await svgFile.text(), brand);
+      const url = URL.createObjectURL(new Blob([output], { type: 'image/svg+xml' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'logo-bimi.svg';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setConversionError(error instanceof Error ? error.message : 'Conversion impossible.');
+    }
+  }
+
+  async function checkEligibility() {
+    setCheckingEligibility(true);
+    setEligibility('');
+    try {
+      const result = await inspectPolicy({ data: host });
+      const policy = result.record;
+      if (result.uncertain) setEligibility('La politique publiée est indéterminée.');
+      else if (!policy || result.policy === null || result.policy === 'none' || policy.testing || (policy.legacyPct !== null && policy.legacyPct !== '100')) {
+        setEligibility('La politique DMARC publiée ne satisfait pas le niveau requis pour BIMI.');
+      } else setEligibility('La politique DMARC effective du domaine satisfait le niveau requis. Vérifiez l’alignement SPF et DKIM sur un message réellement envoyé.');
+    } catch { setEligibility('Le contrôle DNS est indisponible.'); }
+    finally { setCheckingEligibility(false); }
+  }
+
+  async function inspect(file: File) {
+    if (file.size > 256_000) {
+      setReview({ errors: ["Fichier trop volumineux pour le contrôle."], warnings: [] });
+      return;
+    }
+    try {
+      const source = await file.text();
+      if (/<!DOCTYPE|<!ENTITY/i.test(source)) throw new Error("Le fichier contient une déclaration XML interdite.");
+      const doc = new DOMParser().parseFromString(source, "image/svg+xml");
+      const root = doc.documentElement;
+      if (root.localName !== "svg" || root.namespaceURI !== "http://www.w3.org/2000/svg" || doc.querySelector("parsererror")) throw new Error("Le fichier SVG est invalide.");
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      if (root.getAttribute("baseProfile") !== "tiny-ps" || root.getAttribute("version") !== "1.2") errors.push("Définissez baseProfile=\"tiny-ps\" et version=\"1.2\" sur la racine.");
+      if (!Array.from(root.children).some(child => child.localName === "title" && child.textContent?.trim())) errors.push("Ajoutez un élément <title> contenant le nom de la marque.");
+      if (root.hasAttribute("x") || root.hasAttribute("y")) errors.push("Retirez les attributs x et y de la racine.");
+      if (doc.querySelector("script, animate, animateTransform, animateMotion, set, foreignObject, image, style, a")) errors.push("Retirez les scripts, animations, images intégrées, styles externes et éléments interactifs.");
+      const hasReferences = Array.from(doc.querySelectorAll("*")).some(element => Array.from(element.attributes).some(attribute =>
+        /^on/i.test(attribute.name) || (attribute.localName === "href" && !attribute.value.trim().startsWith("#")) ||
+        /url\(\s*['"]?(?!#)[^)'"]+/i.test(attribute.value)));
+      if (hasReferences) errors.push("Retirez les références externes et les gestionnaires d’événements.");
+      const dimensions = root.getAttribute("viewBox")?.trim().split(/[ ,]+/).map(Number);
+      if (!dimensions || dimensions.length !== 4 || !dimensions.every(Number.isFinite) || dimensions[2]! <= 0 || dimensions[2] !== dimensions[3]) warnings.push("Utilisez un viewBox carré.");
+      if (file.size > 32_768) warnings.push("Réduisez le fichier à 32 Kio ou moins.");
+      setReview({ errors, warnings });
+    } catch (error) {
+      setReview({ errors: [error instanceof Error ? error.message : "Fichier illisible."], warnings: [] });
+    }
+  }
+
+  return <div className="grid gap-4 lg:grid-cols-2">
+    <Panel title="Inspecteur de logo SVG Tiny P/S">
+      <label className="grid gap-2 text-sm">Fichier SVG<Input type="file" accept=".svg,image/svg+xml" disabled={checkingCertificate} onChange={e => {
+        const file = e.target.files?.[0] ?? null;
+        setSvgFile(file);
+        setCertificateCheck(null);
+        if (file) void inspect(file);
+        else setReview(null);
+      }} /></label>
+      {review && <div className="mt-3 space-y-2 text-sm" role="status">
+        {review.errors.length === 0 && <Pill tone="ok">Contrôles de base réussis</Pill>}
+        <ul className="list-disc space-y-1 pl-5">{[...review.errors, ...review.warnings].map(issue => <li key={issue}>{issue}</li>)}</ul>
+      </div>}
+      <label className="mt-3 grid gap-1 text-sm">Nom de la marque<Input value={brand} maxLength={100} onChange={event => setBrand(event.target.value)} /></label>
+      <Button className="mt-2" type="button" variant="outline" disabled={!svgFile || svgFile.size > 256_000 || !brand.trim()} onClick={() => void convertLogo()}>Télécharger le SVG Tiny P/S</Button>
+      {conversionError && <p role="alert" className="text-sm text-destructive">{conversionError}</p>}
+      <p className="mt-3 text-sm text-muted-foreground">Ces contrôles portent sur le fichier local et couvrent les caractéristiques principales du format Tiny P/S.</p>
+    </Panel>
+    <Panel title="Enregistrement DNS BIMI">
+      <div className="space-y-3">
+        <label className="grid gap-1 text-sm">Domaine d’envoi<Input placeholder="exemple.fr" value={domain} disabled={checkingCertificate || checkingEligibility} onChange={e => {
+          setDomain(e.target.value);
+          setCertificateCheck(null);
+          setEligibility('');
+        }} /></label>
+        <label className="grid gap-1 text-sm">URL HTTPS du logo<Input placeholder="https://exemple.fr/logo.svg" value={logo} onChange={e => setLogo(e.target.value)} /></label>
+        <label className="grid gap-1 text-sm">URL HTTPS du certificat VMC ou CMC, si disponible<Input placeholder="https://exemple.fr/marque.pem" value={certificate} onChange={e => setCertificate(e.target.value)} /></label>
+        {record && <Code>{record}</Code>}
+        <Button type="button" variant="outline" disabled={!domainValid || checkingEligibility} onClick={() => void checkEligibility()}>{checkingEligibility ? 'Vérification…' : 'Vérifier la politique publiée'}</Button>
+        {eligibility && <p role="status" className="text-sm">{eligibility}</p>}
+        <p className="text-sm text-muted-foreground">Publiez le TXT généré après avoir vérifié que DMARC applique quarantine ou reject à 100 %.</p>
+      </div>
+    </Panel>
+    <Panel title="Vérification du certificat BIMI">
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Renseignez le domaine d’envoi et sélectionnez le fichier SVG ci-dessus. Les fichiers sont vérifiés dans votre navigateur.</p>
+        <label className="grid gap-1 text-sm">Chaîne PEM, certificat de marque en premier<Input type="file" accept=".pem,.crt" disabled={checkingCertificate} onChange={e => {
+          setChainFile(e.target.files?.[0] ?? null);
+          setCertificateCheck(null);
+        }} /></label>
+        <label className="grid gap-1 text-sm">Racine PEM de confiance, obtenue auprès de l’autorité BIMI<Input type="file" accept=".pem,.crt" disabled={checkingCertificate} onChange={e => {
+          setRootsFile(e.target.files?.[0] ?? null);
+          setCertificateCheck(null);
+        }} /></label>
+        <Button type="button" variant="outline" disabled={!domainValid || !svgFile || !chainFile || !rootsFile || checkingCertificate} onClick={() => void verifyCertificate()}>
+          {checkingCertificate ? "Vérification…" : "Vérifier la chaîne et le logo"}
+        </Button>
+        {certificateCheck && <p role="status" className={certificateCheck.ok ? "text-sm" : "text-sm text-destructive"}>{certificateCheck.message}</p>}
+        <p className="text-sm text-muted-foreground">Le contrôle local utilise la racine fournie. La révocation, les journaux Certificate Transparency et les listes de confiance des webmails restent à vérifier séparément.</p>
+      </div>
+    </Panel>
+  </div>;
 }
 
 function MtaSts() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Générateur MTA-STS & TLS-RPT">
+      <Panel title="Exemple de configuration MTA-STS & TLS-RPT">
         <div className="space-y-3">
           <Code>{"_mta-sts      TXT  \"v=STSv1; id=20261030\"\n_smtp._tls    TXT  \"v=TLSRPTv1; rua=mailto:tls@reports.emaildirect.io\""}</Code>
           <p className="text-xs text-muted-foreground">Fichier https://mta-sts.emaildirect.io/.well-known/mta-sts.txt</p>
           <Code>{"version: STSv1\nmode: enforce\nmx: mx1.emaildirect.io\nmx: mx2.emaildirect.io\nmax_age: 604800"}</Code>
         </div>
       </Panel>
-      <Panel title="Vérificateur MTA-STS & DANE">
-        <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">Politique MTA-STS <Pill tone="ok">enforce</Pill></li>
-          <li className="flex justify-between">Certificat HTTPS <Pill tone="ok">Valide</Pill></li>
-          <li className="flex justify-between">DNSSEC <Pill tone="ok">Signé</Pill></li>
-          <li className="flex justify-between">TLSA (DANE 3 1 1) <Pill tone="warn">mx2 absent</Pill></li>
-          <li className="flex justify-between">Rapports TLS-RPT reçus (7 j) <Pill>142</Pill></li>
-        </ul>
-      </Panel>
+      <DanePanel />
     </div>
   );
 }
@@ -298,7 +503,7 @@ function CheckCard({ k, v, pts }: { k: string; v: any; pts?: number | undefined 
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {pts ? <Pill tone="bad">{pts} pt</Pill> : null}
-          <Pill tone={v.pass ? "ok" : "bad"}>{v.pass ? "OK" : "À corriger"}</Pill>
+          <Pill tone={v.pass ? "ok" : v.status === "warn" ? "warn" : "bad"}>{v.pass ? "OK" : v.status === "warn" ? "À vérifier" : "À corriger"}</Pill>
         </div>
       </button>
       {open && (
@@ -327,7 +532,7 @@ function Report({ res, checks }: { res: any; checks: [string, any][] }) {
   const pen = new Map<string, number>((res.penalties ?? []).map((p: any) => [String(p.rule).toLowerCase(), Number(p.points)]));
   const failed = checks.filter(([, v]) => !v.pass).length;
   const gain = (res.penalties ?? []).reduce((s: number, p: any) => s - Number(p.points), 0);
-  const verdict = score >= 9 ? ["Excellent", "Votre email arrivera en boîte de réception.", "ok"] : score >= 7 ? ["Correct", "Quelques réglages pour éviter les spams.", "warn"] : ["Risque de spam", "Gmail et Yahoo risquent de classer cet email en spam.", "bad"];
+  const verdict = score >= 9 ? ["Excellent", "Le message réussit la plupart des contrôles techniques.", "ok"] : score >= 7 ? ["Correct", "Quelques réglages pour réduire les risques de spam.", "warn"] : ["Risque de spam", "Les contrôles signalent plusieurs risques de délivrabilité.", "bad"];
   const known = new Set(GROUPS.flatMap((g) => g.keys));
   const others = checks.filter(([k]) => !known.has(k)).map(([k]) => k);
   const groups = others.length ? [...GROUPS, { title: "Autres contrôles", desc: "", keys: others }] : GROUPS;
@@ -455,7 +660,9 @@ function VpsTester() {
     try { const r = await fetchResult({ data: { id: test.test_id } }); setRes(r.result); setState("idle"); }
     catch (e) { setErr((e as Error).message); setState("error"); }
   };
-  const checks: [string, any][] = res ? Object.entries(res.checks ?? {}) : [];
+  const checks: [string, any][] = Array.isArray(res?.checks)
+    ? res.checks.map((check: { id: string; status: string }) => [check.id, { ...check, pass: check.status === 'pass' }])
+    : Object.entries(res?.checks ?? {});
   return (
     <Panel title="Testeur 10/10 — serveur Mail-Tester" action={<Pill tone={state === "off" ? "warn" : "neutral"}>{state === "off" ? "Serveur non connecté" : "VPS"}</Pill>}>
       {state === "off" && <p className="mb-3 text-sm text-muted-foreground">Le serveur Mail-Tester n'est pas encore relié. Dès que son adresse et sa clé seront enregistrées, les tests fonctionneront ici.</p>}

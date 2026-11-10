@@ -1,0 +1,23 @@
+services:
+  sender:
+    sysctls:
+      net.ipv4.tcp_congestion_control: bbr
+    image: email-direct-kumo:production
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 45s
+    volumes:
+      - ./agent.token:/run/secrets/agent.token:ro
+      - config:/opt/kumomta/etc
+      - state:/etc/kumo-agent
+      - spool:/var/spool/kumomta
+      - logs:/var/log/kumomta
+volumes:
+  config:
+  state:
+  spool:
+  logs:
+

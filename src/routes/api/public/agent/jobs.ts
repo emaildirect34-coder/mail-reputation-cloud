@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-const results = z.object({ results: z.array(z.object({ id: z.string().uuid(), ok: z.boolean(), error: z.string().max(300).optional() })).max(500) });
+const results = z.object({ results: z.array(z.object({
+  id: z.string().uuid(), ok: z.boolean(), uncertain: z.literal(true).optional(), error: z.string().max(300).optional(),
+}).refine(row => !row.ok || !row.uncertain)).max(500) });
 
 // Agent pulls messages to inject into its local KumoMTA, then reports the outcome.
 export const Route = createFileRoute('/api/public/agent/jobs')({
@@ -11,19 +13,44 @@ export const Route = createFileRoute('/api/public/agent/jobs')({
         const { agentFromRequest } = await import('@/lib/kumo.server');
         const a = await agentFromRequest(request);
         if (!a) return new Response('Unauthorized', { status: 401 });
-        const claimed = await a.db.rpc('claim_campaign_messages', { _server: a.serverId, _limit: 200 });
+        const requested = new URL(request.url).searchParams.get('limit');
+        const count = requested && /^\d+$/.test(requested) ? Math.max(1, Math.min(200, Number(requested))) : 200;
+        const claimed = await a.db.rpc('claim_campaign_messages', { _server: a.serverId, _limit: count });
         if (claimed.error) return new Response('Error', { status: 500 });
         const msgs = claimed.data ?? [];
         const ids = [...new Set(msgs.map(m => m.campaign_id))];
-        const camps = ids.length ? (await (a.db as any).from('campaigns').select('id,from_name,from_email,reply_to,subject,html,ab_variants,ab_winner').in('id', ids)).data ?? [] : [];
-        // A/B: the message's variant overrides subject / sender name.
-        const pick = (c: any, v: number | null) => { const x = Array.isArray(c.ab_variants) ? c.ab_variants[v ?? c.ab_winner ?? 0] : null; return x ? { ...c, subject: x.subject || c.subject, from_name: x.fromName || c.from_name } : c; };
-        const { renderMessage } = await import('@/lib/sending.server');
+        const campaignFields = 'id,from_name,from_email,reply_to,subject,html,ab_variants,ab_winner,list_id';
+        const campaigns = async () => {
+          if (!ids.length) return [];
+          const current = await a.db.from('campaigns').select(`${campaignFields},vmta_pool_id,amp_html`).in('id', ids);
+          if (current.error?.code !== '42703') {
+            if (current.error) throw new Error('Campaign query failed');
+            return current.data ?? [];
+          }
+          const result = await a.db.from('campaigns').select(`${campaignFields},vmta_pool_id`).in('id', ids);
+          if (result.error?.code !== '42703') {
+            if (result.error) throw new Error('Campaign query failed');
+            return (result.data ?? []).map(campaign => ({ ...campaign, amp_html: null }));
+          }
+          const legacy = await a.db.from('campaigns').select(campaignFields).in('id', ids);
+          if (legacy.error) throw new Error('Campaign query failed');
+          return (legacy.data ?? []).map(campaign => ({ ...campaign, vmta_pool_id: null, amp_html: null }));
+        };
+        const camps = await campaigns();
+        const { renderMessage, pickCampaignVariant } = await import('@/lib/sending.server');
+        const { bounceAddress } = await import('@/lib/bounce-token.server');
         const origin = new URL(request.url).origin;
         const fromDomains = [...new Set(camps.map((c: any) => String(c.from_email).split('@')[1]))];
         const doms = fromDomains.length ? (await (a.db as any).from('sending_domains').select('domain,tracking_host').in('domain', fromDomains)).data ?? [] : [];
         const trackFor = (email: string) => { const h = doms.find((x: any) => x.domain === email.split('@')[1])?.tracking_host; return h ? `https://${h}` : origin; };
-        const jobs = msgs.flatMap(m => { const c = camps.find((x: any) => x.id === m.campaign_id); return c ? [{ id: m.id, sender: `bounce+${m.id}@${c.from_email.split('@')[1]}`, rcpt: m.email, content: renderMessage(pick(c, (m as any).variant), m, origin, trackFor(c.from_email)) }] : []; });
+        const jobs = (await Promise.all(msgs.map(async m => {
+          const c = camps.find((x: any) => x.id === m.campaign_id);
+          if (!c) return null;
+          const domain = c.from_email.split('@')[1];
+          if (!domain) return null;
+          const sender = await bounceAddress(m.id, domain, process.env['BOUNCE_HMAC_KEY']);
+          return { id: m.id, campaignId: c.id, vmtaPoolId: c.vmta_pool_id, sender, rcpt: m.email, content: renderMessage(pickCampaignVariant(c, m.variant), m, origin, trackFor(c.from_email)) };
+        }))).filter(job => job !== null);
         return Response.json({ jobs }, { headers: { 'Cache-Control': 'no-store' } });
       },
       POST: async ({ request }) => {
@@ -35,18 +62,24 @@ export const Route = createFileRoute('/api/public/agent/jobs')({
         const now = new Date().toISOString();
         const ok = p.data.results.filter(r => r.ok).map(r => r.id);
         if (ok.length) {
-          const updated = await a.db.from('campaign_messages').update({ status: 'sent', sent_at: now }).in('id', ok).eq('server_id', a.serverId).eq('status','claimed');
+          const updated = await a.db.from('campaign_messages').update({ status: 'sent', sent_at: now, injection_uncertain_at: null, error: null })
+            .in('id', ok).eq('server_id', a.serverId).or('status.eq.claimed,injection_uncertain_at.not.is.null');
           if (updated.error) return new Response('Error',{status:500});
         }
         for (const r of p.data.results.filter(r => !r.ok)) {
-          const updated = await a.db.from('campaign_messages').update({ status: 'failed', error: r.error ?? 'injection refusée' }).eq('id', r.id).eq('server_id', a.serverId).eq('status','claimed');
+          const uncertain = r.uncertain || r.error === 'Injection KumoMTA non confirmée';
+          const updated = await a.db.from('campaign_messages').update({
+            status: 'failed', error: uncertain ? 'Injection KumoMTA à vérifier' : r.error ?? 'injection refusée',
+            ...(uncertain ? { injection_uncertain_at: now } : {}),
+          }).eq('id', r.id).eq('server_id', a.serverId).eq('status','claimed');
           if (updated.error) return new Response('Error',{status:500});
         }
         // Close campaigns with nothing left to send
         const touched = await a.db.from('campaign_messages').select('campaign_id').in('id', p.data.results.map(r => r.id)).eq('server_id',a.serverId);
         if (touched.error) return new Response('Error',{status:500});
         for (const cid of new Set((touched.data ?? []).map(t => t.campaign_id))) {
-          const left = await a.db.from('campaign_messages').select('id', { count: 'exact', head: true }).eq('campaign_id', cid).in('status', ['queued', 'claimed']);
+          const left = await a.db.from('campaign_messages').select('id', { count: 'exact', head: true }).eq('campaign_id', cid)
+            .or('status.in.(queued,claimed),injection_uncertain_at.not.is.null');
           if (left.count === 0) await a.db.from('campaigns').update({ status: 'done' }).eq('id', cid).eq('status', 'queued');
         }
         return Response.json({ ok: true });

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as ConfirmSubscriptionTokenRouteImport } from './routes/confirm-subscription/$token'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAgentRouteImport } from './routes/dashboard.agent'
 import { Route as DashboardApiKeysRouteImport } from './routes/dashboard.api-keys'
@@ -45,17 +46,24 @@ import { Route as DashboardValidationRouteImport } from './routes/dashboard.vali
 import { Route as DashboardVaultRouteImport } from './routes/dashboard.vault'
 import { Route as DashboardWarmupRouteImport } from './routes/dashboard.warmup'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard.webhooks'
+import { Route as PreferencesTokenRouteImport } from './routes/preferences/$token'
+import { Route as ApiPublicDmarcInboundRouteImport } from './routes/api/public/dmarc-inbound'
 import { Route as DashboardCampaignsAbRouteImport } from './routes/dashboard.campaigns_.ab'
 import { Route as DashboardCampaignsListRouteImport } from './routes/dashboard.campaigns_.list'
 import { Route as DashboardCampaignsNewRouteImport } from './routes/dashboard.campaigns_.new'
+import { Route as DashboardLogsSmtpRouteImport } from './routes/dashboard.logs_.smtp'
+import { Route as ApiPublicAgentCampaignControlRouteImport } from './routes/api/public/agent/campaign-control'
 import { Route as ApiPublicAgentConfigRouteImport } from './routes/api/public/agent/config'
+import { Route as ApiPublicAgentDanePublicationRouteImport } from './routes/api/public/agent/dane-publication'
 import { Route as ApiPublicAgentEventsRouteImport } from './routes/api/public/agent/events'
 import { Route as ApiPublicAgentInstallDotshRouteImport } from './routes/api/public/agent/install[.]sh'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent/report'
+import { Route as ApiPublicAgentSuppressionSnapshotRouteImport } from './routes/api/public/agent/suppression-snapshot'
 import { Route as ApiPublicAgentTlsAskRouteImport } from './routes/api/public/agent/tls-ask'
 import { Route as ApiPublicCTokenRouteImport } from './routes/api/public/c/$token'
 import { Route as ApiPublicJobsDailyReportRouteImport } from './routes/api/public/jobs/daily-report'
+import { Route as ApiPublicJobsIncidentNotificationsRouteImport } from './routes/api/public/jobs/incident-notifications'
 import { Route as ApiPublicPostbackTokenRouteImport } from './routes/api/public/postback/$token'
 import { Route as ApiPublicTTokenRouteImport } from './routes/api/public/t/$token'
 import { Route as ApiPublicUnsubTokenRouteImport } from './routes/api/public/unsub/$token'
@@ -80,6 +88,12 @@ const SetPasswordRoute = SetPasswordRouteImport.update({
   path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfirmSubscriptionTokenRoute =
+  ConfirmSubscriptionTokenRouteImport.update({
+    id: '/confirm-subscription/$token',
+    path: '/confirm-subscription/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -241,6 +255,16 @@ const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
   path: '/webhooks',
   getParentRoute: () => DashboardRoute,
 } as any)
+const PreferencesTokenRoute = PreferencesTokenRouteImport.update({
+  id: '/preferences/$token',
+  path: '/preferences/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDmarcInboundRoute = ApiPublicDmarcInboundRouteImport.update({
+  id: '/api/public/dmarc-inbound',
+  path: '/api/public/dmarc-inbound',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardCampaignsAbRoute = DashboardCampaignsAbRouteImport.update({
   id: '/campaigns_/ab',
   path: '/campaigns/ab',
@@ -256,11 +280,28 @@ const DashboardCampaignsNewRoute = DashboardCampaignsNewRouteImport.update({
   path: '/campaigns/new',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardLogsSmtpRoute = DashboardLogsSmtpRouteImport.update({
+  id: '/logs_/smtp',
+  path: '/logs/smtp',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const ApiPublicAgentCampaignControlRoute =
+  ApiPublicAgentCampaignControlRouteImport.update({
+    id: '/api/public/agent/campaign-control',
+    path: '/api/public/agent/campaign-control',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAgentConfigRoute = ApiPublicAgentConfigRouteImport.update({
   id: '/api/public/agent/config',
   path: '/api/public/agent/config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentDanePublicationRoute =
+  ApiPublicAgentDanePublicationRouteImport.update({
+    id: '/api/public/agent/dane-publication',
+    path: '/api/public/agent/dane-publication',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAgentEventsRoute = ApiPublicAgentEventsRouteImport.update({
   id: '/api/public/agent/events',
   path: '/api/public/agent/events',
@@ -282,6 +323,12 @@ const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
   path: '/api/public/agent/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentSuppressionSnapshotRoute =
+  ApiPublicAgentSuppressionSnapshotRouteImport.update({
+    id: '/api/public/agent/suppression-snapshot',
+    path: '/api/public/agent/suppression-snapshot',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAgentTlsAskRoute = ApiPublicAgentTlsAskRouteImport.update({
   id: '/api/public/agent/tls-ask',
   path: '/api/public/agent/tls-ask',
@@ -296,6 +343,12 @@ const ApiPublicJobsDailyReportRoute =
   ApiPublicJobsDailyReportRouteImport.update({
     id: '/api/public/jobs/daily-report',
     path: '/api/public/jobs/daily-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicJobsIncidentNotificationsRoute =
+  ApiPublicJobsIncidentNotificationsRouteImport.update({
+    id: '/api/public/jobs/incident-notifications',
+    path: '/api/public/jobs/incident-notifications',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicPostbackTokenRoute = ApiPublicPostbackTokenRouteImport.update({
@@ -319,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/set-password': typeof SetPasswordRoute
+  '/confirm-subscription/$token': typeof ConfirmSubscriptionTokenRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -350,18 +404,25 @@ export interface FileRoutesByFullPath {
   '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/preferences/$token': typeof PreferencesTokenRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/public/dmarc-inbound': typeof ApiPublicDmarcInboundRoute
   '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
+  '/dashboard/logs/smtp': typeof DashboardLogsSmtpRoute
+  '/api/public/agent/campaign-control': typeof ApiPublicAgentCampaignControlRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/dane-publication': typeof ApiPublicAgentDanePublicationRoute
   '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/suppression-snapshot': typeof ApiPublicAgentSuppressionSnapshotRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/jobs/daily-report': typeof ApiPublicJobsDailyReportRoute
+  '/api/public/jobs/incident-notifications': typeof ApiPublicJobsIncidentNotificationsRoute
   '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -370,6 +431,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/set-password': typeof SetPasswordRoute
+  '/confirm-subscription/$token': typeof ConfirmSubscriptionTokenRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -401,18 +463,25 @@ export interface FileRoutesByTo {
   '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/preferences/$token': typeof PreferencesTokenRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/api/public/dmarc-inbound': typeof ApiPublicDmarcInboundRoute
   '/dashboard/campaigns/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns/new': typeof DashboardCampaignsNewRoute
+  '/dashboard/logs/smtp': typeof DashboardLogsSmtpRoute
+  '/api/public/agent/campaign-control': typeof ApiPublicAgentCampaignControlRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/dane-publication': typeof ApiPublicAgentDanePublicationRoute
   '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/suppression-snapshot': typeof ApiPublicAgentSuppressionSnapshotRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/jobs/daily-report': typeof ApiPublicJobsDailyReportRoute
+  '/api/public/jobs/incident-notifications': typeof ApiPublicJobsIncidentNotificationsRoute
   '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -423,6 +492,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/set-password': typeof SetPasswordRoute
+  '/confirm-subscription/$token': typeof ConfirmSubscriptionTokenRoute
   '/dashboard/agent': typeof DashboardAgentRoute
   '/dashboard/api-keys': typeof DashboardApiKeysRoute
   '/dashboard/campaigns': typeof DashboardCampaignsRoute
@@ -454,18 +524,25 @@ export interface FileRoutesById {
   '/dashboard/vault': typeof DashboardVaultRoute
   '/dashboard/warmup': typeof DashboardWarmupRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/preferences/$token': typeof PreferencesTokenRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/public/dmarc-inbound': typeof ApiPublicDmarcInboundRoute
   '/dashboard/campaigns_/ab': typeof DashboardCampaignsAbRoute
   '/dashboard/campaigns_/list': typeof DashboardCampaignsListRoute
   '/dashboard/campaigns_/new': typeof DashboardCampaignsNewRoute
+  '/dashboard/logs_/smtp': typeof DashboardLogsSmtpRoute
+  '/api/public/agent/campaign-control': typeof ApiPublicAgentCampaignControlRoute
   '/api/public/agent/config': typeof ApiPublicAgentConfigRoute
+  '/api/public/agent/dane-publication': typeof ApiPublicAgentDanePublicationRoute
   '/api/public/agent/events': typeof ApiPublicAgentEventsRoute
   '/api/public/agent/install.sh': typeof ApiPublicAgentInstallDotshRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent/suppression-snapshot': typeof ApiPublicAgentSuppressionSnapshotRoute
   '/api/public/agent/tls-ask': typeof ApiPublicAgentTlsAskRoute
   '/api/public/c/$token': typeof ApiPublicCTokenRoute
   '/api/public/jobs/daily-report': typeof ApiPublicJobsDailyReportRoute
+  '/api/public/jobs/incident-notifications': typeof ApiPublicJobsIncidentNotificationsRoute
   '/api/public/postback/$token': typeof ApiPublicPostbackTokenRoute
   '/api/public/t/$token': typeof ApiPublicTTokenRoute
   '/api/public/unsub/$token': typeof ApiPublicUnsubTokenRoute
@@ -477,6 +554,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/set-password'
+    | '/confirm-subscription/$token'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -508,18 +586,25 @@ export interface FileRouteTypes {
     | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
+    | '/preferences/$token'
     | '/dashboard/'
+    | '/api/public/dmarc-inbound'
     | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
+    | '/dashboard/logs/smtp'
+    | '/api/public/agent/campaign-control'
     | '/api/public/agent/config'
+    | '/api/public/agent/dane-publication'
     | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/suppression-snapshot'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/jobs/daily-report'
+    | '/api/public/jobs/incident-notifications'
     | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -528,6 +613,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/set-password'
+    | '/confirm-subscription/$token'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -559,18 +645,25 @@ export interface FileRouteTypes {
     | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
+    | '/preferences/$token'
     | '/dashboard'
+    | '/api/public/dmarc-inbound'
     | '/dashboard/campaigns/ab'
     | '/dashboard/campaigns/list'
     | '/dashboard/campaigns/new'
+    | '/dashboard/logs/smtp'
+    | '/api/public/agent/campaign-control'
     | '/api/public/agent/config'
+    | '/api/public/agent/dane-publication'
     | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/suppression-snapshot'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/jobs/daily-report'
+    | '/api/public/jobs/incident-notifications'
     | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -580,6 +673,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/set-password'
+    | '/confirm-subscription/$token'
     | '/dashboard/agent'
     | '/dashboard/api-keys'
     | '/dashboard/campaigns'
@@ -611,18 +705,25 @@ export interface FileRouteTypes {
     | '/dashboard/vault'
     | '/dashboard/warmup'
     | '/dashboard/webhooks'
+    | '/preferences/$token'
     | '/dashboard/'
+    | '/api/public/dmarc-inbound'
     | '/dashboard/campaigns_/ab'
     | '/dashboard/campaigns_/list'
     | '/dashboard/campaigns_/new'
+    | '/dashboard/logs_/smtp'
+    | '/api/public/agent/campaign-control'
     | '/api/public/agent/config'
+    | '/api/public/agent/dane-publication'
     | '/api/public/agent/events'
     | '/api/public/agent/install.sh'
     | '/api/public/agent/jobs'
     | '/api/public/agent/report'
+    | '/api/public/agent/suppression-snapshot'
     | '/api/public/agent/tls-ask'
     | '/api/public/c/$token'
     | '/api/public/jobs/daily-report'
+    | '/api/public/jobs/incident-notifications'
     | '/api/public/postback/$token'
     | '/api/public/t/$token'
     | '/api/public/unsub/$token'
@@ -633,14 +734,21 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   SetPasswordRoute: typeof SetPasswordRoute
+  ConfirmSubscriptionTokenRoute: typeof ConfirmSubscriptionTokenRoute
+  PreferencesTokenRoute: typeof PreferencesTokenRoute
+  ApiPublicDmarcInboundRoute: typeof ApiPublicDmarcInboundRoute
+  ApiPublicAgentCampaignControlRoute: typeof ApiPublicAgentCampaignControlRoute
   ApiPublicAgentConfigRoute: typeof ApiPublicAgentConfigRoute
+  ApiPublicAgentDanePublicationRoute: typeof ApiPublicAgentDanePublicationRoute
   ApiPublicAgentEventsRoute: typeof ApiPublicAgentEventsRoute
   ApiPublicAgentInstallDotshRoute: typeof ApiPublicAgentInstallDotshRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
+  ApiPublicAgentSuppressionSnapshotRoute: typeof ApiPublicAgentSuppressionSnapshotRoute
   ApiPublicAgentTlsAskRoute: typeof ApiPublicAgentTlsAskRoute
   ApiPublicCTokenRoute: typeof ApiPublicCTokenRoute
   ApiPublicJobsDailyReportRoute: typeof ApiPublicJobsDailyReportRoute
+  ApiPublicJobsIncidentNotificationsRoute: typeof ApiPublicJobsIncidentNotificationsRoute
   ApiPublicPostbackTokenRoute: typeof ApiPublicPostbackTokenRoute
   ApiPublicTTokenRoute: typeof ApiPublicTTokenRoute
   ApiPublicUnsubTokenRoute: typeof ApiPublicUnsubTokenRoute
@@ -674,6 +782,13 @@ declare module '@tanstack/react-router' {
       path: '/set-password'
       fullPath: '/set-password'
       preLoaderRoute: typeof SetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confirm-subscription/$token': {
+      id: '/confirm-subscription/$token'
+      path: '/confirm-subscription/$token'
+      fullPath: '/confirm-subscription/$token'
+      preLoaderRoute: typeof ConfirmSubscriptionTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -900,6 +1015,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebhooksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/preferences/$token': {
+      id: '/preferences/$token'
+      path: '/preferences/$token'
+      fullPath: '/preferences/$token'
+      preLoaderRoute: typeof PreferencesTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/dmarc-inbound': {
+      id: '/api/public/dmarc-inbound'
+      path: '/api/public/dmarc-inbound'
+      fullPath: '/api/public/dmarc-inbound'
+      preLoaderRoute: typeof ApiPublicDmarcInboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/campaigns_/ab': {
       id: '/dashboard/campaigns_/ab'
       path: '/campaigns/ab'
@@ -921,11 +1050,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCampaignsNewRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/logs_/smtp': {
+      id: '/dashboard/logs_/smtp'
+      path: '/logs/smtp'
+      fullPath: '/dashboard/logs/smtp'
+      preLoaderRoute: typeof DashboardLogsSmtpRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/api/public/agent/campaign-control': {
+      id: '/api/public/agent/campaign-control'
+      path: '/api/public/agent/campaign-control'
+      fullPath: '/api/public/agent/campaign-control'
+      preLoaderRoute: typeof ApiPublicAgentCampaignControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/config': {
       id: '/api/public/agent/config'
       path: '/api/public/agent/config'
       fullPath: '/api/public/agent/config'
       preLoaderRoute: typeof ApiPublicAgentConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/dane-publication': {
+      id: '/api/public/agent/dane-publication'
+      path: '/api/public/agent/dane-publication'
+      fullPath: '/api/public/agent/dane-publication'
+      preLoaderRoute: typeof ApiPublicAgentDanePublicationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/events': {
@@ -956,6 +1106,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/suppression-snapshot': {
+      id: '/api/public/agent/suppression-snapshot'
+      path: '/api/public/agent/suppression-snapshot'
+      fullPath: '/api/public/agent/suppression-snapshot'
+      preLoaderRoute: typeof ApiPublicAgentSuppressionSnapshotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/tls-ask': {
       id: '/api/public/agent/tls-ask'
       path: '/api/public/agent/tls-ask'
@@ -975,6 +1132,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/jobs/daily-report'
       fullPath: '/api/public/jobs/daily-report'
       preLoaderRoute: typeof ApiPublicJobsDailyReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/jobs/incident-notifications': {
+      id: '/api/public/jobs/incident-notifications'
+      path: '/api/public/jobs/incident-notifications'
+      fullPath: '/api/public/jobs/incident-notifications'
+      preLoaderRoute: typeof ApiPublicJobsIncidentNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/postback/$token': {
@@ -1037,6 +1201,7 @@ interface DashboardRouteChildren {
   DashboardCampaignsAbRoute: typeof DashboardCampaignsAbRoute
   DashboardCampaignsListRoute: typeof DashboardCampaignsListRoute
   DashboardCampaignsNewRoute: typeof DashboardCampaignsNewRoute
+  DashboardLogsSmtpRoute: typeof DashboardLogsSmtpRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -1075,6 +1240,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardCampaignsAbRoute: DashboardCampaignsAbRoute,
   DashboardCampaignsListRoute: DashboardCampaignsListRoute,
   DashboardCampaignsNewRoute: DashboardCampaignsNewRoute,
+  DashboardLogsSmtpRoute: DashboardLogsSmtpRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
@@ -1086,14 +1252,23 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
   SetPasswordRoute: SetPasswordRoute,
+  ConfirmSubscriptionTokenRoute: ConfirmSubscriptionTokenRoute,
+  PreferencesTokenRoute: PreferencesTokenRoute,
+  ApiPublicDmarcInboundRoute: ApiPublicDmarcInboundRoute,
+  ApiPublicAgentCampaignControlRoute: ApiPublicAgentCampaignControlRoute,
   ApiPublicAgentConfigRoute: ApiPublicAgentConfigRoute,
+  ApiPublicAgentDanePublicationRoute: ApiPublicAgentDanePublicationRoute,
   ApiPublicAgentEventsRoute: ApiPublicAgentEventsRoute,
   ApiPublicAgentInstallDotshRoute: ApiPublicAgentInstallDotshRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
+  ApiPublicAgentSuppressionSnapshotRoute:
+    ApiPublicAgentSuppressionSnapshotRoute,
   ApiPublicAgentTlsAskRoute: ApiPublicAgentTlsAskRoute,
   ApiPublicCTokenRoute: ApiPublicCTokenRoute,
   ApiPublicJobsDailyReportRoute: ApiPublicJobsDailyReportRoute,
+  ApiPublicJobsIncidentNotificationsRoute:
+    ApiPublicJobsIncidentNotificationsRoute,
   ApiPublicPostbackTokenRoute: ApiPublicPostbackTokenRoute,
   ApiPublicTTokenRoute: ApiPublicTTokenRoute,
   ApiPublicUnsubTokenRoute: ApiPublicUnsubTokenRoute,

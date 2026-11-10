@@ -122,7 +122,7 @@ function GmailPostmaster() {
       </Panel>
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Taux de spam (dernier jour)" value={pct(spam, 2)} sub={spam == null ? "Volume trop faible" : spam > 0.003 ? "Critique > 0,3 %" : spam > 0.001 ? "Alerte > 0,1 %" : "Sain"} />
+        <Stat label="Taux de spam (dernier jour)" value={pct(spam, 2)} sub={spam == null ? "Aucune donnée publiée" : spam >= 0.003 ? "Seuil de 0,3 % atteint" : spam >= 0.001 ? "Au-dessus de la cible" : "Sous la cible"} />
         <Stat label="Statut de délivrabilité" value={stFr(comp?.deliverability.state)} sub={comp?.deliverability.reason ? reasonFr[comp.deliverability.reason] ?? comp.deliverability.reason : last?.date ?? ""} />
         <Stat label="SPF" value={pct(avg("spf"))} sub="moyenne période" />
         <Stat label="DKIM" value={pct(avg("dkim"))} sub="moyenne période" />
@@ -133,7 +133,7 @@ function GmailPostmaster() {
       <div className="grid gap-3 lg:grid-cols-2">
         <Panel title="Taux de spam signalé par les utilisateurs">
           <Spark values={stats.map((s) => s.spamRate)} max={Math.max(0.003, ...stats.map((s) => s.spamRate ?? 0))} />
-          <p className="mt-1 text-xs text-muted-foreground">Seuils Google : 0,1 % alerte · 0,3 % blocage. Intervalle du dernier jour : {pct(last?.spamLow, 2)} – {pct(last?.spamHigh, 2)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Google recommande de rester sous 0,1 % et demande un taux inférieur à 0,3 %. Intervalle du dernier jour {pct(last?.spamLow, 2)} – {pct(last?.spamHigh, 2)}.</p>
         </Panel>
         <Panel title="Conformité expéditeurs Gmail (exigences 2024+)">
           <div className="mb-2 flex flex-wrap gap-2 text-xs">

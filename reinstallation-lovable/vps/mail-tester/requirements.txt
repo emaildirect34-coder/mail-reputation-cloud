@@ -1,0 +1,7 @@
+aiosmtpd==1.4.6
+dnspython==2.7.0
+fastapi==0.115.12
+uvicorn==0.34.2
+
+dkimpy==1.1.8
+tldextract==5.3.0

@@ -139,6 +139,46 @@ export async function cfZones(a: Account) {
   return (r.result as any[]).map((z) => ({ id: z.id, name: z.name, status: z.status }));
 }
 
+export async function cfPublishInitialTlsa(a: Account, zoneId: string, owner: string, fingerprint: string) {
+  const zone = `/zones/${zoneId}`;
+  const { result: dnssec } = await call(a, `${zone}/dnssec`);
+  if (dnssec?.status !== 'active') throw new Error('DNSSEC doit être actif sur la zone Cloudflare.');
+  const path = `${zone}/dns_records`;
+  const query = new URLSearchParams({ type: 'TLSA', 'name.exact': owner });
+  const { result } = await call(a, `${path}?${query}`);
+  const records = (result as { name: string; type: string; content?: string; data?: { usage: number; selector: number; matching_type: number; certificate: string } }[])
+    .filter(record => record.type === 'TLSA' && record.name.toLowerCase().replace(/\.$/, '') === owner);
+  if (records.some(({ data, content }) => (data?.usage === 3 && data.selector === 1 && data.matching_type === 1 &&
+      data.certificate?.toLowerCase() === fingerprint) || content?.trim().toLowerCase().replace(/\s+/g, ' ') === `3 1 1 ${fingerprint}`)) return 'present' as const;
+  if (records.length) throw new Error('Une autre association TLSA existe. Planifiez une rotation de clé.');
+  await call(a, path, { method: 'POST', body: JSON.stringify({ type: 'TLSA', name: owner, ttl: 300,
+    data: { usage: 3, selector: 1, matching_type: 1, certificate: fingerprint } }) });
+  return 'published' as const;
+}
+
+export async function cfPublishDmarcAuthorization(a: Account, zoneId: string, owner: string) {
+  const path = `/zones/${zoneId}/dns_records`;
+  const query = new URLSearchParams({ 'name.exact': owner });
+  const { result } = await call(a, `${path}?${query}`);
+  const existing = (result as { name: string; type: string; content: string }[])
+    .filter(record => record.name.toLowerCase().replace(/\.$/, '') === owner);
+  if (existing.some(record => record.type === 'TXT' && /^v=DMARC1;?$/.test(record.content.trim().replace(/^"(.*)"$/, '$1')))) return 'present' as const;
+  if (existing.length) throw new Error('Ce nom DNS est déjà utilisé. Vérifiez les enregistrements existants.');
+  await call(a, path, { method: 'POST', body: JSON.stringify({ type: 'TXT', name: owner, ttl: 3600, content: 'v=DMARC1;' }) });
+  return 'published' as const;
+}
+
+export async function cfEnsureDirectIpv4(a: Account, zoneId: string, owner: string, ip: string) {
+  const path = `/zones/${zoneId}/dns_records`;
+  const query = new URLSearchParams({ 'name.exact': owner });
+  const { result } = await call(a, `${path}?${query}`);
+  const existing = (result as { name: string; type: string; content: string; proxied?: boolean }[])
+    .filter(record => record.name.toLowerCase().replace(/\.$/, '') === owner);
+  if (existing.some(record => record.type === 'A' && record.content === ip && record.proxied === false)) return;
+  if (existing.length) throw new Error('Le nom DNS existe déjà. Aucun enregistrement n’a été remplacé.');
+  await call(a, path, { method: 'POST', body: JSON.stringify({ type: 'A', name: owner, content: ip, proxied: false, ttl: 300 }) });
+}
+
 // Upsert records into a Cloudflare zone (update if same type+name exists, else create).
 export async function cfUpsert(a: Account, zoneId: string, recs: { key: string; type: string; name: string; content: string; priority?: number }[]) {
   const out: { key: string; name: string; type: string; ok: boolean; error?: string }[] = [];

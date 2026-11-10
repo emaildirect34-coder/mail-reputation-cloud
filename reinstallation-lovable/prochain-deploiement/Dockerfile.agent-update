@@ -1,0 +1,4 @@
+FROM email-direct-kumo:production
+COPY kumo-agent kumo-events.py kumo-campaign-control.py /usr/local/bin/
+COPY suppression-bloom.py /usr/local/lib/email-direct/
+RUN chmod 755 /usr/local/bin/kumo-agent && chmod 700 /usr/local/bin/kumo-events.py /usr/local/bin/kumo-campaign-control.py /usr/local/lib/email-direct/suppression-bloom.py

@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
+import { dmarcDomain } from './dmarc-policy';
+import { recipientDomain } from './email-address';
 
 async function admin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "superadmin" });
@@ -10,33 +13,6 @@ async function admin(ctx: { supabase: any; userId: string }) {
 const PUBLIC = "id, domain, account_id, zone_id, ip, selector_a, selector_b, dkim_pub_a, dkim_pub_b, checks, checked_at, synced_at, created_at";
 const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
-
-/** Self-heal before publishing: pick the Cloudflare zone that really owns the domain (by name, across all accounts) and fill the sending IP from a connected server. */
-async function healDomain(db: any, d: any): Promise<{ d: any; acc: any | null; note: string }> {
-  const { cfZones } = await import("./providers.server");
-  const { data: accs } = await db.from("provider_accounts").select("*").eq("provider", "cloudflare");
-  const ordered = [...(accs ?? [])].sort((a: any) => (a.id === d.account_id ? -1 : 1));
-  let acc: any = null, zoneId: string | null = null, note = "";
-  for (const a of ordered) {
-    try {
-      const zones = await cfZones(a);
-      const z = zones.filter((x) => d.domain === x.name || d.domain.endsWith("." + x.name)).sort((x, y) => y.name.length - x.name.length)[0];
-      if (z) { acc = a; zoneId = z.id; break; }
-    } catch (e) { note = (e as Error).message; }
-  }
-  let ip = d.ip;
-  if (!ip) {
-    const { data: ag } = await db.from("server_agents").select("server_id").neq("status", "awaiting");
-    const ids = (ag ?? []).map((x: any) => x.server_id);
-    if (ids.length) { const { data: s } = await db.from("managed_servers").select("ipv4").in("id", ids).not("ipv4", "is", null).limit(1); ip = s?.[0]?.ipv4 ?? null; }
-  }
-  const patch: any = {};
-  if (acc && (acc.id !== d.account_id || zoneId !== d.zone_id)) { patch.account_id = acc.id; patch.zone_id = zoneId; }
-  if (ip !== d.ip) patch.ip = ip;
-  if (Object.keys(patch).length) await db.from("sending_domains").update(patch).eq("id", d.id);
-  if (!acc) note = note || `Aucune zone Cloudflare ne contient « ${d.domain} ».`;
-  return { d: { ...d, ...patch }, acc, note };
-}
 
 export const listDomains = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -98,6 +74,7 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     const db = await admin(context);
     const { data: d } = await db.from("sending_domains").select(PUBLIC).eq("id", data.id).single();
     if (!d) throw new Error("Domaine introuvable");
+    const { healDomain } = await import("./domains.server");
     const healed = await healDomain(db, d);
     if (!healed.acc) throw new Error(healed.note);
     const { expectedRecords } = await import("./domains.server");
@@ -116,6 +93,41 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     }
     void serversBound;
     return res;
+  });
+
+export const publishInitialDane = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: z.string().max(253), mx: z.string().max(253),
+    fingerprint: z.string().regex(/^[0-9a-f]{64}$/), verifiedLiveSmtp: z.literal(true) }).parse(input))
+  .handler(async ({ context, data }) => {
+    const db = await admin(context);
+    const { publishDane } = await import('./domains.server');
+    return publishDane(db, data);
+  });
+
+export const publishExternalDmarcAuthorization = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: z.string().max(253), aggregate: z.string().max(254) }).parse(input))
+  .handler(async ({ context, data }) => {
+    const db = await admin(context);
+    const source = dmarcDomain(data.domain);
+    const mailbox = data.aggregate.trim().toLowerCase();
+    const destination = recipientDomain(mailbox);
+    if (!source || !destination || source === destination || mailbox !== process.env['DMARC_REPORT_DESTINATION']?.trim().toLowerCase()) {
+      throw new Error('Cette adresse n’est pas la boîte de rapports autorisée par l’application.');
+    }
+    const { data: domains, error } = await db.from('sending_domains').select('id,domain,account_id,zone_id,ip').in('domain', [source, destination]);
+    const receiving = domains?.find((entry: { domain: string }) => entry.domain === destination);
+    if (error || !receiving || !domains?.some((entry: { domain: string }) => entry.domain === source)) {
+      throw new Error('Ajoutez les domaines expéditeur et destinataire dans Domaines.');
+    }
+    const { readDmarcAuthorization } = await import('./dmarc-policy.server');
+    const dns = await readDmarcAuthorization(source, destination);
+    if (dns.status === 'authorized') return 'present' as const;
+    if (dns.status !== 'missing') throw new Error('Le contrôle DNS a échoué. Réessayez avant de publier.');
+    const { healDomain } = await import('./domains.server');
+    const { d, acc, note } = await healDomain(db, receiving);
+    if (!acc || !d.zone_id) throw new Error(note || 'Zone destinataire Cloudflare introuvable.');
+    const { cfPublishDmarcAuthorization } = await import('./providers.server');
+    return cfPublishDmarcAuthorization(acc, d.zone_id, dns.name);
   });
 
 export const deleteDomain = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
@@ -138,6 +150,7 @@ export const autoFixDomain = createServerFn({ method: "POST" }).middleware([requ
     const doms = (list ?? []) as any[];
     const d0 = doms.find((x) => x.domain === data.domain) ?? doms.filter((x) => data.domain.endsWith("." + x.domain)).sort((a, b) => b.domain.length - a.domain.length)[0];
     if (!d0) return { ok: false as const, domain: data.domain, message: `Le domaine « ${data.domain || "inconnu"} » n'est pas encore dans vos Domaines. Ajoutez-le d'abord.`, items: [] as { key: string; label: string; state: "done" | "pending" | "fixed" | "manual" }[] };
+    const { healDomain } = await import("./domains.server");
     const healed = await healDomain(db, d0);
     const d = healed.d;
     const { checkDomain, expectedRecords } = await import("./domains.server");
@@ -192,6 +205,7 @@ export const setupTracking = createServerFn({ method: "POST" }).middleware([requ
     const { data: d } = await db.from("sending_domains").select(PUBLIC).eq("id", data.id).single();
     if (!d) throw new Error("Domaine introuvable");
     if (data.disable) { await db.from("sending_domains").update({ tracking_host: null }).eq("id", d.id); return { host: null, live: false }; }
+    const { healDomain } = await import("./domains.server");
     const healed = await healDomain(db, d);
     if (!healed.acc) throw new Error(healed.note);
     if (!healed.d.ip) throw new Error("Aucun serveur d'envoi connecté pour héberger le suivi.");

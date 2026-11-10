@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!Dockerfile.runtime
+!kumo-agent
+!kumo-events.py
+!systemctl
+!entrypoint

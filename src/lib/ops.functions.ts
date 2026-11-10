@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { dmarcDomain } from './dmarc-policy';
+import { recipientDomain } from './email-address';
 
 // Task-gated access: superadmin, or worker whose active task includes the path.
 async function gate(context: any, path: string) {
@@ -12,13 +14,67 @@ async function gate(context: any, path: string) {
   return false;
 }
 
+export const inspectDmarcPolicy = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.string().max(253).parse(input))
+  .handler(async ({ context, data }) => {
+    await gate(context, '/dashboard/lab');
+    const domain = dmarcDomain(data);
+    if (!domain || domain.length > 246) throw new Error('Saisissez un nom de domaine valide.');
+    const { readDmarcPolicy } = await import('./dmarc-policy.server');
+    return readDmarcPolicy(domain);
+  });
+
+export const inspectDmarcAuthorization = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: z.string().max(253), aggregate: z.string().max(254) }).parse(input))
+  .handler(async ({ context, data }) => {
+    const admin = await gate(context, '/dashboard/lab');
+    const domain = dmarcDomain(data.domain);
+    const destination = recipientDomain(data.aggregate.trim());
+    if (!domain || !destination || domain === destination) throw new Error('Saisissez un domaine de politique et une destination externe.');
+    const { readDmarcAuthorization } = await import('./dmarc-policy.server');
+    const canPublish = admin && data.aggregate.trim().toLowerCase() === process.env['DMARC_REPORT_DESTINATION']?.trim().toLowerCase();
+    return { ...await readDmarcAuthorization(domain, destination), canPublish };
+  });
+
+export const inspectDane = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: z.string().max(253), mx: z.string().max(253) }).parse(input))
+  .handler(async ({ context, data }) => {
+    const canPublish = await gate(context, '/dashboard/lab');
+    const domain = dmarcDomain(data.domain);
+    const mx = dmarcDomain(data.mx);
+    if (!domain || !mx || mx.length > 244) throw new Error('Saisissez un domaine et un hôte MX valides.');
+    const { inspectDaneDns } = await import('./dane.server');
+    return { ...await inspectDaneDns(domain, mx), canPublish };
+  });
+
 export const readQueues = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
-  await gate(context, '/dashboard/queues');
+  const superadmin = await gate(context, '/dashboard/queues');
   const db = context.supabase;
-  const [msgs, servers, camps] = await Promise.all([
+  const readUncertain = async () => {
+    if (!superadmin) return null;
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const expired = new Date(Date.now() - 15 * 60_000).toISOString();
+    const result = await supabaseAdmin.from('campaign_messages')
+      .select('id,email,campaign_id,server_id,claimed_at,injection_uncertain_at', { count: 'exact' })
+      .or(`injection_uncertain_at.not.is.null,and(status.eq.claimed,claimed_at.lt.${expired},delivery_state.eq.pending)`)
+      .order('injection_uncertain_at', { ascending: false, nullsFirst: false })
+      .order('claimed_at', { ascending: false }).order('id').limit(50);
+    if (result.error?.code === '42703') return null;
+    if (result.error) throw new Error('Lecture des injections à vérifier impossible');
+    const ids = [...new Set(result.data.map(row => row.campaign_id))];
+    const names = ids.length ? await supabaseAdmin.from('campaigns').select('id,name').in('id', ids) : null;
+    if (names?.error) throw new Error('Lecture des campagnes à vérifier impossible');
+    const byId = new Map(names?.data.map(campaign => [campaign.id, campaign.name]));
+    return { count: result.count ?? result.data.length, rows: result.data.map(row => ({
+      id: row.id, recipient: row.email, campaign: byId.get(row.campaign_id) ?? row.campaign_id,
+      serverId: row.server_id, at: row.injection_uncertain_at ?? row.claimed_at,
+    })) };
+  };
+  const [msgs, servers, camps, uncertain] = await Promise.all([
     db.from('campaign_messages').select('email,status,delivery_state,server_id,campaign_id,sent_at').in('status', ['queued', 'claimed', 'sent', 'failed']).order('created_at', { ascending: false }).limit(20000),
     db.from('managed_servers').select('id,label'),
     db.from('campaigns').select('id,name,status,auto_pause_reason').in('status', ['queued', 'sending', 'paused']).order('created_at', { ascending: false }).limit(50),
+    readUncertain(),
   ]);
   for (const r of [msgs, servers, camps]) if (r.error) throw new Error('Lecture des files impossible');
   const label = new Map((servers.data ?? []).map((s: any) => [s.id, s.label]));
@@ -37,7 +93,10 @@ export const readQueues = createServerFn({ method: 'POST' }).middleware([require
     groups.set(k, g);
   }
   const rows = [...groups.values()].filter(g => g.queued + g.claimed + g.deferred + g.failed > 0).sort((a, b) => b.queued + b.claimed - a.queued - a.claimed).slice(0, 200);
-  return { rows, totals: { queued, claimed, deferred, sentHour }, campaigns: camps.data ?? [], fetchedAt: new Date().toISOString() };
+  return {
+    rows, totals: { queued, claimed, deferred, sentHour }, campaigns: camps.data ?? [], fetchedAt: new Date().toISOString(),
+    uncertain: uncertain && { count: uncertain.count, rows: uncertain.rows.map(row => ({ ...row, server: label.get(row.serverId) ?? row.serverId })) },
+  };
 });
 
 const ISPS: Record<string, string> = { Gmail: 'gmail.com, googlemail.com', Microsoft: 'outlook.com, hotmail.com, live.com, msn.com', Yahoo: 'yahoo.com, yahoo.fr, aol.com', Orange: 'orange.fr, wanadoo.fr', 'Free / SFR': 'free.fr, sfr.fr, neuf.fr' };
@@ -48,7 +107,7 @@ export const readShaping = createServerFn({ method: 'POST' }).middleware([requir
   const [plans, ips, events] = await Promise.all([
     db.from('warmup_plans').select('ip_id,isp,daily_limits,current_day,status'),
     db.from('server_ips').select('id,address,server_id').eq('active', true),
-    db.from('delivery_events').select('isp,event_type,smtp_code,occurred_at,recipient').in('event_type', ['deferred', 'bounce']).order('occurred_at', { ascending: false }).limit(30),
+    db.from('delivery_events').select('isp,event_type,smtp_code,detail,occurred_at,recipient').in('event_type', ['deferred', 'bounce']).order('occurred_at', { ascending: false }).limit(30),
   ]);
   for (const r of [plans, ips, events]) if (r.error) throw new Error('Lecture du shaping impossible');
   const { ispHealth } = await import('./infrastructure.schemas');
@@ -68,18 +127,49 @@ export const readShaping = createServerFn({ method: 'POST' }).middleware([requir
     return { isp, domains, ips: c?.ips ?? 0, daily: c?.daily ?? 0, hourly: c ? Math.max(1, Math.ceil((c.daily / 24) * f)) : null, connections: Math.max(1, Math.round((c ? 3 : 10) * f)), factor: f, reason: h?.reason ?? 'Normal', sample: h?.total ?? 0 };
   });
   const plansOut = (plans.data ?? []).map((p: any) => ({ ...p, address: addr.get(p.ip_id) ?? '—' }));
-  return { rules, plans: plansOut, signals: events.data ?? [] };
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { routingDomains, sourceReputation } = await import('./isp-source-routing');
+  const history = await supabaseAdmin.rpc('source_isp_history', { _server: null, _domains: routingDomains });
+  return { rules, plans: plansOut, signals: events.data ?? [],
+    matrix: sourceReputation(history.data ?? []), matrixAvailable: !history.error,
+    matrixEnabled: process.env['KUMO_ISP_SOURCE_ROUTING'] === 'true',
+  };
 });
 
 // ---- Mail-Tester VPS connector (built by Codex). Contract: docs/CODEX.md ----
 async function mt(path: string, init?: RequestInit) {
-  const url = process.env['MAILTESTER_URL'], key = process.env['MAILTESTER_KEY'];
-  if (!url || !key) return { configured: false as const };
-  const r = await fetch(url.replace(/\/$/, '') + path, { ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } });
-  const text = await r.text();
-  if (!r.ok) throw new Error(`Mail-Tester ${r.status}: ${text.slice(0, 200)}`);
-  return { configured: true as const, body: JSON.parse(text) };
+  const { mailTesterRequest } = await import('./mail-tester.server');
+  return mailTesterRequest(path, init);
 }
+
+async function manageSeeds(context: Parameters<typeof gate>[0], path = '', init?: RequestInit) {
+  const role = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
+  if (role.error || !role.data) throw new Error('Accès réservé aux superadmins.');
+  return mt('/api/v1/placement/seeds' + path, init);
+}
+
+const gmailAddress = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9.+_-]{0,62}@gmail\.com$/);
+export const listPlacementSeeds = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const r = await manageSeeds(context);
+    return { configured: r.configured, accounts: r.configured ? r.body as { address: string }[] : [] };
+  });
+
+export const savePlacementSeed = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(i => z.object({ address: gmailAddress, password: z.string().max(24).transform(s => s.replaceAll(' ', '')).pipe(z.string().regex(/^[a-zA-Z0-9]{16}$/)) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const r = await manageSeeds(context, '', { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.configured) throw new Error('Le serveur Mail-Tester n’est pas configuré.');
+    return { ok: true };
+  });
+
+export const removePlacementSeed = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(i => gmailAddress.parse(i))
+  .handler(async ({ data, context }) => {
+    const r = await manageSeeds(context, '/' + encodeURIComponent(data), { method: 'DELETE' });
+    if (!r.configured) throw new Error('Le serveur Mail-Tester n’est pas configuré.');
+    return { ok: true };
+  });
 export const mailTesterNew = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await gate(context, '/dashboard/lab');
   const r = await mt('/api/v1/tests', { method: 'POST', body: '{}' });
@@ -89,7 +179,7 @@ export const mailTesterResult = createServerFn({ method: 'POST' }).middleware([r
   .inputValidator(i => z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{4,64}$/) }).parse(i))
   .handler(async ({ data, context }) => {
     await gate(context, '/dashboard/lab');
-    const r = await mt('/api/v1/tests/' + data.id);
+    const r = await mt('/api/v1/tests/' + data.id + '?version=2');
     return r.configured ? { configured: true, result: r.body as any } : { configured: false, result: null };
   });
 
@@ -108,7 +198,7 @@ export const placementResult = createServerFn({ method: 'POST' }).middleware([re
       const r = await mt('/api/v1/placement/' + data.id);
       return r.configured ? { configured: true, result: r.body as { id: string; token: string; status: 'waiting' | 'done'; seeds: PlacementSeed[] }, error: null } : { configured: false, result: null, error: null };
     } catch (e) {
-      // VPS without §4 yet → explicit message instead of a crash.
-      return { configured: true, result: null, error: (e as Error).message.includes('404') ? 'Le serveur Mail-Tester ne gère pas encore le test de placement (contrat §4 à livrer par Codex).' : (e as Error).message };
+      const message = e instanceof Error ? e.message : 'Résultat indisponible.';
+      return { configured: true, result: null, error: message.startsWith('Mail-Tester 404:') ? 'Test introuvable ou expiré.' : message };
     }
   });

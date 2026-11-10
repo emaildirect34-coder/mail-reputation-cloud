@@ -15,7 +15,7 @@ export const diagnoseEmail = createServerFn({ method: 'POST' }).middleware([requ
       const bindings = await context.supabase.from('server_domain_bindings').select('status,installed_at,last_error').eq('domain_id', domain.data.id);
       if (bindings.error) throw new Error('État DKIM inaccessible');
       evidence = { domain: domain.data, bindings: bindings.data };
-    } else if (data.skill === 'logs') {
+    } else if (data.skill === 'logs' || data.skill === 'plan') {
       const [events, alerts] = await Promise.all([
         context.supabase.from('delivery_events').select('event_type,isp,smtp_code,occurred_at').order('occurred_at',{ascending:false}).limit(200),
         context.supabase.from('delivery_alerts').select('rule,isp,rate,sample_size,created_at').order('created_at',{ascending:false}).limit(20),

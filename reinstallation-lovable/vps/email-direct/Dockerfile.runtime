@@ -1,0 +1,5 @@
+FROM email-direct-kumo:base
+COPY kumo-agent kumo-events.py systemctl entrypoint /usr/local/bin/
+RUN chmod 755 /usr/local/bin/kumo-agent /usr/local/bin/systemctl /usr/local/bin/entrypoint && chmod 700 /usr/local/bin/kumo-events.py
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+

@@ -1,0 +1,37 @@
+services:
+  tester:
+    build: .
+    env_file: .env
+    environment:
+      RSPAMD_URL: http://rspamd:11333/checkv2
+      SPAMD_HOST: spamassassin
+      DB_PATH: /data/tests.sqlite
+    ports:
+      - "25:2525"
+    volumes:
+      - tests:/data
+    restart: unless-stopped
+  rspamd:
+    build: .
+    command: ["rspamd", "-f", "-i"]
+    restart: unless-stopped
+  spamassassin:
+    build: .
+    command: ["spamd", "--listen=0.0.0.0", "--allowed-ips=0.0.0.0/0", "--max-children=2", "--nouser-config"]
+    restart: unless-stopped
+  caddy:
+    profiles: ["standalone"]
+    image: caddy:2
+    environment:
+      API_HOST: ${API_HOST:?Set API_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    restart: unless-stopped
+volumes:
+  tests:
+  caddy:
+

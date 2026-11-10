@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, FlaskConical, RefreshCw } from "lucide-react";
@@ -38,9 +38,13 @@ function InboxTester() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async (id: string) => {
-    const r = await fRes({ data: { id } });
-    if (r.error) setError(r.error);
-    else if (r.result) { setError(null); setTest(r.result); }
+    try {
+      const r = await fRes({ data: { id } });
+      if (r.error) setError(r.error);
+      else if (r.result) { setError(null); setTest(current => current?.id === id ? r.result : current); }
+    } catch {
+      setError("Impossible d’actualiser le test. Réessayez dans quelques instants.");
+    }
   };
   useEffect(() => {
     if (!test || test.status === "done") return;
@@ -55,7 +59,8 @@ function InboxTester() {
       if (!r.configured || !r.test) setError("Le serveur Mail-Tester n'est pas connecté.");
       else setTest(r.test);
     } catch (e) {
-      setError((e as Error).message.includes("404") ? "Le serveur Mail-Tester ne gère pas encore le test de placement (cahier des charges §4 à livrer par Codex)." : (e as Error).message);
+      const message = e instanceof Error ? e.message : "Impossible de créer le test.";
+      setError(message.startsWith("Mail-Tester 409:") ? "Ajoutez une boîte témoin dans Paramètres → Boîtes témoins Gmail." : message);
     } finally { setBusy(false); }
   };
 
@@ -67,6 +72,7 @@ function InboxTester() {
   return (
     <>
       <PageHeader title="Testeur de placement Inbox" desc="Envoyez votre email aux boîtes témoins et voyez où il arrive vraiment." action={<Button disabled={busy} onClick={() => void start()}><FlaskConical className="h-4 w-4" /> Nouveau test</Button>} />
+      <Button variant="outline" asChild><Link to="/dashboard/settings">Paramètres des boîtes témoins</Link></Button>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Boîte de réception" value={done.length ? `${pct("inbox")} %` : "—"} />
         <Stat label="Promotions" value={done.length ? `${pct("promotions")} %` : "—"} />

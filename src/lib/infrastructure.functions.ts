@@ -92,23 +92,42 @@ export const previewAgentConfig = createServerFn({method:'POST'}).middleware([re
 export const configureRdns = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
   .handler(async ({data,context}) => {
     const db = await admin(context);
-    const { cfUpsert, setRdns } = await import('./providers.server');
+    const { cfEnsureDirectIpv4, setRdns } = await import('./providers.server');
+    const { healDomain } = await import('./domains.server');
+    const { forwardConfirmedIpv4 } = await import('./sender-dns.server');
     const srv = await db.from('managed_servers').select('id,provider,account_id,external_id,label').eq('id',data.id).single(); check(srv.error); if (!srv.data) throw new Error('Serveur introuvable'); const S = srv.data;
     const ips = await db.from('server_ips').select('id,address').eq('server_id',data.id).eq('active',true).eq('family',4); check(ips.error);
-    const b = await db.from('server_domain_bindings').select('domain_id').eq('server_id',data.id).limit(1); check(b.error);
-    let dom: any = null;
-    if (b.data?.[0]) dom = (await db.from('sending_domains').select('domain,zone_id,account_id').eq('id',b.data[0].domain_id).single()).data;
-    if (!dom?.zone_id || !dom?.account_id) throw new Error('Associez d’abord un domaine publié sur Cloudflare à ce serveur.');
-    const cf = (await db.from('provider_accounts').select('*').eq('id',dom.account_id).single()).data;
+    const b = await db.from('server_domain_bindings').select('domain_id').eq('server_id',data.id).order('domain_id').limit(1); check(b.error);
+    if (!b.data?.[0]) throw new Error('Associez d’abord un domaine publié sur Cloudflare à ce serveur.');
+    const bound = await db.from('sending_domains').select('id,domain,ip,zone_id,account_id').eq('id',b.data[0].domain_id).single();
+    check(bound.error);
+    if (!bound.data) throw new Error('Domaine associé introuvable.');
+    const healed = await healDomain(db, bound.data);
+    const dom = healed.d, cf = healed.acc;
     const host = S.account_id ? (await db.from('provider_accounts').select('*').eq('id',S.account_id).single()).data : null;
     if (!cf) throw new Error('Compte Cloudflare introuvable');
     const results: { ip: string; hostname: string; dns: boolean; ptr: 'ok' | 'manual' | 'error'; error?: string | undefined }[] = [];
     for (const [i, ip] of (ips.data ?? []).entries()) {
-      const hostname = `mta${i + 1}.${dom.domain}`;
-      const r = await cfUpsert(cf as any, dom.zone_id, [{ key: 'ptr', type: 'A', name: hostname, content: ip.address }]);
-      const dns = r[0]?.ok === true;
-      let ptr: 'ok' | 'manual' | 'error' = 'manual', error: string | undefined = dns ? undefined : r[0]?.error;
-      if (dns && host) {
+      const live = await forwardConfirmedIpv4(ip.address, AbortSignal.timeout(4000));
+      const fallback = `mta${i + 1}.${dom.domain}`;
+      if (live.status === 'ok') {
+        check((await db.from('server_ips').update({ rdns: live.hostname }).eq('id', ip.id)).error);
+        results.push({ ip: ip.address, hostname: live.hostname, dns: true, ptr: 'ok' });
+        continue;
+      }
+      const target = live.status === 'mismatch' && live.records.length === 1 ? live.records[0] : undefined;
+      const repairable = target?.ips?.length === 0 && target.name.endsWith('.' + dom.domain.toLowerCase());
+      const hostname = repairable ? target.name : fallback;
+      if (live.status === 'unknown' || (live.status === 'mismatch' && !repairable)) {
+        results.push({ ip: ip.address, hostname, dns: false, ptr: 'error', error: 'PTR ou DNS direct à vérifier. Aucune modification appliquée.' });
+        continue;
+      }
+      let dns = false;
+      let ptr: 'ok' | 'manual' | 'error' = 'manual', error: string | undefined;
+      try { await cfEnsureDirectIpv4(cf, dom.zone_id, hostname, ip.address); dns = true; }
+      catch (e) { ptr = 'error'; error = (e as Error).message; }
+      if (dns && repairable) ptr = 'ok';
+      if (dns && host && !repairable) {
         for (let t = 0; t < 3; t++) {
           try { ptr = (await setRdns(host as any, S.external_id, ip.address, hostname)) ? 'ok' : 'manual'; error = undefined; break; }
           catch (e) { ptr = 'error'; error = (e as Error).message; await new Promise(res => setTimeout(res, 4000)); }

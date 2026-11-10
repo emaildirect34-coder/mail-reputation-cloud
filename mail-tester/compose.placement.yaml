@@ -1,0 +1,9 @@
+services:
+  tester:
+    build:
+      dockerfile: Dockerfile.placement
+    env_file:
+      - .env.placement
+    volumes:
+      - /etc/mailtester:/etc/mailtester:ro
+    command: ["uvicorn", "placement:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

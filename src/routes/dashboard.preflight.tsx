@@ -44,7 +44,7 @@ function Preflight() {
 
   return (
     <>
-      <PageHeader title="Pre-Flight Delivery Gate" desc="Chaque campagne passe ces contrôles réels avant d'atteindre la file KumoMTA." />
+      <PageHeader title="Audit de campagne" desc="Vérifications DNS, en-têtes générés et qualité du contenu, à la demande." />
       <Panel title="Campagne à contrôler">
         {camps.length === 0 ? <p className="text-sm text-muted-foreground">Aucune campagne. <Link to="/dashboard/campaigns/new" className="underline">Créer une campagne</Link></p> : (
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -58,7 +58,7 @@ function Preflight() {
 
       {res && <>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Stat label="Score global" value={`${res.score} / 100`} />
+          <Stat label="Score de l’audit" value={`${res.score} / 100`} />
           <Stat label="Contrôles" value={String(res.checks.length)} />
           <Stat label="Bloquants" value={String(res.blockers)} />
           <Stat label="Avertissements" value={String(res.warns)} />
@@ -76,7 +76,7 @@ function Preflight() {
         </div>
         <Panel title="Décision">
           <p className="text-sm text-muted-foreground">
-            {res.blockers ? `Envoi déconseillé : ${res.blockers} point(s) bloquant(s) à corriger avant de lancer « ${res.campaign.name} ».` : `« ${res.campaign.name} » est prête à partir.`}
+            {res.blockers ? `${res.blockers} point(s) à corriger pour « ${res.campaign.name} ».` : 'Aucune anomalie bloquante détectée par cet audit.'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/dashboard/lab">Ouvrir le Lab</Link></Button>

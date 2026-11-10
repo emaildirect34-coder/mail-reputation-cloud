@@ -55,6 +55,7 @@ const sections: Section[] = [
     { to: "/dashboard/lab", icon: Lock, label: "MTA-STS / TLS-RPT" },
   ]},
   { title: "Deliverability Lab", items: [
+    { to: "/dashboard/logs/smtp", icon: Activity, label: "Délivrabilité SMTP" },
     { to: "/dashboard/inbox-tester", icon: FlaskConical, label: "Testeur Inbox" },
     { to: "/dashboard/lab", icon: MailCheck, label: "Mail-Tester" },
     { to: "/dashboard/lab", icon: Search, label: "DNS Lab" },
@@ -276,8 +277,8 @@ function DashboardLayout() {
           <div className="ml-auto hidden items-center gap-3 rounded-xl px-4 py-1.5 md:flex" style={{ background: "color-mix(in oklab, var(--neon-green) 15%, transparent)" }}>
             <span className="h-3 w-3 shrink-0 rounded-full bg-neon-green shadow-[0_0_10px_var(--neon-green)]" />
             <div>
-              <p className="text-[12px] font-semibold">Système opérationnel</p>
-              <p className="text-[10px] text-sidebar-foreground/70">Score réseau : 99.4/100</p>
+              <p className="text-[12px] font-semibold">Supervision</p>
+              <p className="text-[10px] text-sidebar-foreground/70">Tableau de bord Email Direct</p>
             </div>
           </div>
           <div className="hidden text-[12px] leading-5 md:block">
@@ -291,7 +292,6 @@ function DashboardLayout() {
           </Link>
           <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="Notifications">
             <Bell className="h-6 w-6 text-neon-2" />
-            <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-neon-red text-[9px] font-bold text-primary-foreground">3</span>
           </Button>
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{(user.email || "A").charAt(0).toUpperCase()}</div>
@@ -326,15 +326,12 @@ function DashboardLayout() {
         <footer className="fixed bottom-3 left-0 right-0 z-20 hidden items-center justify-between gap-4 px-4 md:flex">
           <div className="card-lux flex flex-wrap items-center gap-x-5 gap-y-1 rounded-full px-5 py-2 text-[11px]">
             <span className="flex items-center gap-2 font-bold"><Mail className="h-4 w-4 text-neon-red" /> Gmail</span>
-            <span><b>98.8%</b> <span className="text-muted-foreground">Délivrabilité</span></span>
-            <span><b>0.04%</b> <span className="text-muted-foreground">Plaintes</span></span>
-            <span><b>0.18%</b> <span className="text-muted-foreground">Rebonds</span></span>
-            <span><b>48 732 msg/s</b></span>
-            <span><b>4,2M / 5M</b> <span className="text-muted-foreground">Quota 24h</span></span>
+            {canOpen(access, "/dashboard/logs/smtp") && <Link to="/dashboard/logs/smtp" className="hover:underline">Délivrabilité SMTP</Link>}
+            {canOpen(access, "/dashboard/gmail-postmaster") && <Link to="/dashboard/gmail-postmaster" className="hover:underline">Google Postmaster</Link>}
           </div>
           <div className="hidden items-center gap-2 rounded-xl px-4 py-2 text-[11px] text-primary-foreground xl:flex" style={{ background: "var(--cockpit-success-gradient)" }}>
             <ShieldCheck className="h-5 w-5" />
-            <div><p className="font-bold">Tout est conforme !</p><p className="text-[10px] opacity-90">Aucune alerte critique détectée</p></div>
+            <div><p className="font-bold">Supervision des envois</p><p className="text-[10px] opacity-90">Email Direct</p></div>
           </div>
         </footer>
       </main>

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == "reload-or-restart kumomta" ]]
+pidfile=/run/email-direct-kumod.pid
+if [[ -s "$pidfile" ]]; then
+  pid=$(cat "$pidfile")
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid"
+    for ((i=0;i<100;i++)); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep .2
+    done
+    if kill -0 "$pid" 2>/dev/null; then exit 1; fi
+  fi
+fi
+/opt/kumomta/sbin/kumod --user kumod --policy /opt/kumomta/etc/policy/init.lua &
+pid=$!
+echo "$pid" > "$pidfile"
+for ((i=0;i<60;i++)); do
+  kill -0 "$pid" 2>/dev/null || exit 1
+  curl -fsS --max-time 1 http://127.0.0.1:8000/api/check-liveness/v1 >/dev/null 2>&1 && exit 0
+  sleep .5
+done
+exit 1
+

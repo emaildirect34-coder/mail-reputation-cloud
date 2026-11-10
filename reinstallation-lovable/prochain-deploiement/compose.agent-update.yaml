@@ -1,0 +1,5 @@
+services:
+  sender:
+    image: email-direct-kumo:agent-update
+    env_file:
+      - /etc/email-direct/suppression-bloom.env

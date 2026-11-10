@@ -1,10 +1,10 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { probableMailDomainTypo } from './email-address';
 
 const DISPOSABLE = new Set(['yopmail.com','yopmail.fr','mailinator.com','tempmail.com','temp-mail.org','10minutemail.com','guerrillamail.com','sharklasers.com','trashmail.com','getnada.com','dispostable.com','maildrop.cc','throwawaymail.com','fakeinbox.com','mohmal.com','emailondeck.com','mintemail.com','spamgourmet.com','jetable.org','mailnesia.com','tempail.com','moakt.com','burnermail.io','33mail.com','mailcatch.com','trbvm.com','emltmp.com','tmpmail.org','minuteinbox.com','inboxkitten.com']);
 const ROLES = new Set(['admin','info','contact','support','noreply','no-reply','sales','webmaster','postmaster','abuse','hostmaster','billing','office','team','hello','marketing','help','root','security','jobs']);
-const TYPOS: Record<string, string> = { 'gmial.com':'gmail.com','gmal.com':'gmail.com','gmai.com':'gmail.com','gnail.com':'gmail.com','gmail.fr':'gmail.com','hotmial.com':'hotmail.com','hotmal.com':'hotmail.com','yaho.com':'yahoo.com','yahooo.com':'yahoo.com','outlok.com':'outlook.com','orage.fr':'orange.fr','wanado.fr':'wanadoo.fr','fre.fr':'free.fr' };
 
 export type Verdict = { email: string; status: 'valid' | 'risky' | 'invalid'; reason: string; suggestion?: string };
 
@@ -42,16 +42,11 @@ async function md5(str: string) {
 export const _md5 = md5;
 
 // MX lookup through DNS-over-HTTPS (works on the edge runtime). Cached per call.
-async function hasMx(domain: string, cache: Map<string, Promise<boolean | null>>) {
+async function hasMailRoute(domain: string, cache: Map<string, Promise<boolean | null>>) {
   if (!cache.has(domain)) cache.set(domain, (async () => {
-    try {
-      const q = async (t: string) => {
-        const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${t}`, { headers: { accept: 'application/dns-json' } });
-        const j: any = await r.json();
-        return j.Status === 0 && (j.Answer ?? []).some((a: any) => a.type === (t === 'MX' ? 15 : 1));
-      };
-      return (await q('MX')) || (await q('A'));
-    } catch { return null; }
+    const { mailRoute } = await import('./mail-dns.server');
+    const route = await mailRoute(domain);
+    return route === 'unknown' ? null : route === 'routable';
   })());
   return cache.get(domain)!;
 }
@@ -70,10 +65,11 @@ async function verify(emails: string[], context: any): Promise<Verdict[]> {
     out.push(...await Promise.all(list.slice(i, i + 25).map(async (email, k): Promise<Verdict> => {
       if (!/^[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email) || email.includes('..')) return { email, status: 'invalid', reason: 'Syntaxe invalide' };
       const [user, domain] = email.split('@') as [string, string];
-      if (TYPOS[domain]) return { email, status: 'invalid', reason: 'Faute de frappe probable', suggestion: `${user}@${TYPOS[domain]}` };
+      const correction = probableMailDomainTypo(domain);
+      if (correction) return { email, status: 'invalid', reason: 'Faute de frappe probable', suggestion: `${user}@${correction}` };
       if (supp.has(hashes[i + k]!)) return { email, status: 'invalid', reason: 'Dans la liste de suppression' };
       if (DISPOSABLE.has(domain)) return { email, status: 'invalid', reason: 'Adresse jetable' };
-      const mx = await hasMx(domain, cache);
+      const mx = await hasMailRoute(domain, cache);
       if (mx === false) return { email, status: 'invalid', reason: 'Domaine sans serveur mail (MX)' };
       if (ROLES.has(user)) return { email, status: 'risky', reason: 'Adresse générique (rôle)' };
       if (mx === null) return { email, status: 'risky', reason: 'DNS injoignable, à revérifier' };

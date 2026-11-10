@@ -1,0 +1,6 @@
+vps/** -text
+vps/SHA256SUMS text eol=lf
+prochain-deploiement/*.sh text eol=lf
+prochain-deploiement/*.py text eol=lf
+prochain-deploiement/*.service text eol=lf
+prochain-deploiement/*.timer text eol=lf

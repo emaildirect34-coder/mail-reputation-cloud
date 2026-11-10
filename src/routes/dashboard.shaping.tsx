@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
 import { readShaping } from "@/lib/ops.functions";
+import { isExplicitGreylisting } from "@/lib/delivery.schemas";
 
 export const Route = createFileRoute("/dashboard/shaping")({
   head: () => ({ meta: [
@@ -45,7 +46,12 @@ function Shaping() {
       <Panel title="Signaux FAI (différés & rebonds)">
         {d && d.signals.length === 0 ? <p className="text-sm text-muted-foreground">Aucun signal reçu des serveurs.</p> :
         <DataTable cols={["Heure", "FAI", "Code", "Type", "Destinataire"]}
-          rows={(d?.signals ?? []).map((s: any) => [new Date(s.occurred_at).toLocaleString("fr"), s.isp ?? "—", s.smtp_code ?? "—", <Pill tone={s.event_type === "bounce" ? "bad" : "warn"}>{s.event_type}</Pill>, s.recipient])} />}
+          rows={(d?.signals ?? []).map(s => [new Date(s.occurred_at).toLocaleString("fr"), s.isp ?? "—", s.smtp_code ?? "—", <Pill tone={s.event_type === "bounce" ? "bad" : "warn"}>{s.event_type === 'deferred' && isExplicitGreylisting(s.smtp_code, s.detail) ? 'Greylisting déclaré' : s.event_type}</Pill>, s.recipient])} />}
+      </Panel>
+      <Panel title="Matrice IP × fournisseur">
+        {d && <p className="mb-2 text-sm text-muted-foreground">{!d.matrixAvailable ? 'Historique indisponible.' : d.matrixEnabled ? 'Pondération activée sur les pools marketing suffisamment observés.' : 'Observation seule. Pondération désactivée.'} Les résultats des dernières 24 heures sont exclus du calcul.</p>}
+        <DataTable cols={["IP source", "FAI", "Tentatives finales", "Acceptées en SMTP"]}
+          rows={(d?.matrix ?? []).map(row => [row.ip, row.isp, row.sample.toLocaleString('fr'), `${row.delivered.toLocaleString('fr')} (${(100 * row.delivered / row.sample).toFixed(1)} %)`])} />
       </Panel>
       <StatusBar>Règles compilées dans la configuration Lua de chaque serveur</StatusBar>
     </>

@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 // Public installer script (contains no secrets). The token is passed by the operator via KAG_TOKEN.
-const script = (origin: string, events: string) => `#!/usr/bin/env bash
+const script = (origin: string, events: string, campaignControl: string) => `#!/usr/bin/env bash
 set -euo pipefail
+KAG_TOKEN="\${KAG_TOKEN:-\${AGENT_TOKEN:-}}"
 : "\${KAG_TOKEN:?KAG_TOKEN manquant}"
 API="${origin}/api/public/agent"
 if ! command -v kumod >/dev/null 2>&1 && [ ! -x /opt/kumomta/sbin/kumod ]; then
@@ -16,12 +17,29 @@ if ! command -v kumod >/dev/null 2>&1 && [ ! -x /opt/kumomta/sbin/kumod ]; then
   fi
 fi
 if command -v apt-get >/dev/null; then apt-get install -y python3 python3-zstandard; else dnf install -y python3 python3-zstandard; fi
+if ! grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control; then
+  modprobe tcp_bbr 2>/dev/null || true
+fi
+if grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control; then
+  if sysctl -w net.core.default_qdisc=fq net.ipv4.tcp_congestion_control=bbr; then
+    printf '%s\\n' 'net.core.default_qdisc = fq' 'net.ipv4.tcp_congestion_control = bbr' > /etc/sysctl.d/90-email-direct-bbr.conf
+    if grep -q '^tcp_bbr ' /proc/modules; then
+      printf '%s\\n' tcp_bbr > /etc/modules-load.d/email-direct-bbr.conf
+    fi
+  fi
+else
+  echo 'TCP BBR indisponible sur ce noyau.' >&2
+fi
 install -d -m 700 /etc/kumo-agent
 echo "KAG_TOKEN=$KAG_TOKEN" > /etc/kumo-agent/env && chmod 600 /etc/kumo-agent/env
 cat > /usr/local/bin/kumo-events.py <<'EVENTS'
 ${events}
 EVENTS
 chmod 700 /usr/local/bin/kumo-events.py
+cat > /usr/local/bin/kumo-campaign-control.py <<'CONTROL'
+${campaignControl}
+CONTROL
+chmod 700 /usr/local/bin/kumo-campaign-control.py
 cat > /usr/local/bin/kumo-agent <<'AGENT'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -37,25 +55,59 @@ if [ "$HASH" != "$OLD" ]; then
     if echo "$j" | jq -r .key > $DIR/dkim/$dom/$sel.key && chmod 640 $DIR/dkim/$dom/$sel.key && chown kumod:kumod $DIR/dkim/$dom/$sel.key; then INSTALLED=$(echo "$INSTALLED" | jq --arg i "$id" '. + [$i] | unique'); else FAILED=$(echo "$FAILED" | jq --arg i "$id" '. + [{bindingId:$i,error:"écriture clé impossible"}]'); fi
   done
   echo "$B" | jq -r .lua > $DIR/policy/init.lua.new
-  if /opt/kumomta/sbin/kumod --validate --policy $DIR/policy/init.lua.new >/tmp/kumo-validate 2>&1 || [ $? -eq 2 ]; then mv $DIR/policy/init.lua.new $DIR/policy/init.lua && systemctl reload-or-restart kumomta && echo "$HASH" > $DIR/.hash; else ERR=$(head -c 400 /tmp/kumo-validate | jq -Rs .); fi
+  if /opt/kumomta/sbin/kumod --user kumod --validate --policy $DIR/policy/init.lua.new >/tmp/kumo-validate 2>&1; then mv $DIR/policy/init.lua.new $DIR/policy/init.lua && systemctl reload-or-restart kumomta && echo "$HASH" > $DIR/.hash; else ERR=$(head -c 400 /tmp/kumo-validate | jq -Rs .); fi
 else
   INSTALLED=$(echo "$B" | jq '[.dkim[].bindingId] | unique')
 fi
 KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-events.py || exit 1
-J=$(curl -fsS -H "$H" "$API/jobs" || echo '{"jobs":[]}')
-if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
-  RES=$(echo "$J" | jq -c '.jobs[]' | while read -r job; do
-    id=$(echo "$job" | jq -r .id)
-    out=$(echo "$job" | jq -c '{envelope_sender:.sender,content:.content,recipients:[{email:.rcpt}]}' | curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data @- http://127.0.0.1:8000/api/inject/v1)
-    if [ "$out" = "200" ]; then jq -nc --arg i "$id" '{id:$i,ok:true}'; else jq -nc --arg i "$id" --arg e "KumoMTA HTTP $out" '{id:$i,ok:false,error:$e}'; fi
-  done | jq -sc '{results:.}')
-  echo "$RES" | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/jobs" >/dev/null || true
+sync_holds() { KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-campaign-control.py; }
+if ! sync_holds; then
+  ERR='"Synchronisation des pauses KumoMTA indisponible"'
 fi
 CPU=$(top -bn1 | awk '/Cpu/ {print 100-$8; exit}'); RAM=$(free | awk '/Mem/ {printf "%.0f", $3/$2*100}')
 APPLIED=$(cat $DIR/.hash 2>/dev/null || echo "")
-jq -n --arg a "1.0" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "\${CPU:-0}" --argjson r "\${RAM:-0}" \\
-  '{agentVersion:$a,kumoVersion:$k,installed:$i,failed:$f,error:$e,metrics:{cpu:$c,ram:$r}} + (if $h=="" then {} else {appliedHash:$h} end)' \\
-  | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/report" >/dev/null
+if [ "$ERR" = null ] && [ "$HASH" != "$APPLIED" ]; then ERR='"Nouvelle configuration KumoMTA non appliquée"'; fi
+jq -n --arg a "1.1" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "\${CPU:-0}" --argjson r "\${RAM:-0}" \\
+  '{agentVersion:$a,kumoVersion:$k,installed:$i,failed:$f,error:$e,metrics:{cpu:$c,ram:$r,vmtaRouting:true,preferencePermit:true}} + (if $h=="" then {} else {appliedHash:$h} end)' \\
+  | curl -fsS --max-time 30 -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/report" >/dev/null || exit 1
+[ "$ERR" = null ] || exit 1
+J=$(curl -fsS --max-time 30 -H "$H" "$API/jobs" || echo '{"jobs":[]}')
+if [ -n "\${SUPPRESSION_BLOOM_SNAPSHOT:-}" ] && [ -r /usr/local/lib/email-direct/suppression-bloom.py ]; then
+  suspects=$(printf '%s' "$J" | jq -c '[.jobs[] | {id,rcpt}]' | python3 /usr/local/lib/email-direct/suppression-bloom.py suspects "$SUPPRESSION_BLOOM_SNAPSHOT" 2>/dev/null) || suspects='[]'
+  if echo "$suspects" | jq -e 'type == "array" and length > 0' >/dev/null; then
+    exclusion=$(jq -nc --argjson ids "$suspects" '{action:"confirm-suppressions",ids:$ids}' | curl -fsS --max-time 5 -H "$H" -H 'Content-Type: application/json' --data @- "$API/campaign-control") || exclusion='{}'
+    if echo "$exclusion" | jq -e '.excluded | type == "array"' >/dev/null; then
+      filtered=$(echo "$J" | jq -c --argjson result "$exclusion" '.jobs |= map(select(.id as $id | $result.excluded | index($id) | not))') && J="$filtered"
+    fi
+  fi
+fi
+if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
+  HOLD_REFRESHED=0
+  CHECKED=0
+  RES=$(echo "$J" | jq -c '.jobs[]' | while read -r job; do
+    if [ "$CHECKED" -ge 20 ]; then
+      KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-events.py >&2 && sync_holds >&2 || break
+      CHECKED=0; HOLD_REFRESHED=0
+    fi
+    CHECKED=$((CHECKED + 1))
+    id=$(echo "$job" | jq -r .id)
+    permit=$(jq -nc --arg i "$id" '{action:"permit",id:$i}' | curl -fsS --max-time 10 -H "$H" -H 'Content-Type: application/json' --data @- "$API/campaign-control") || break
+    if ! echo "$permit" | jq -e '.allowed == true' >/dev/null; then
+      if [ "$HOLD_REFRESHED" = 0 ]; then sync_holds >&2 || break; HOLD_REFRESHED=1; fi
+      continue
+    fi
+    if ! out=$(echo "$job" | jq -c '{envelope_sender:.sender,content:.content,recipients:[{email:.rcpt,metadata:({campaign_id:.campaignId,pool_id:.vmtaPoolId}|with_entries(select(.value != null)))}]}' | curl -fsS --max-time 20 -H 'Content-Type: application/json' --data @- http://127.0.0.1:8000/api/inject/v1); then
+      jq -nc --arg i "$id" '{id:$i,ok:false,uncertain:true}'
+    elif echo "$out" | jq -e '.success_count == 1 and .fail_count == 0' >/dev/null; then
+      jq -nc --arg i "$id" '{id:$i,ok:true}'
+    elif echo "$out" | jq -e '.success_count == 0 and .fail_count == 1' >/dev/null; then
+      jq -nc --arg i "$id" '{id:$i,ok:false,error:"Injection KumoMTA refusée"}'
+    else
+      jq -nc --arg i "$id" '{id:$i,ok:false,uncertain:true}'
+    fi
+  done | jq -sc '{results:.}')
+  echo "$RES" | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/jobs" >/dev/null || true
+fi
 AGENT
 sed -i "s#__API__#$API#" /usr/local/bin/kumo-agent && chmod 755 /usr/local/bin/kumo-agent
 install -d /opt/kumomta/etc/policy
@@ -64,6 +116,7 @@ cat > /etc/systemd/system/kumo-agent.service <<'U'
 Description=KumoMTA config agent
 [Service]
 Type=oneshot
+EnvironmentFile=-/etc/kumo-agent/suppression-bloom.env
 ExecStart=/usr/local/bin/kumo-agent
 U
 cat > /etc/systemd/system/kumo-agent.timer <<'U'
@@ -93,7 +146,7 @@ https:// {
   tls {
     on_demand
   }
-  @track path /api/public/t/* /api/public/c/*
+  @track path /api/public/t/* /api/public/c/* /preferences/* /api/public/unsub/*
   handle @track {
     reverse_proxy ${origin} {
       header_up Host {upstream_hostport}
@@ -115,7 +168,8 @@ export const Route = createFileRoute('/api/public/agent/install.sh')({
     handlers: {
       GET: async ({ request }) => {
         const { eventsScript } = await import('@/lib/kumo-events.server');
-        return new Response(script(new URL(request.url).origin, eventsScript), { headers: { 'Content-Type': 'text/x-shellscript; charset=utf-8' } });
+        const { campaignControlScript } = await import('@/lib/kumo-campaign-control.server');
+        return new Response(script(new URL(request.url).origin, eventsScript, campaignControlScript), { headers: { 'Content-Type': 'text/x-shellscript; charset=utf-8' } });
       },
     },
   },

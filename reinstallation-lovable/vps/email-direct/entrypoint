@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+install -d -m 700 /etc/kumo-agent
+install -d -o kumod -g kumod /var/spool/kumomta /var/log/kumomta
+install -d /opt/kumomta/etc/policy
+umask 022
+token=$(cat /run/secrets/agent.token)
+[[ "$token" =~ ^kag_[a-f0-9]+$ ]]
+(umask 077; printf 'KAG_TOKEN=%s\n' "$token" > /etc/kumo-agent/env)
+unset token
+stop() {
+  if [[ -s /run/email-direct-kumod.pid ]]; then
+    pid=$(cat /run/email-direct-kumod.pid)
+    kill -TERM "$pid" 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null; do sleep .2; done
+  fi
+  exit 0
+}
+trap stop TERM INT
+if [[ -s /opt/kumomta/etc/.hash && -s /opt/kumomta/etc/policy/init.lua ]]; then
+  systemctl reload-or-restart kumomta
+fi
+while true; do
+  if flock --close /run/email-direct-agent.lock /usr/local/bin/kumo-agent; then
+    echo "Email Direct: synchronisation et rapport acceptés"
+  else
+    echo "Email Direct: synchronisation en échec" >&2
+  fi
+  if [[ -s /run/email-direct-kumod.pid ]] && ! kill -0 "$(cat /run/email-direct-kumod.pid)" 2>/dev/null; then
+    systemctl reload-or-restart kumomta || true
+  fi
+  sleep 60 &
+  wait $!
+done
+

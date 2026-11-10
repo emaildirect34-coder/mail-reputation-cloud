@@ -1,0 +1,11 @@
+.env
+.env.placement
+*.env
+!.env.example
+agent.token
+*.sqlite*
+*.bloom
+*.pem
+*.key
+seeds.yml
+install.response

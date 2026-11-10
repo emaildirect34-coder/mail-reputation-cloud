@@ -14,4 +14,10 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
+
+  it("keeps the overview separate from the SMTP report", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/dashboard").at(-1)?.routeId).toBe("/dashboard/");
+    expect(router.matchRoutes("/dashboard/logs/smtp").at(-1)?.routeId).toBe("/dashboard/logs_/smtp");
+  });
 });

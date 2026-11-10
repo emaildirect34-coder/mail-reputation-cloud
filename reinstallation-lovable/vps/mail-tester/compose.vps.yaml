@@ -1,0 +1,12 @@
+services:
+  tester:
+    environment:
+      PROBE_BLOCKED_IPS: 187.7.66.53
+    networks:
+      default: {}
+      proxy:
+        aliases: [mailsuite-tester-api]
+networks:
+  proxy:
+    external: true
+    name: lobehub_lobe-network

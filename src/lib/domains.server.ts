@@ -1,3 +1,5 @@
+import { dmarcDomain } from './dmarc-policy';
+
 // Server-only: dual DKIM key generation, expected DNS records, and live DNS checks (DNS-over-HTTPS).
 const b64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 
@@ -53,4 +55,62 @@ export async function checkDomain(d: Dom) {
     res[r.key] = { ok: !!hit, found: hit ?? ans[0] ?? null };
   }));
   return res;
+}
+
+/** Self-heal before publishing: pick the Cloudflare zone that really owns the domain (by name, across all accounts) and fill the sending IP from a connected server. */
+export async function healDomain(db: any, d: any): Promise<{ d: any; acc: any | null; note: string }> {
+  const { cfZones } = await import("./providers.server");
+  const { data: accs } = await db.from("provider_accounts").select("*").eq("provider", "cloudflare");
+  const ordered = [...(accs ?? [])].sort((a: any, b: any) => Number(b.id === d.account_id) - Number(a.id === d.account_id));
+  let acc: any = null, zoneId: string | null = null, note = "";
+  let zoneNameLength = 0;
+  for (const a of ordered) {
+    try {
+      const zones = await cfZones(a);
+      const z = zones.filter((x) => d.domain === x.name || d.domain.endsWith("." + x.name)).sort((x, y) => y.name.length - x.name.length)[0];
+      if (z && z.name.length > zoneNameLength) {
+        acc = a;
+        zoneId = z.id;
+        zoneNameLength = z.name.length;
+        if (z.name === d.domain) break;
+      }
+    } catch (e) { note = (e as Error).message; }
+  }
+  let ip = d.ip;
+  if (!ip) {
+    const { data: ag } = await db.from("server_agents").select("server_id").neq("status", "awaiting");
+    const ids = (ag ?? []).map((x: any) => x.server_id);
+    if (ids.length) { const { data: s } = await db.from("managed_servers").select("ipv4").in("id", ids).not("ipv4", "is", null).limit(1); ip = s?.[0]?.ipv4 ?? null; }
+  }
+  const patch: any = {};
+  if (acc && (acc.id !== d.account_id || zoneId !== d.zone_id)) { patch.account_id = acc.id; patch.zone_id = zoneId; }
+  if (ip !== d.ip) patch.ip = ip;
+  if (Object.keys(patch).length) await db.from("sending_domains").update(patch).eq("id", d.id);
+  if (!acc) note = note || `Aucune zone Cloudflare ne contient « ${d.domain} ».`;
+  return { d: { ...d, ...patch }, acc, note };
+}
+
+export async function publishDane(db: any, data: { domain: string; mx: string; fingerprint: string }, requiredServer?: string) {
+  const domain = dmarcDomain(data.domain);
+  const mx = dmarcDomain(data.mx);
+  if (!domain || !mx || mx.length > 244 || (mx !== domain && !mx.endsWith('.' + domain))) {
+    throw new Error('Le MX doit appartenir au domaine d’envoi sélectionné.');
+  }
+  const { data: configured, error } = await db.from('sending_domains').select('id,domain,account_id,zone_id,ip').eq('domain', domain).maybeSingle();
+  if (error || !configured) throw new Error('Ajoutez d’abord ce domaine dans Domaines.');
+  const { d, acc, note } = await healDomain(db, configured);
+  if (!acc || !d.zone_id || !d.ip) throw new Error(note || 'Associez une zone et une IP d’envoi au domaine.');
+  const { data: servers } = await db.from('managed_servers').select('id').eq('ipv4', d.ip);
+  const ids = (servers ?? []).map((server: { id: string }) => server.id);
+  if (requiredServer && !ids.includes(requiredServer)) throw new Error('Le MX ne correspond pas au serveur autoris\u00e9.');
+  if (!ids.length) throw new Error('L’IPv4 d’envoi doit appartenir à un serveur connecté.');
+  const { data: connected } = await db.from('server_agents').select('server_id').in('server_id', ids).neq('status', 'awaiting').limit(1);
+  if (!connected?.length) throw new Error('L’IPv4 d’envoi doit appartenir à un serveur connecté.');
+  const { inspectDaneDns, matchesSendingIp } = await import('./dane.server');
+  const [dns, matches] = await Promise.all([inspectDaneDns(domain, mx), matchesSendingIp(mx, d.ip)]);
+  if (dns.mx !== 'secure' || !matches) throw new Error('Le MX et son IPv4 d’envoi doivent être authentifiés par DNSSEC.');
+  if (dns.tlsa === 'secure' && dns.fingerprints.includes(data.fingerprint)) return 'present' as const;
+  if (!dns.authenticatedAbsence) throw new Error('La publication initiale exige une absence TLSA authentifiée par DNSSEC.');
+  const { cfPublishInitialTlsa } = await import('./providers.server');
+  return cfPublishInitialTlsa(acc, d.zone_id, dns.owner, data.fingerprint);
 }

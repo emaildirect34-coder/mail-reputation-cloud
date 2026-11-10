@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -uo pipefail
+. /etc/kumo-agent/env
+API="https://mail-reputation-cloud.lovable.app/api/public/agent"; H="Authorization: Bearer $KAG_TOKEN"; DIR=/opt/kumomta/etc
+B=$(curl -fsS -H "$H" "$API/config") || exit 1
+HASH=$(echo "$B" | jq -r .hash); OLD=$(cat $DIR/.hash 2>/dev/null || true)
+INSTALLED='[]'; FAILED='[]'; ERR=null
+if [[ ! "$HASH" =~ ^[[:xdigit:]]{64}$ ]] || ! jq -e '(.lua|type=="string" and length>0) and (.dkim|type=="array")' <<<"$B" >/dev/null; then exit 1; fi
+if [ "$HASH" != "$OLD" ]; then
+  for row in $(echo "$B" | jq -c '.dkim[] | @base64'); do
+    j=$(echo "$row" | tr -d '"' | base64 -d); dom=$(echo "$j" | jq -r .domain); sel=$(echo "$j" | jq -r .selector); id=$(echo "$j" | jq -r .bindingId)
+    if [[ ! "$dom" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ || ! "$sel" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ || "$dom" == *..* ]]; then exit 1; fi
+    install -d -m 750 -o kumod -g kumod $DIR/dkim/$dom
+    if echo "$j" | jq -r .key > $DIR/dkim/$dom/$sel.key && chmod 640 $DIR/dkim/$dom/$sel.key && chown kumod:kumod $DIR/dkim/$dom/$sel.key; then INSTALLED=$(echo "$INSTALLED" | jq --arg i "$id" '. + [$i] | unique'); else FAILED=$(echo "$FAILED" | jq --arg i "$id" '. + [{bindingId:$i,error:"écriture clé impossible"}]'); fi
+  done
+  echo "$B" | jq -r .lua > $DIR/policy/init.lua.new
+  if /opt/kumomta/sbin/kumod --user kumod --validate --policy $DIR/policy/init.lua.new >/tmp/kumo-validate 2>&1; then mv $DIR/policy/init.lua.new $DIR/policy/init.lua && systemctl reload-or-restart kumomta && echo "$HASH" > $DIR/.hash || exit 1; else ERR=$(head -c 400 /tmp/kumo-validate | jq -Rs .); fi
+else
+  INSTALLED=$(echo "$B" | jq '[.dkim[].bindingId] | unique')
+fi
+KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-events.py || exit 1
+if ! curl -fsS --max-time 3 http://127.0.0.1:8000/api/check-liveness/v1 >/dev/null 2>&1; then
+  J='{"jobs":[]}'
+else
+J=$(curl -fsS -H "$H" "$API/jobs" || echo '{"jobs":[]}')
+fi
+if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
+  RES=$(echo "$J" | jq -c '.jobs[]' | while read -r job; do
+    id=$(echo "$job" | jq -r .id)
+    body=$(mktemp)
+    out=$(echo "$job" | jq -c '{envelope_sender:.sender,content:.content,recipients:[{email:.rcpt}]}' | curl -sS --max-time 15 -o "$body" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data @- http://127.0.0.1:8000/api/inject/v1)
+    if [ "$out" = "200" ] && jq -e '.success_count==1 and .fail_count==0' "$body" >/dev/null; then jq -nc --arg i "$id" '{id:$i,ok:true}'; else jq -nc --arg i "$id" --arg e "KumoMTA injection rejetée (HTTP $out)" '{id:$i,ok:false,error:$e}'; fi
+    rm -f "$body"
+  done | jq -sc '{results:.}')
+  echo "$RES" | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/jobs" >/dev/null || true
+fi
+CPU=$(top -bn1 | awk '/Cpu/ {print 100-$8; exit}'); RAM=$(free | awk '/Mem/ {printf "%.0f", $3/$2*100}')
+APPLIED=$(cat $DIR/.hash 2>/dev/null || echo "")
+jq -n --arg a "1.0" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "${CPU:-0}" --argjson r "${RAM:-0}" \
+  '{agentVersion:$a,kumoVersion:$k,installed:$i,failed:$f,error:$e,metrics:{cpu:$c,ram:$r}} + (if $h=="" then {} else {appliedHash:$h} end)' \
+  | curl -fsS -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/report" >/dev/null
