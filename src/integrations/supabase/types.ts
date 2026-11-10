@@ -14,8 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      caddy_probe_state: {
+        Row: {
+          checked_at: string
+          failed_checks: number
+          incident_since: string | null
+          singleton: boolean
+        }
+        Insert: {
+          checked_at: string
+          failed_checks: number
+          incident_since?: string | null
+          singleton?: boolean
+        }
+        Update: {
+          checked_at?: string
+          failed_checks?: number
+          incident_since?: string | null
+          singleton?: boolean
+        }
+        Relationships: []
+      }
       campaign_messages: {
         Row: {
+          available_at: string | null
           campaign_id: string
           claimed_at: string | null
           clicked_at: string | null
@@ -34,6 +56,7 @@ export type Database = {
           variant: number | null
         }
         Insert: {
+          available_at?: string | null
           campaign_id: string
           claimed_at?: string | null
           clicked_at?: string | null
@@ -52,6 +75,7 @@ export type Database = {
           variant?: number | null
         }
         Update: {
+          available_at?: string | null
           campaign_id?: string
           claimed_at?: string | null
           clicked_at?: string | null
@@ -109,12 +133,14 @@ export type Database = {
           list_id: string | null
           name: string
           reply_to: string | null
+          scheduled_at: string | null
           server_ids: string[]
           sponsor_offer_id: string | null
           status: string
           subject: string
           suppressed: number
           total: number
+          vmta_pool_id: string | null
         }
         Insert: {
           ab_decide_at?: string | null
@@ -131,12 +157,14 @@ export type Database = {
           list_id?: string | null
           name: string
           reply_to?: string | null
+          scheduled_at?: string | null
           server_ids?: string[]
           sponsor_offer_id?: string | null
           status?: string
           subject: string
           suppressed?: number
           total?: number
+          vmta_pool_id?: string | null
         }
         Update: {
           ab_decide_at?: string | null
@@ -153,12 +181,14 @@ export type Database = {
           list_id?: string | null
           name?: string
           reply_to?: string | null
+          scheduled_at?: string | null
           server_ids?: string[]
           sponsor_offer_id?: string | null
           status?: string
           subject?: string
           suppressed?: number
           total?: number
+          vmta_pool_id?: string | null
         }
         Relationships: [
           {
@@ -175,6 +205,13 @@ export type Database = {
             referencedRelation: "sponsor_offers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaigns_vmta_pool_id_fkey"
+            columns: ["vmta_pool_id"]
+            isOneToOne: false
+            referencedRelation: "vmta_pools"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contact_lists: {
@@ -183,18 +220,24 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          quarantine_reason: string | null
+          quarantined_at: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
           name: string
+          quarantine_reason?: string | null
+          quarantined_at?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
           name?: string
+          quarantine_reason?: string | null
+          quarantined_at?: string | null
         }
         Relationships: []
       }
@@ -207,6 +250,7 @@ export type Database = {
           id: string
           list_id: string
           status: string
+          time_zone: string | null
         }
         Insert: {
           created_at?: string
@@ -216,6 +260,7 @@ export type Database = {
           id?: string
           list_id: string
           status?: string
+          time_zone?: string | null
         }
         Update: {
           created_at?: string
@@ -225,6 +270,7 @@ export type Database = {
           id?: string
           list_id?: string
           status?: string
+          time_zone?: string | null
         }
         Relationships: [
           {
@@ -468,6 +514,27 @@ export type Database = {
           },
         ]
       }
+      incident_notifications: {
+        Row: {
+          channel: string
+          claimed_at: string
+          event_key: string
+          sent_at: string | null
+        }
+        Insert: {
+          channel: string
+          claimed_at?: string
+          event_key: string
+          sent_at?: string | null
+        }
+        Update: {
+          channel?: string
+          claimed_at?: string
+          event_key?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
       managed_servers: {
         Row: {
           account_id: string | null
@@ -671,6 +738,8 @@ export type Database = {
           server_id: string
           status: string
           token_hash: string
+          vmta_config_hash: string | null
+          vmta_inventory_revision: string
         }
         Insert: {
           agent_version?: string | null
@@ -684,6 +753,8 @@ export type Database = {
           server_id: string
           status?: string
           token_hash: string
+          vmta_config_hash?: string | null
+          vmta_inventory_revision?: string
         }
         Update: {
           agent_version?: string | null
@@ -697,6 +768,8 @@ export type Database = {
           server_id?: string
           status?: string
           token_hash?: string
+          vmta_config_hash?: string | null
+          vmta_inventory_revision?: string
         }
         Relationships: [
           {
@@ -1169,6 +1242,22 @@ export type Database = {
         Args: { _reason: string; _source: string; _values: string[] }
         Returns: number
       }
+      agent_campaign_holds: { Args: { _server: string }; Returns: string[] }
+      agent_campaign_releases: {
+        Args: { _ids: string[]; _server: string }
+        Returns: string[]
+      }
+      agent_may_inject: {
+        Args: { _id: string; _server: string }
+        Returns: boolean
+      }
+      campaign_can_claim: {
+        Args: {
+          _campaign: Database["public"]["Tables"]["campaigns"]["Row"]
+          _server: string
+        }
+        Returns: boolean
+      }
       campaign_stats: {
         Args: never
         Returns: {
@@ -1178,9 +1267,18 @@ export type Database = {
           sent: number
         }[]
       }
+      campaign_sunset_contacts: {
+        Args: { _days: number; _ids: string[] }
+        Returns: string[]
+      }
+      campaign_sunset_contacts_by_isp: {
+        Args: { _ids: string[] }
+        Returns: string[]
+      }
       claim_campaign_messages: {
         Args: { _limit: number; _server: string }
         Returns: {
+          available_at: string | null
           campaign_id: string
           claimed_at: string | null
           clicked_at: string | null
@@ -1204,6 +1302,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_incident_notification: {
+        Args: { _channel: string; _key: string }
+        Returns: boolean
       }
       decide_ab_winners: { Args: never; Returns: undefined }
       delivery_log_summary: {
@@ -1240,9 +1342,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_contacts_with_time_zones: {
+        Args: { _contacts: Json; _list: string }
+        Returns: undefined
+      }
       ingest_delivery_events: {
         Args: { _events: Json; _server: string }
         Returns: number
+      }
+      record_caddy_probe: {
+        Args: { _checked_at: string; _healthy: boolean }
+        Returns: string
       }
     }
     Enums: {

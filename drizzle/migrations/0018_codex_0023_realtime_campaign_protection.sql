@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE public.contact_lists
  ADD COLUMN quarantined_at timestamptz,
  ADD COLUMN quarantine_reason text,
@@ -100,7 +98,6 @@ BEGIN
   RAISE EXCEPTION 'Invalid batch';
  END IF;
 
- -- Lock shared audience and campaign rows in consistent order across agents.
  PERFORM l.id FROM public.contact_lists l
  WHERE EXISTS (
    SELECT 1 FROM jsonb_array_elements(_events) e(value)
@@ -171,7 +168,6 @@ BEGIN
    IF total_n>0 AND bad_n::numeric/total_n>0.03 THEN
     reason:='Rebonds durs > 3 % sur les premiers 500 messages acceptés';
    ELSE
-    -- Keep monitoring after the initial sample. Each affected message counts once.
     SELECT count(*) INTO total_n FROM public.campaign_messages cm
     WHERE cm.campaign_id=m.campaign_id AND (cm.status='sent' OR cm.delivery_state<>'pending');
     SELECT count(DISTINCT de.message_id) INTO bad_n FROM public.delivery_events de
@@ -236,4 +232,3 @@ BEGIN
  RETURN accepted;
 END;
 $$;
-COMMIT;

@@ -120,6 +120,27 @@
       "when": 1794195861707,
       "tag": "0016_dmarc_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794341359045,
+      "tag": "0017_codex_0017_0022",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794341418675,
+      "tag": "0018_codex_0023_realtime_campaign_protection",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794341453205,
+      "tag": "0019_codex_0024_0026",
+      "breakpoints": true
     }
   ]
 }
