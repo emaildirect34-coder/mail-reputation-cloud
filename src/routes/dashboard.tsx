@@ -70,7 +70,7 @@ const sections: Section[] = [
     { to: "/dashboard/suppression", icon: Ban, label: "Suppressions" },
     { to: "/dashboard/vault", icon: Database, label: "Base clients" },
     { to: "/dashboard/validation", icon: ClipboardCheck, label: "Conformité" },
-    { to: "/dashboard/postmaster", icon: FileBarChart, label: "Rapports DMARC" },
+    { to: "/dashboard/dmarc", icon: FileBarChart, label: "Rapports DMARC" },
   ]},
   { title: "Settings", items: [
     { to: "/dashboard/settings", icon: Users, label: "Clients & utilisateurs" },

@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 import { Copy, Mail, RefreshCw, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
-import { inspectDmarcAuthorization, inspectDmarcPolicy, mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
+import { inspectDmarcAuthorization, inspectDmarcPolicy, inspectSenderDns, mailTesterNew, mailTesterResult } from "@/lib/ops.functions";
 import { dmarcPolicies, dmarcRecord } from "@/lib/dmarc-policy";
 import { autoFixDomain, publishExternalDmarcAuthorization, recheckDomainDns } from "@/lib/domains.functions";
 import { PageHeader, Panel, Pill, DataTable, Stat, Bar } from "@/components/dash/kit";
@@ -45,7 +46,7 @@ function Lab() {
         ))}
       </div>
       {tab === "Testeur 10/10" && <VpsTester />}
-      {tab === "SPF" && <Spf />}
+      {tab === "SPF" && <SenderLookup kind="SPF" />}
       {tab === "DKIM" && <Dkim />}
       {tab === "DMARC" && <Dmarc />}
       {tab === "BIMI / VMC" && <Bimi />}
@@ -66,95 +67,52 @@ function Code({ children }: { children: string }) {
   );
 }
 
-function Scorer() {
-  const checks = [
-    ["SPF", "pass — ip4:203.0.113.10 autorisée", "ok", "0"],
-    ["DKIM (RSA-2048 + Ed25519)", "2 signatures valides, over-signing actif", "ok", "0"],
-    ["DMARC", "p=reject, alignement strict", "ok", "0"],
-    ["ARC", "Chaîne i=1 valide", "ok", "0"],
-    ["RFC 8058 List-Unsubscribe-Post", "Présent", "ok", "0"],
-    ["Rspamd", "Score 1.2 (HTML_SHORT_LINK_IMG_1)", "warn", "-0.3"],
-    ["Spamhaus DQS (IP + DBL)", "Non listé", "ok", "0"],
-    ["Ratio texte / HTML", "Version texte présente (parité 92 %)", "ok", "0"],
-    ["Liens", "1 lien raccourci détecté (bit.ly)", "bad", "-0.5"],
-  ] as const;
-  return (
-    <>
-      <Panel title="Adresse de test éphémère">
-        <p className="mb-3 text-sm text-muted-foreground">Envoyez votre email à cette adresse puis cliquez sur « Voir mon score ».</p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input readOnly value="test-89k4z@lab.emaildirect.io" className="font-mono" />
-          <Button variant="outline"><RefreshCw className="h-4 w-4" /> Nouvelle</Button>
-          <Button><Mail className="h-4 w-4" /> Voir mon score</Button>
-        </div>
-      </Panel>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Score global" value="9.2 / 10" sub="Très bon — 2 points à corriger" />
-        <Stat label="Authentification" value="5 / 5" sub="SPF, DKIM, DMARC, ARC, BIMI" />
-        <Stat label="Blacklists" value="0 / 24" sub="Aucune liste noire" />
-      </div>
-      <Panel title="Détail du score">
-        <DataTable
-          cols={["Contrôle", "Résultat", "Statut", "Pénalité"]}
-          rows={checks.map(([n, r, t, p]) => [<span className="font-medium">{n}</span>, <span className="text-xs">{r}</span>, <Pill tone={t}>{t === "ok" ? "OK" : t === "warn" ? "Attention" : "Échec"}</Pill>, <code className="text-xs">{p}</code>])}
-        />
-      </Panel>
-    </>
-  );
-}
+function SenderLookup({ kind }: { kind: "SPF" | "DKIM" }) {
+  const inspect = useServerFn(inspectSenderDns);
+  const [domain, setDomain] = useState("");
+  const [selector, setSelector] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<Awaited<ReturnType<typeof inspectSenderDns>> | null>(null);
+  const labels: Record<string, string> = {
+    ok: "Budget SPF dans la limite", over: "Plus de 10 termes DNS dans les branches inspectées",
+    missing: "Enregistrement absent", invalid: "Enregistrements incompatibles ou invalides",
+    unknown: "Résolution ou analyse incomplète", revoked: "Clé révoquée", published: "Clé publique publiée",
+  };
 
-function Spf() {
-  const [ips, setIps] = useState("203.0.113.10, 203.0.113.11");
-  const [inc, setInc] = useState("_spf.google.com");
-  const rec = `v=spf1 ${ips.split(",").map((s) => s.trim()).filter(Boolean).map((i) => `ip4:${i}`).join(" ")} ${inc.split(",").map((s) => s.trim()).filter(Boolean).map((i) => `include:${i}`).join(" ")} -all`.replace(/\s+/g, " ");
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Générateur SPF">
-        <div className="space-y-3">
-          <div><label className="text-xs text-muted-foreground">IPs d'envoi (séparées par virgule)</label><Input value={ips} onChange={(e) => setIps(e.target.value)} /></div>
-          <div><label className="text-xs text-muted-foreground">Includes</label><Input value={inc} onChange={(e) => setInc(e.target.value)} /></div>
-          <Code>{rec}</Code>
-        </div>
-      </Panel>
-      <Panel title="Vérificateur SPF">
-        <div className="mb-3 flex gap-2"><Input defaultValue="emaildirect.io" /><Button>Vérifier</Button></div>
-        <div className="mb-1 flex justify-between text-xs"><span>Lookups DNS (limite RFC 7208)</span><span>7 / 10</span></div>
-        <Bar value={70} />
-        <ul className="mt-3 space-y-1 text-sm">
-          <li className="flex justify-between">Syntaxe <Pill tone="ok">Valide</Pill></li>
-          <li className="flex justify-between">Politique finale <Pill tone="ok">-all</Pill></li>
-          <li className="flex justify-between">Enregistrements multiples <Pill tone="ok">Aucun</Pill></li>
-        </ul>
-      </Panel>
-    </div>
-  );
+  async function verify(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setResult(null);
+    setError("");
+    try {
+      setResult(await inspect({ data: { domain, ...(kind === "DKIM" ? { selector } : {}) } }));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Vérification DNS impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <Panel title={`Vérificateur ${kind}`}>
+    <form className="flex flex-wrap gap-2" onSubmit={verify}>
+      {kind === "DKIM" && <Input aria-label="Sélecteur DKIM" className="max-w-44" value={selector} onChange={event => setSelector(event.target.value)} required />}
+      <Input aria-label="Domaine à vérifier" className="max-w-sm" placeholder="exemple.fr" value={domain} onChange={event => setDomain(event.target.value)} required />
+      <Button disabled={busy}>Vérifier</Button>
+    </form>
+    {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
+    {result && <div className="mt-3 space-y-2">
+      <p className="text-sm">{result.name} · {labels[result.status] ?? result.status}{result.terms === null ? "" : ` · ${result.terms} terme(s) DNS`}</p>
+      {result.records?.map(record => <Code key={record}>{record}</Code>)}
+    </div>}
+  </Panel>;
 }
 
 function Dkim() {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Générateur DKIM">
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-xs text-muted-foreground">Sélecteur RSA</label><Input defaultValue="ed2026a" /></div>
-            <div><label className="text-xs text-muted-foreground">Sélecteur Ed25519</label><Input defaultValue="ed2026b" /></div>
-          </div>
-          <Button><Wand2 className="h-4 w-4" /> Générer la paire double (RSA-2048 + Ed25519)</Button>
-          <Code>{"ed2026a._domainkey  TXT  \"v=DKIM1; k=rsa; p=MIIBIjANBgkqh...IDAQAB\""}</Code>
-          <Code>{"ed2026b._domainkey  TXT  \"v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\""}</Code>
-        </div>
-      </Panel>
-      <Panel title="Vérificateur DKIM">
-        <div className="mb-3 flex gap-2"><Input defaultValue="ed2026a" className="w-28" /><Input defaultValue="emaildirect.io" /><Button>Vérifier</Button></div>
-        <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">Clé publiée <Pill tone="ok">Oui</Pill></li>
-          <li className="flex justify-between">Taille de clé <Pill tone="ok">2048 bits</Pill></li>
-          <li className="flex justify-between">Over-signing (From, Subject, To) <Pill tone="ok">Actif</Pill></li>
-          <li className="flex justify-between">Rotation <Pill tone="warn">Il y a 182 jours</Pill></li>
-        </ul>
-      </Panel>
-    </div>
-  );
+  return <div className="grid gap-4">
+    <SenderLookup kind="DKIM" />
+    <Panel title="Gérer les clés d’envoi"><Button variant="outline" asChild><Link to="/dashboard/domains">Ouvrir les domaines</Link></Button></Panel>
+  </div>;
 }
 
 function Dmarc() {
@@ -440,27 +398,31 @@ function MtaSts() {
 }
 
 function Content() {
-  const words = [["GRATUIT", "Élevé"], ["100% garanti", "Élevé"], ["Cliquez ici", "Moyen"], ["Offre limitée", "Moyen"]];
-  const links = [
-    ["https://emaildirect.io/offre", "Direct", "ok", "Propre"],
-    ["https://bit.ly/3xK9", "3 redirections", "bad", "Raccourcisseur"],
-    ["https://track.client.com/c/88", "1 redirection", "ok", "Domaine dédié"],
-  ] as const;
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Scanner de mots à risque">
-        <textarea className="mb-3 h-28 w-full rounded-md border border-input bg-background p-2 text-sm" defaultValue="Profitez de notre offre GRATUIT 100% garanti — Cliquez ici !" />
-        <div className="flex flex-wrap gap-2">
-          {words.map(([w, r]) => <Pill key={w} tone={r === "Élevé" ? "bad" : "warn"}>{w} · {r}</Pill>)}
-        </div>
-      </Panel>
-      <Panel title="Inspecteur de liens & URIBL">
-        <DataTable cols={["URL", "Chaîne", "Statut"]} rows={links.map(([u, c, t, s]) => [<code className="text-xs">{u}</code>, <span className="text-xs">{c}</span>, <Pill tone={t}>{s}</Pill>])} />
-      </Panel>
-    </div>
-  );
+  const [html, setHtml] = useState("");
+  const [links, setLinks] = useState<string[] | null>(null);
+  function inspect() {
+    const pending: DefaultTreeAdapterTypes.Node[] = [...parseFragment(html).childNodes].reverse();
+    const found = new Set<string>();
+    while (pending.length) {
+      const node = pending.pop()!;
+      if ("tagName" in node && node.tagName === "a") {
+        const href = node.attrs.find(attr => attr.name === "href")?.value;
+        if (href) found.add(href);
+      }
+      if ("childNodes" in node) {
+        for (let index = node.childNodes.length - 1; index >= 0; index--) pending.push(node.childNodes[index]!);
+      }
+    }
+    setLinks([...found]);
+  }
+  return <Panel title="Liens du message">
+    <textarea aria-label="Contenu HTML" className="mb-3 h-28 w-full rounded-md border border-input bg-background p-2 text-sm" value={html} onChange={event => { setHtml(event.target.value); setLinks(null); }} />
+    <Button onClick={inspect} disabled={!html.trim()}>Analyser les liens</Button>
+    {links && (links.length ? <DataTable cols={["Lien", "Type"]} rows={links.map(url => [
+      <code className="break-all">{url}</code>, /^https:\/\//i.test(url) ? "HTTPS" : /^http:\/\//i.test(url) ? "HTTP" : "Autre protocole ou chemin relatif",
+    ])} /> : <p className="mt-2 text-sm">Aucun lien trouvé.</p>)}
+  </Panel>;
 }
-
 const INFO: Record<string, { name: string; why: string }> = {
   spf: { name: "SPF — serveur autorisé", why: "Dit aux boîtes mail que votre serveur a le droit d'envoyer pour ce domaine. Sans lui, l'email paraît suspect." },
   dkim: { name: "DKIM — signature du domaine", why: "Prouve que l'email vient bien de vous et n'a pas été modifié en route." },

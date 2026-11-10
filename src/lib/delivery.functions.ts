@@ -4,6 +4,7 @@ import { logFilters, canReadLogs, parseMessageReference } from './delivery.schem
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { canOpen } from './access';
 
 async function requireLogsAccess(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const role = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
@@ -82,17 +83,28 @@ export const readDeliveryEngagement = createServerFn({ method: 'POST' }).middlew
   });
 
 export const readDeliveryDashboard = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
-  .inputValidator(i => z.enum(['24h', '7j', '30j']).parse(i))
+  .inputValidator(i => z.object({ period: z.enum(['24h', '7j', '30j']), area: z.enum(['/dashboard/logs', '/dashboard/postmaster']) }).parse(i))
   .handler(async ({ data, context }) => {
-    await requireLogsAccess(context);
-    const hours = { '24h': 24, '7j': 168, '30j': 720 }[data];
-    const bucketCount = data === '7j' ? 7 : 6;
+    let db = context.supabase;
+    if (data.area === '/dashboard/logs') {
+      await requireLogsAccess(context);
+    } else {
+      const role = await db.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
+      if (role.error) throw new Error('Vérification des droits impossible.');
+      if (!role.data) {
+        const tasks = await db.from('worker_tasks').select('allowed_paths').eq('user_id', context.userId).eq('status', 'active');
+        if (tasks.error || !canOpen({ role: 'worker', paths: tasks.data.flatMap(task => task.allowed_paths) }, data.area)) throw new Error('Accès non autorisé.');
+        db = (await import('@/integrations/supabase/client.server')).supabaseAdmin;
+      }
+    }
+    const hours = { '24h': 24, '7j': 168, '30j': 720 }[data.period];
+    const bucketCount = data.period === '7j' ? 7 : 6;
     const width = hours * 3_600_000 / bucketCount;
     const end = Date.now();
     const start = end - hours * 3_600_000;
     const iso = (value: number) => new Date(value).toISOString();
     const count = async (from: number, to: number, type?: string) => {
-      let query = context.supabase.from('delivery_events').select('id', { count: 'exact', head: true })
+      let query = db.from('delivery_events').select('id', { count: 'exact', head: true })
         .gte('occurred_at', iso(from)).lt('occurred_at', iso(to));
       if (type) query = query.eq('event_type', type);
       const result = await query;
@@ -105,7 +117,7 @@ export const readDeliveryDashboard = createServerFn({ method: 'POST' }).middlewa
         const from = start + index * width;
         return { from: iso(from), to: iso(from + width), count: await count(from, from + width) };
       })),
-      context.supabase.from('delivery_events').select('id,occurred_at,event_type,isp,smtp_code')
+      db.from('delivery_events').select('id,occurred_at,event_type,isp,smtp_code')
         .gte('occurred_at', iso(start)).lt('occurred_at', iso(end)).order('occurred_at', { ascending: false }).order('id').limit(50),
     ]);
     if (recent.error) throw new Error('Lecture des événements SMTP impossible.');

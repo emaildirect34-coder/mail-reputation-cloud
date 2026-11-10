@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Panel } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
@@ -242,8 +241,6 @@ function General() {
   return (
     <Panel title="Entreprise">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2"><Label>Nom de l'entreprise</Label><Input placeholder="Ma société" /></div>
-        <div className="space-y-2"><Label>Email de facturation</Label><Input placeholder="compta@monsite.fr" /></div>
         <div className="space-y-2"><Label htmlFor="campaign-time-zone">Fuseau horaire des campagnes</Label><Input id="campaign-time-zone" value={zone ?? profile.data ?? ""} onChange={e => setZone(e.target.value)} placeholder="Europe/Paris" /></div>
       </div>
       <Button className="mt-4" disabled={saving || zone === null} onClick={() => void saveZone()}>Enregistrer le fuseau horaire</Button>
@@ -294,34 +291,25 @@ function CampaignFrequency() {
 }
 
 function Security() {
-  return (
-    <Panel title="Sécurité">
-      {["Double authentification (TOTP)", "Validation Telegram des actions sensibles", "Restreindre l'accès par IP"].map((n) => (
-        <div key={n} className="flex items-center justify-between border-b py-3 last:border-0">
-          <span className="text-sm">{n}</span><Switch />
-        </div>
-      ))}
-    </Panel>
-  );
+  return <Panel title="Sécurité">
+    <p className="mb-3 text-sm text-muted-foreground">Les rôles et les accès des collaborateurs se gèrent dans l’espace Équipe.</p>
+    <Button variant="outline" asChild><Link to="/dashboard/team">Gérer l’équipe et les accès</Link></Button>
+  </Panel>;
 }
 
 function Notifications() {
-  return (
-    <Panel title="Notifications">
-      {["Alerte blacklist", "Taux de rebond élevé", "Fin de warmup", "Facturation"].map((n) => (
-        <div key={n} className="flex items-center justify-between border-b py-3 last:border-0">
-          <span className="text-sm">{n}</span><Switch defaultChecked />
-        </div>
-      ))}
-    </Panel>
-  );
+  return <Panel title="Notifications">
+    <p className="mb-3 text-sm text-muted-foreground">Consultez les alertes d’envoi enregistrées et gérez les destinations webhook.</p>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" asChild><Link to="/dashboard/shield">Voir les alertes</Link></Button>
+      <Button variant="outline" asChild><Link to="/dashboard/webhooks">Gérer les webhooks</Link></Button>
+    </div>
+  </Panel>;
 }
 
 function Billing() {
-  return (
-    <Panel title="Facturation">
-      <p className="text-sm text-muted-foreground">Plan actuel : <b className="text-foreground">Pro</b> — 1 250 000 / 2 000 000 emails ce mois.</p>
-      <Button className="mt-4" variant="outline">Changer de plan</Button>
-    </Panel>
-  );
+  return <Panel title="Finances">
+    <p className="mb-3 text-sm text-muted-foreground">Consultez les revenus, dépenses et paiements enregistrés.</p>
+    <Button variant="outline" asChild><Link to="/dashboard/finance">Ouvrir le journal financier</Link></Button>
+  </Panel>;
 }

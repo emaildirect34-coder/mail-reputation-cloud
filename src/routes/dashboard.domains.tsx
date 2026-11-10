@@ -37,7 +37,7 @@ function planDomains(zone: string, mode: "root" | "auto" | "both", count: number
 }
 const sel = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
 
-function Domains() {
+export function Domains() {
   const qc = useQueryClient();
   const fList = useServerFn(listDomains), fAdd = useServerFn(addDomain), fUpd = useServerFn(updateDomain);
   const fCheck = useServerFn(checkDomainDns), fSync = useServerFn(syncDomainDns), fDel = useServerFn(deleteDomain);

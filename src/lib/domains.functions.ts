@@ -17,7 +17,8 @@ const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
 export const listDomains = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = await admin(context);
-    const { data } = await db.from("sending_domains").select(PUBLIC).order("created_at");
+    const { data, error } = await db.from("sending_domains").select(PUBLIC).order("created_at");
+    if (error) throw new Error("Impossible de charger les domaines d’envoi.");
     const { expectedRecords } = await import("./domains.server");
     type Row = { id: string; domain: string; account_id: string | null; zone_id: string | null; ip: string | null; selector_a: string; selector_b: string; dkim_pub_a: string; dkim_pub_b: string; checked_at: string | null; synced_at: string | null; created_at: string };
     return ((data ?? []) as any[]).map((d): Row & { checks: Record<string, { ok: boolean; found: string | null }>; records: ReturnType<typeof expectedRecords> } => ({ ...d, checks: (d.checks ?? {}) as Record<string, { ok: boolean; found: string | null }>, records: expectedRecords(d) }));

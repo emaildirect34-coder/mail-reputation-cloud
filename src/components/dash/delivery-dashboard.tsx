@@ -10,11 +10,11 @@ const eventNames: Record<string, string> = { delivered: 'Livraison SMTP', bounce
 const format = (value: string) => new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 const integer = new Intl.NumberFormat('fr-FR');
 
-export function DeliveryDashboard() {
+export function DeliveryDashboard({ area = '/dashboard/logs' }: { area?: '/dashboard/logs' | '/dashboard/postmaster' } = {}) {
   const [period, setPeriod] = useState<keyof typeof periods>('24h');
   const [printError, setPrintError] = useState(false);
   const load = useServerFn(readDeliveryDashboard);
-  const query = useQuery({ queryKey: ['delivery-dashboard', period], queryFn: () => load({ data: period }), refetchInterval: 60_000 });
+  const query = useQuery({ queryKey: ['delivery-dashboard', area, period], queryFn: () => load({ data: { area, period } }), refetchInterval: 60_000 });
   const data = query.data;
   const stats = data ? [
     ['Livraisons SMTP', data.delivered], ['Rebonds', data.bounced],

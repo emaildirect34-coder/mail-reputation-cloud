@@ -14,6 +14,18 @@ async function gate(context: any, path: string) {
   return false;
 }
 
+export const readProtection = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  const isAdmin = await gate(context, '/dashboard/shield');
+  const db = isAdmin ? context.supabase : (await import('@/integrations/supabase/client.server')).supabaseAdmin;
+  const [alerts, campaigns, ips] = await Promise.all([
+    db.from('delivery_alerts').select('id,campaign_name,rule,isp,rate,sample_size,created_at').order('created_at', { ascending: false }).limit(25),
+    db.from('campaigns').select('id,name,status,auto_pause_reason').in('status', ['queued','paused']).order('created_at', { ascending: false }).limit(50),
+    db.from('server_ips').select('id,address,quarantined_at,quarantine_reason').eq('active', true).not('quarantined_at', 'is', null).order('quarantined_at', { ascending: false }).limit(50),
+  ]);
+  if (alerts.error || campaigns.error || ips.error) throw new Error('Impossible de charger l’état des protections.');
+  return { isAdmin, alerts: alerts.data, campaigns: campaigns.data, ips: ips.data };
+});
+
 export const inspectDmarcPolicy = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator(input => z.string().max(253).parse(input))
   .handler(async ({ context, data }) => {
@@ -22,6 +34,29 @@ export const inspectDmarcPolicy = createServerFn({ method: 'POST' }).middleware(
     if (!domain || domain.length > 246) throw new Error('Saisissez un nom de domaine valide.');
     const { readDmarcPolicy } = await import('./dmarc-policy.server');
     return readDmarcPolicy(domain);
+  });
+
+export const inspectSenderDns = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({
+    domain: z.string().max(253), selector: z.string().regex(/^[a-z0-9_-]{1,63}$/i).optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await gate(context, '/dashboard/lab');
+    const domain = dmarcDomain(data.domain);
+    if (!domain) throw new Error('Saisissez un domaine valide.');
+    const { senderRecords, spfLookupBudget } = await import('./sender-dns.server');
+    const signal = AbortSignal.timeout(7500);
+    if (!data.selector) {
+      const budget = await spfLookupBudget(domain, name => senderRecords(name, 'TXT', signal));
+      return { name: domain, status: budget.status, terms: budget.terms, records: null };
+    }
+    const name = data.selector.toLowerCase() + '._domainkey.' + domain;
+    if (name.length > 253) throw new Error('Nom DNS trop long.');
+    const entries = await senderRecords(name, 'TXT', signal);
+    const records = entries?.filter(record => /(?:^|;)\s*p\s*=/i.test(record)) ?? null;
+    const status = !records ? 'unknown' : !records.length ? 'missing' : records.length > 1 ? 'invalid'
+      : /(?:^|;)\s*p\s*=\s*(?:;|$)/i.test(records[0]!) ? 'revoked' : 'published';
+    return { name, status, records, terms: null };
   });
 
 export const inspectDmarcAuthorization = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])

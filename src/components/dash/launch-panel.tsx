@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { campaignTimeZone, scheduledInstant } from '@/lib/campaign-schedule';
 import { campaignTopics, campaignTopicLabels, isCampaignTopic } from '@/lib/campaign-topics';
+import { recipientDomain } from '@/lib/email-address';
 import { Button } from '@/components/ui/button';
 import { Pill, DataTable } from './kit';
 import { CampaignDeliveryMonitor } from './campaign-delivery-monitor';
@@ -17,14 +18,15 @@ const cls = 'h-9 w-full rounded-md border border-border bg-card px-2 text-[12px]
 type Fields = { name: string; fromName: string; fromEmail: string; replyTo: string; subject: string; body: string; ampHtml?: string; digestText?: string; schedule?: string; scheduleMode?: string; sponsorOfferId?: string; vmtaPoolId: string; topic: string };
 
 /** Real sending: picks a contact list and agent-equipped servers, then queues the campaign. */
-export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange }: {
+export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers, setServers }: {
   d: Fields; testMode: boolean; onPoolChange: (id: string) => void; onTopicChange: (topic: string) => void;
+  servers: string[]; setServers: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   const qc = useQueryClient(), read = useServerFn(readSending), launch = useServerFn(launchCampaign), status = useServerFn(setCampaignStatus);
   const q = useQuery({ queryKey: ['sending'], queryFn: () => read(), refetchInterval: 15000 });
   const readPools = useServerFn(readCampaignVmtaPools);
   const poolQuery = useQuery({ queryKey: ['campaign-vmta-pools'], queryFn: () => readPools() });
-  const [listId, setListId] = useState(''), [servers, setServers] = useState<string[]>([]), [busy, setBusy] = useState(false);
+  const [listId, setListId] = useState(''), [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await qc.invalidateQueries({ queryKey: ['sending'] }); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); } };
   const profile = useQuery({ queryKey: ['campaign-time-zone'], queryFn: async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -69,6 +71,8 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange }: {
   const pools = poolQuery.data ?? [];
   const selectedPool = pools.find(pool => pool.id === d.vmtaPoolId);
   const poolUnavailable = Boolean(d.vmtaPoolId && !servers.every(id => selectedPool?.serverIds.includes(id))) || Boolean(d.vmtaPoolId && !selectedPool);
+  const senderReady = !!(d.name.trim() && d.fromName.trim() && recipientDomain(d.fromEmail.trim()) && d.subject.trim());
+  const serversReady = servers.length > 0 && servers.every(id => q.data?.servers.some(server => server.id === id));
   const submit = () => run(async () => {
     const result = await launch({ data: {
       sponsorOfferId: d.sponsorOfferId || undefined, name: d.name, fromName: d.fromName, fromEmail: d.fromEmail,
@@ -103,7 +107,7 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange }: {
           <select aria-label="Liste de contacts" className={cls} value={listId} onChange={e => setListId(e.target.value)}><option value="">Choisir une liste</option>{(q.data?.lists ?? []).map(l => <option key={l.id} value={l.id} disabled={!!l.quarantined_at}>{l.name} · {l.quarantined_at ? 'En quarantaine' : `${l.active} actifs`}</option>)}</select></div>
         <div><span className="mb-1 block text-[11.5px] font-semibold text-muted-foreground">Serveurs d’envoi (agent installé requis)</span>
           <div className="flex flex-wrap gap-1.5">{(q.data?.servers ?? []).map(s => { const on = servers.includes(s.id); return <button key={s.id} type="button" onClick={() => setServers(p => on ? p.filter(x => x !== s.id) : [...p, s.id])} className={`rounded-md border px-2 py-1 text-[12px] font-semibold ${on ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card'}`}>{s.label}</button>; })}{!q.data?.servers.length && <span className="text-[12px] text-muted-foreground">Aucun serveur. <Link to="/dashboard/servers" className="text-primary underline">Ajouter un serveur</Link></span>}</div></div>
-        <Button disabled={busy || testMode || !list || !!list.quarantined_at || !servers.length || d.body.trim().length < 20 || poolUnavailable || (!!d.schedule && (!q.data?.supportsScheduling || !scheduleLabel))} onClick={submit}><Rocket className="h-4 w-4" /> {d.schedule ? 'Programmer l’envoi' : 'Lancer l’envoi'}</Button>
+        <Button disabled={busy || testMode || !list || !!list.quarantined_at || !serversReady || !senderReady || d.body.trim().length < 20 || poolUnavailable || (!!d.schedule && (!q.data?.supportsScheduling || !scheduleLabel))} onClick={submit}><Rocket className="h-4 w-4" /> {d.schedule ? 'Programmer l’envoi' : 'Lancer l’envoi'}</Button>
       </div>
       {list?.quarantined_at && <p role="alert" className="mt-2 text-xs text-destructive">Liste en quarantaine. {list.quarantine_reason}</p>}
       <div className="mt-3 space-y-2">

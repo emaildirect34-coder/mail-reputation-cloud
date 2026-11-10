@@ -8,6 +8,7 @@ import { isCampaignRoleMailbox, probableMailDomainTypo, recipientDomain } from '
 import { renderWeeklyDigest } from './weekly-digest';
 import { campaignDeliveryGroups } from './campaign-delivery-monitor';
 import { z } from 'zod';
+import { canOpen } from './access';
 
 async function admin(ctx: { supabase: any; userId: string }) {
   const { data, error } = await ctx.supabase.rpc('has_role', { _user_id: ctx.userId, _role: 'superadmin' });
@@ -16,6 +17,36 @@ async function admin(ctx: { supabase: any; userId: string }) {
   return supabaseAdmin;
 }
 const check = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
+
+export const readCampaignList = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const role = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
+    check(role.error);
+    const isAdmin = role.data === true;
+    let db = context.supabase;
+    if (!isAdmin) {
+      const tasks = await db.from('worker_tasks').select('allowed_paths').eq('user_id', context.userId).eq('status', 'active');
+      check(tasks.error);
+      if (!canOpen({ role: 'worker', paths: (tasks.data ?? []).flatMap(task => task.allowed_paths) }, '/dashboard/campaigns/list')) {
+        throw new Error('Accès aux campagnes non autorisé.');
+      }
+      db = (await import('@/integrations/supabase/client.server')).supabaseAdmin;
+    }
+    const fields = 'id,name,subject,status,total,suppressed,created_at,auto_pause_reason';
+    const campaigns = await db.from('campaigns').select(fields).order('created_at', { ascending: false }).limit(50);
+    check(campaigns.error);
+    const rows = campaigns.data ?? [];
+    const stats = rows.length ? await db.rpc('campaign_stats').in('campaign_id', rows.map(row => row.id)) : null;
+    check(stats?.error ?? null);
+    const byId = new Map(stats?.data?.map(stat => [stat.campaign_id, stat]));
+    return {
+      isAdmin,
+      rows: rows.map(campaign => ({
+        ...campaign, queued: byId.get(campaign.id)?.queued ?? 0,
+        injected: byId.get(campaign.id)?.sent ?? 0, failed: byId.get(campaign.id)?.failed ?? 0,
+      })),
+    };
+  });
 
 async function frequencyPolicy(db: Awaited<ReturnType<typeof admin>>) {
   const result = await db.from('campaign_frequency_policy').select('hours').eq('singleton', true).single();
@@ -87,15 +118,17 @@ export const readSending = createServerFn({ method: 'POST' }).middleware([requir
     const legacy = await db.from('campaigns').select('id,name,subject,status,total,suppressed,created_at,server_ids').order('created_at', { ascending: false }).limit(50);
     return { ...legacy, data: legacy.data?.map(c => ({ ...c, scheduled_at: null })) ?? null, supportsScheduling: false };
   };
-  const [lists, contacts, supp, camps, stats, servers] = await Promise.all([
+  const [lists, contacts, supp, camps, stats, servers, agents] = await Promise.all([
     db.from('contact_lists').select('*').order('created_at'),
     db.from('contacts').select('list_id,status'),
     db.from('suppressions').select('reason'),
     readCampaigns(),
     db.rpc('campaign_stats'),
     db.from('managed_servers').select('id,label,status').neq('status', 'absent').order('label'),
+    db.from('server_agents').select('server_id'),
   ]);
-  for (const r of [lists, contacts, supp, camps, stats, servers]) check(r.error);
+  for (const r of [lists, contacts, supp, camps, stats, servers, agents]) check(r.error);
+  const installed = new Set(agents.data?.map(agent => agent.server_id));
   const count = (l: string, s?: string) => (contacts.data ?? []).filter(c => c.list_id === l && (!s || c.status === s)).length;
   const bySupp: Record<string, number> = {};
   for (const s of supp.data ?? []) bySupp[s.reason] = (bySupp[s.reason] ?? 0) + 1;
@@ -107,7 +140,7 @@ export const readSending = createServerFn({ method: 'POST' }).middleware([requir
     })),
     suppressions: bySupp,
     campaigns: (camps.data ?? []).map(c => ({ ...c, ...((stats.data ?? []).find((s: any) => s.campaign_id === c.id) ?? { queued: 0, sent: 0, failed: 0 }) })),
-    servers: servers.data ?? [],
+    servers: (servers.data ?? []).filter(server => installed.has(server.id)),
     supportsScheduling: camps.supportsScheduling,
   };
 });
