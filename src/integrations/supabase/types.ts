@@ -49,11 +49,13 @@ export type Database = {
           first_name: string | null
           id: string
           opened_at: string | null
+          permit_granted_at: string | null
           sent_at: string | null
           server_id: string
           status: string
           unsub_token: string
           variant: number | null
+          verified_click_id: string | null
         }
         Insert: {
           available_at?: string | null
@@ -68,11 +70,13 @@ export type Database = {
           first_name?: string | null
           id?: string
           opened_at?: string | null
+          permit_granted_at?: string | null
           sent_at?: string | null
           server_id: string
           status?: string
           unsub_token?: string
           variant?: number | null
+          verified_click_id?: string | null
         }
         Update: {
           available_at?: string | null
@@ -87,11 +91,13 @@ export type Database = {
           first_name?: string | null
           id?: string
           opened_at?: string | null
+          permit_granted_at?: string | null
           sent_at?: string | null
           server_id?: string
           status?: string
           unsub_token?: string
           variant?: number | null
+          verified_click_id?: string | null
         }
         Relationships: [
           {
@@ -123,6 +129,7 @@ export type Database = {
           ab_metric: string | null
           ab_variants: Json | null
           ab_winner: number | null
+          amp_html: string | null
           auto_pause_reason: string | null
           created_at: string
           created_by: string | null
@@ -139,14 +146,17 @@ export type Database = {
           status: string
           subject: string
           suppressed: number
+          topic: string | null
           total: number
           vmta_pool_id: string | null
+          weekly_digest: boolean
         }
         Insert: {
           ab_decide_at?: string | null
           ab_metric?: string | null
           ab_variants?: Json | null
           ab_winner?: number | null
+          amp_html?: string | null
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -163,14 +173,17 @@ export type Database = {
           status?: string
           subject: string
           suppressed?: number
+          topic?: string | null
           total?: number
           vmta_pool_id?: string | null
+          weekly_digest?: boolean
         }
         Update: {
           ab_decide_at?: string | null
           ab_metric?: string | null
           ab_variants?: Json | null
           ab_winner?: number | null
+          amp_html?: string | null
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -187,8 +200,10 @@ export type Database = {
           status?: string
           subject?: string
           suppressed?: number
+          topic?: string | null
           total?: number
           vmta_pool_id?: string | null
+          weekly_digest?: boolean
         }
         Relationships: [
           {
@@ -338,6 +353,7 @@ export type Database = {
           recipient: string
           server_id: string
           smtp_code: number | null
+          source_ipv4: string | null
         }
         Insert: {
           campaign_id: string
@@ -353,6 +369,7 @@ export type Database = {
           recipient: string
           server_id: string
           smtp_code?: number | null
+          source_ipv4?: string | null
         }
         Update: {
           campaign_id?: string
@@ -368,6 +385,7 @@ export type Database = {
           recipient?: string
           server_id?: string
           smtp_code?: number | null
+          source_ipv4?: string | null
         }
         Relationships: [
           {
@@ -654,6 +672,60 @@ export type Database = {
           provider?: string
           secret?: string
           status?: string
+        }
+        Relationships: []
+      }
+      recipient_digest_preferences: {
+        Row: {
+          email_md5: string
+        }
+        Insert: {
+          email_md5: string
+        }
+        Update: {
+          email_md5?: string
+        }
+        Relationships: []
+      }
+      recipient_snoozes: {
+        Row: {
+          email_md5: string
+          until_at: string
+        }
+        Insert: {
+          email_md5: string
+          until_at: string
+        }
+        Update: {
+          email_md5?: string
+          until_at?: string
+        }
+        Relationships: []
+      }
+      recipient_topic_preferences: {
+        Row: {
+          email_md5: string
+          topics: string[]
+        }
+        Insert: {
+          email_md5: string
+          topics: string[]
+        }
+        Update: {
+          email_md5?: string
+          topics?: string[]
+        }
+        Relationships: []
+      }
+      recipient_weekly_preferences: {
+        Row: {
+          email_md5: string
+        }
+        Insert: {
+          email_md5: string
+        }
+        Update: {
+          email_md5?: string
         }
         Relationships: []
       }
@@ -1247,10 +1319,41 @@ export type Database = {
         Args: { _ids: string[]; _server: string }
         Returns: string[]
       }
+      agent_confirm_suppressions: {
+        Args: { _ids: string[]; _server: string }
+        Returns: string[]
+      }
       agent_may_inject: {
         Args: { _id: string; _server: string }
         Returns: boolean
       }
+      campaign_audience_page:
+        | {
+            Args: { _after: string; _list: string; _with_time_zone: boolean }
+            Returns: {
+              email: string
+              first_name: string
+              id: string
+              suppressed: boolean
+              time_zone: string
+            }[]
+          }
+        | {
+            Args: {
+              _after: string
+              _digest: boolean
+              _list: string
+              _with_time_zone: boolean
+            }
+            Returns: {
+              email: string
+              first_name: string
+              format_excluded: boolean
+              id: string
+              suppressed: boolean
+              time_zone: string
+            }[]
+          }
       campaign_can_claim: {
         Args: {
           _campaign: Database["public"]["Tables"]["campaigns"]["Row"]
@@ -1290,11 +1393,13 @@ export type Database = {
           first_name: string | null
           id: string
           opened_at: string | null
+          permit_granted_at: string | null
           sent_at: string | null
           server_id: string
           status: string
           unsub_token: string
           variant: number | null
+          verified_click_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -1308,6 +1413,29 @@ export type Database = {
         Returns: boolean
       }
       decide_ab_winners: { Args: never; Returns: undefined }
+      delivery_engagement_anomalies: {
+        Args: never
+        Returns: {
+          accepted: number
+          baseline_accepted: number
+          baseline_campaigns: number
+          baseline_engaged: number
+          campaign_id: string
+          campaign_name: string
+          engaged: number
+          first_at: string
+          isp: string
+        }[]
+      }
+      delivery_engagement_cohort: {
+        Args: { _campaign: string; _isp: string }
+        Returns: {
+          accepted: number
+          engaged: number
+          first_at: string
+          last_at: string
+        }[]
+      }
       delivery_log_summary: {
         Args: never
         Returns: {
@@ -1346,13 +1474,67 @@ export type Database = {
         Args: { _contacts: Json; _list: string }
         Returns: undefined
       }
+      ingest_attributed_delivery_events: {
+        Args: { _events: Json; _server: string }
+        Returns: number
+      }
       ingest_delivery_events: {
         Args: { _events: Json; _server: string }
         Returns: number
       }
+      read_recipient_preferences: { Args: { _token: string }; Returns: Json }
       record_caddy_probe: {
         Args: { _checked_at: string; _healthy: boolean }
         Returns: string
+      }
+      record_sponsor_postback: {
+        Args: {
+          _account: string
+          _amount: number
+          _by: string
+          _campaign: string
+          _currency: string
+          _description: string
+          _external_id: string
+          _offer: string
+          _status: string
+        }
+        Returns: boolean
+      }
+      register_verified_campaign_click: {
+        Args: { _id: string }
+        Returns: string
+      }
+      set_recipient_digest: { Args: { _token: string }; Returns: string }
+      set_recipient_preferences: {
+        Args: { _token: string; _weekly: boolean }
+        Returns: string
+      }
+      set_recipient_snooze: {
+        Args: { _days: number; _token: string }
+        Returns: string
+      }
+      set_recipient_topics: {
+        Args: { _token: string; _topics: string[] }
+        Returns: string
+      }
+      source_isp_history: {
+        Args: { _domains: string[]; _server: string }
+        Returns: {
+          delivered: number
+          domain: string
+          sample: number
+          server_id: string
+          source_ipv4: string
+        }[]
+      }
+      unsubscribe_campaign_message: {
+        Args: { _server?: string; _token: string }
+        Returns: {
+          campaign_id: string
+          email: string
+          newly_suppressed: boolean
+        }[]
       }
     }
     Enums: {
