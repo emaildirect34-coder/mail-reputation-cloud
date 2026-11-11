@@ -169,6 +169,13 @@
       "when": 1794371242936,
       "tag": "0023_codex_0032_0038",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794371389782,
+      "tag": "0024_codex_0039_0046",
+      "breakpoints": true
     }
   ]
 }

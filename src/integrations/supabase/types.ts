@@ -35,6 +35,21 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_frequency_policy: {
+        Row: {
+          hours: number
+          singleton: boolean
+        }
+        Insert: {
+          hours?: number
+          singleton?: boolean
+        }
+        Update: {
+          hours?: number
+          singleton?: boolean
+        }
+        Relationships: []
+      }
       campaign_messages: {
         Row: {
           available_at: string | null
@@ -48,6 +63,7 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          injection_uncertain_at: string | null
           opened_at: string | null
           permit_granted_at: string | null
           sent_at: string | null
@@ -69,6 +85,7 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          injection_uncertain_at?: string | null
           opened_at?: string | null
           permit_granted_at?: string | null
           sent_at?: string | null
@@ -90,6 +107,7 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          injection_uncertain_at?: string | null
           opened_at?: string | null
           permit_granted_at?: string | null
           sent_at?: string | null
@@ -123,6 +141,54 @@ export type Database = {
           },
         ]
       }
+      campaign_placement_monitors: {
+        Row: {
+          campaign_id: string
+          completed_at: string | null
+          expires_at: string
+          observed_at: string | null
+          placement_id: string
+          seeds: Json
+          server_id: string
+          test_campaign_id: string
+        }
+        Insert: {
+          campaign_id: string
+          completed_at?: string | null
+          expires_at: string
+          observed_at?: string | null
+          placement_id: string
+          seeds: Json
+          server_id: string
+          test_campaign_id: string
+        }
+        Update: {
+          campaign_id?: string
+          completed_at?: string | null
+          expires_at?: string
+          observed_at?: string | null
+          placement_id?: string
+          seeds?: Json
+          server_id?: string
+          test_campaign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_placement_monitors_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_placement_monitors_test_campaign_id_fkey"
+            columns: ["test_campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           ab_decide_at: string | null
@@ -133,6 +199,7 @@ export type Database = {
           auto_pause_reason: string | null
           created_at: string
           created_by: string | null
+          fatigue_protection: boolean
           from_email: string
           from_name: string
           html: string
@@ -160,6 +227,7 @@ export type Database = {
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
+          fatigue_protection?: boolean
           from_email: string
           from_name: string
           html: string
@@ -187,6 +255,7 @@ export type Database = {
           auto_pause_reason?: string | null
           created_at?: string
           created_by?: string | null
+          fatigue_protection?: boolean
           from_email?: string
           from_name?: string
           html?: string
@@ -687,6 +756,21 @@ export type Database = {
         }
         Relationships: []
       }
+      recipient_mailbox_holds: {
+        Row: {
+          email_md5: string
+          until_at: string
+        }
+        Insert: {
+          email_md5: string
+          until_at: string
+        }
+        Update: {
+          email_md5?: string
+          until_at?: string
+        }
+        Relationships: []
+      }
       recipient_snoozes: {
         Row: {
           email_md5: string
@@ -1117,6 +1201,41 @@ export type Database = {
           },
         ]
       }
+      subscription_confirmations: {
+        Row: {
+          confirmed_at: string
+          email_md5: string
+          list_id: string
+          proof_payload: string | null
+          proof_signature: string | null
+          token_hash: string
+        }
+        Insert: {
+          confirmed_at?: string
+          email_md5: string
+          list_id: string
+          proof_payload?: string | null
+          proof_signature?: string | null
+          token_hash: string
+        }
+        Update: {
+          confirmed_at?: string
+          email_md5?: string
+          list_id?: string
+          proof_payload?: string | null
+          proof_signature?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_confirmations_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressions: {
         Row: {
           created_at: string
@@ -1392,6 +1511,7 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          injection_uncertain_at: string | null
           opened_at: string | null
           permit_granted_at: string | null
           sent_at: string | null
@@ -1411,6 +1531,16 @@ export type Database = {
       claim_incident_notification: {
         Args: { _channel: string; _key: string }
         Returns: boolean
+      }
+      confirm_contact_subscription: {
+        Args: {
+          _email: string
+          _list: string
+          _proof_payload?: string
+          _proof_signature?: string
+          _token_hash: string
+        }
+        Returns: string
       }
       decide_ab_winners: { Args: never; Returns: undefined }
       delivery_engagement_anomalies: {
@@ -1482,7 +1612,39 @@ export type Database = {
         Args: { _events: Json; _server: string }
         Returns: number
       }
+      read_campaign_delivery_by_domain: {
+        Args: { _campaign: string }
+        Returns: {
+          accepted: number
+          bounced: number
+          claimed: number
+          complained: number
+          deferred: number
+          domain: string
+          injected: number
+          injection_failed: number
+          oldest_due_at: string
+          queued: number
+        }[]
+      }
+      read_contact_subscription_proofs: {
+        Args: { _email: string; _list: string }
+        Returns: {
+          confirmed_at: string
+          proof_payload: string
+          proof_signature: string
+          token_hash: string
+        }[]
+      }
       read_recipient_preferences: { Args: { _token: string }; Returns: Json }
+      recipient_fatigue_until: {
+        Args: { _at: string; _message: string; _recipient: string }
+        Returns: string
+      }
+      reconcile_campaign_injections: {
+        Args: { _receipts: Json; _server: string }
+        Returns: number
+      }
       record_caddy_probe: {
         Args: { _checked_at: string; _healthy: boolean }
         Returns: string
@@ -1527,6 +1689,17 @@ export type Database = {
           server_id: string
           source_ipv4: string
         }[]
+      }
+      start_campaign_placement_monitor: {
+        Args: {
+          _campaign: string
+          _expires: string
+          _placement: string
+          _seeds: Json
+          _server: string
+          _token: string
+        }
+        Returns: undefined
       }
       unsubscribe_campaign_message: {
         Args: { _server?: string; _token: string }
