@@ -54,9 +54,6 @@ export type Database = {
           status: string
           unsub_token: string
           variant: number | null
-          verified_click_id: string | null
-          permit_granted_at: string | null
-          injection_uncertain_at: string | null
         }
         Insert: {
           available_at?: string | null
@@ -76,9 +73,6 @@ export type Database = {
           status?: string
           unsub_token?: string
           variant?: number | null
-          verified_click_id?: string | null
-          permit_granted_at?: string | null
-          injection_uncertain_at?: string | null
         }
         Update: {
           available_at?: string | null
@@ -98,9 +92,6 @@ export type Database = {
           status?: string
           unsub_token?: string
           variant?: number | null
-          verified_click_id?: string | null
-          permit_granted_at?: string | null
-          injection_uncertain_at?: string | null
         }
         Relationships: [
           {
@@ -150,10 +141,6 @@ export type Database = {
           suppressed: number
           total: number
           vmta_pool_id: string | null
-          amp_html: string | null
-          topic: string | null
-          weekly_digest: boolean
-          fatigue_protection: boolean
         }
         Insert: {
           ab_decide_at?: string | null
@@ -178,10 +165,6 @@ export type Database = {
           suppressed?: number
           total?: number
           vmta_pool_id?: string | null
-          amp_html?: string | null
-          topic?: string | null
-          weekly_digest?: boolean
-          fatigue_protection?: boolean
         }
         Update: {
           ab_decide_at?: string | null
@@ -206,10 +189,6 @@ export type Database = {
           suppressed?: number
           total?: number
           vmta_pool_id?: string | null
-          amp_html?: string | null
-          topic?: string | null
-          weekly_digest?: boolean
-          fatigue_protection?: boolean
         }
         Relationships: [
           {
@@ -359,7 +338,6 @@ export type Database = {
           recipient: string
           server_id: string
           smtp_code: number | null
-          source_ipv4: string | null
         }
         Insert: {
           campaign_id: string
@@ -375,7 +353,6 @@ export type Database = {
           recipient: string
           server_id: string
           smtp_code?: number | null
-          source_ipv4?: string | null
         }
         Update: {
           campaign_id?: string
@@ -391,7 +368,6 @@ export type Database = {
           recipient?: string
           server_id?: string
           smtp_code?: number | null
-          source_ipv4?: string | null
         }
         Relationships: [
           {
@@ -1257,18 +1233,6 @@ export type Database = {
         }
         Relationships: []
       }
-      campaign_frequency_policy: {
-        Row: { singleton: boolean; hours: number }
-        Insert: { singleton?: boolean; hours?: number }
-        Update: { hours?: number }
-        Relationships: []
-      }
-      campaign_placement_monitors: {
-        Row: { campaign_id: string; test_campaign_id: string; server_id: string; placement_id: string; expires_at: string; seeds: Json; observed_at: string | null; completed_at: string | null }
-        Insert: { campaign_id: string; test_campaign_id: string; server_id: string; placement_id: string; expires_at: string; seeds: Json; observed_at?: string | null; completed_at?: string | null }
-        Update: { seeds?: Json; observed_at?: string | null; completed_at?: string | null }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1390,62 +1354,6 @@ export type Database = {
         Args: { _checked_at: string; _healthy: boolean }
         Returns: string
       }
-      register_verified_campaign_click: { Args: { _id: string }; Returns: string | null }
-      unsubscribe_campaign_message: { Args: { _token: string; _server?: string }; Returns: { email: string; campaign_id: string; newly_suppressed: boolean }[] }
-      record_sponsor_postback: {
-        Args: {
-          _account: string
-          _campaign: string
-          _offer: string | null
-          _external_id: string
-          _currency: string
-          _amount: number
-          _status: string
-          _description: string
-          _by: string
-        }
-        Returns: boolean
-      }
-      read_recipient_preferences: { Args: { _token: string }; Returns: Json }
-      set_recipient_preferences: { Args: { _token: string; _weekly: boolean }; Returns: string }
-      set_recipient_topics: { Args: { _token: string; _topics: string[] | null }; Returns: string }
-      set_recipient_snooze: { Args: { _token: string; _days: number }; Returns: string }
-      set_recipient_digest: { Args: { _token: string }; Returns: string }
-      agent_confirm_suppressions: { Args: { _server: string; _ids: string[] }; Returns: string[] }
-      confirm_contact_subscription: { Args: { _list: string; _email: string; _token_hash: string; _proof_payload?: string; _proof_signature?: string }; Returns: string }
-      read_contact_subscription_proofs: { Args: { _list: string; _email: string }; Returns: { token_hash: string; confirmed_at: string; proof_payload: string | null; proof_signature: string | null }[] }
-      ingest_attributed_delivery_events: { Args: { _server: string; _events: Json }; Returns: number }
-      source_isp_history: {
-        Args: { _server: string | null; _domains: string[] }
-        Returns: { server_id: string; source_ipv4: string; domain: string; delivered: number; sample: number }[]
-      }
-      campaign_audience_page: {
-        Args: { _list: string; _after: string | null; _with_time_zone: boolean; _digest: boolean }
-        Returns: { id: string; email: string; first_name: string | null; time_zone: string | null; suppressed: boolean; format_excluded: boolean }[]
-      }
-      delivery_engagement_anomalies: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          campaign_id: string
-          campaign_name: string
-          isp: string
-          first_at: string
-          accepted: number
-          engaged: number
-          baseline_campaigns: number
-          baseline_accepted: number
-          baseline_engaged: number
-        }[]
-      }
-      start_campaign_placement_monitor: {
-        Args: { _campaign: string; _server: string; _placement: string; _token: string; _expires: string; _seeds: Json }
-        Returns: undefined
-      }
-      read_campaign_delivery_by_domain: {
-        Args: { _campaign: string }
-        Returns: { domain: string; queued: number; claimed: number; injected: number; injection_failed: number; accepted: number; deferred: number; bounced: number; complained: number; oldest_due_at: string | null }[]
-      }
-      reconcile_campaign_injections: { Args: { _server: string; _receipts: Json }; Returns: number }
     }
     Enums: {
       app_role: "superadmin" | "worker"
