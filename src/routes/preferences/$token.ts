@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { campaignTopics, campaignTopicLabels, isCampaignTopic, parseTopicPreferences } from '@/lib/campaign-topics';
+import { parseSponsorPreference, sponsorPreferenceForms } from '@/lib/sponsor-preferences';
 
 const tokenPattern = /^[a-f0-9]{36}$/;
 const noncePattern = /^[a-f0-9]{32}$/;
@@ -72,6 +73,7 @@ export const Route = createFileRoute('/preferences/$token')({
         const path = `/preferences/${token}`;
         const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
         const cookie = `${cookieName}=${nonce}; Path=${path}; Max-Age=1200; SameSite=Strict; HttpOnly${secure}`;
+        const sponsors = await db.rpc('read_recipient_sponsor_options', { _token: token, _scope: 'campaign' });
         return page('Mes préférences e-mail', `
           ${brand ? `<p><strong>${brand}</strong></p>` : ''}<p>Votre fréquence actuelle est affichée ci-dessous.</p><p>${current}</p>
           <form method="post" action="${path}">
@@ -108,6 +110,7 @@ export const Route = createFileRoute('/preferences/$token')({
             <button type="submit">Enregistrer mes centres d’intérêt</button>
           </form>
           <small>Vos centres d’intérêt s’appliquent aux campagnes associées à un thème. Les campagnes sans thème suivent votre fréquence habituelle ou hebdomadaire.</small>
+          ${sponsorPreferenceForms(sponsors.data ?? [], nonce)}
           <small>Le réglage s’applique aux nouveaux envois. Les messages déjà confiés au serveur d’envoi peuvent encore arriver.</small>
           <p><a href="/api/public/unsub/${token}">Me désinscrire entièrement</a></p>
         `, 200, cookie);
@@ -123,7 +126,7 @@ export const Route = createFileRoute('/preferences/$token')({
           .find(part => part.startsWith(cookieName + '='))?.slice(cookieName.length + 1);
         if (!form || !cookie || !noncePattern.test(cookie) || form.getAll('nonce').length !== 1 || form.get('nonce') !== cookie) return expired();
         const action = form.get('action');
-        if (form.getAll('action').length !== 1 || (action !== 'cadence' && action !== 'topics' && action !== 'snooze')) return expired();
+        if (form.getAll('action').length !== 1 || (action !== 'cadence' && action !== 'topics' && action !== 'snooze' && action !== 'sponsor')) return expired();
         const days = form.get('days');
         if (action === 'snooze' && (form.getAll('days').length !== 1 || (days !== '0' && days !== '30' && days !== '60'))) return expired();
         const cadence = form.get('cadence');
@@ -131,7 +134,11 @@ export const Route = createFileRoute('/preferences/$token')({
         const topics = action === 'topics' ? parseTopicPreferences(form) : null;
         if (topics === undefined) return page('Sélection invalide', `<p>Pour limiter les thèmes, cochez au moins un centre d’intérêt.</p><p><a href="${path}">Revenir à mes préférences</a></p>`, 400);
         const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
-        const { data, error } = action === 'topics'
+        const sponsor = action === 'sponsor' ? parseSponsorPreference(form) : null;
+        if (action === 'sponsor' && !sponsor) return expired();
+        const { data, error } = sponsor
+          ? await db.rpc('set_recipient_sponsor_option', { _token: token, _scope: 'campaign', _brand: sponsor.id, _blocked: sponsor.blocked })
+          : action === 'topics'
           ? await db.rpc('set_recipient_topics', { _token: token, _topics: topics })
           : action === 'snooze' ? await db.rpc('set_recipient_snooze', { _token: token, _days: Number(days) })
           : cadence === 'digest' ? await db.rpc('set_recipient_digest', { _token: token })
@@ -141,7 +148,9 @@ export const Route = createFileRoute('/preferences/$token')({
         if (data === 'suppressed') return page('Adresse exclue des campagnes', '<p>Cette adresse ne reçoit plus d’envois de campagne.</p>');
         if (data !== 'saved') return unavailable();
         const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-        const summary = action === 'topics'
+        const summary = sponsor
+          ? (sponsor.blocked ? 'Les offres de cette marque sont arrêtées.' : 'Le blocage de cette marque a été retiré.')
+          : action === 'topics'
           ? (topics ? `Thèmes sélectionnés. ${topics.map(topic => campaignTopicLabels[topic]).join(', ')}.` : 'Tous les thèmes.')
           : action === 'snooze' ? (days === '0' ? 'Les envois reprennent selon vos préférences.' : `Envois en pause pendant ${Number(days)} jours.`)
           : cadence === 'digest' ? 'Vous recevrez uniquement le récapitulatif hebdomadaire.'

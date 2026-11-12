@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { operationsWidgetSchema } from './operations-widgets';
 
 async function requireAdmin(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const role = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
@@ -11,6 +12,16 @@ async function requireAdmin(context: { supabase: SupabaseClient<Database>; userI
 
 const hour = 3_600_000;
 const iso = (time: number) => new Date(time).toISOString();
+
+export const readOperationsWidgets = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const result = await supabaseAdmin.rpc('read_operations_widgets');
+    if (result.error?.code === 'PGRST202') return null;
+    if (result.error) throw new Error('Les widgets d’exploitation sont indisponibles.');
+    return operationsWidgetSchema.parse(result.data);
+  });
 
 export const readCockpitTraffic = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator(input => z.enum(['24h', '7j']).parse(input))

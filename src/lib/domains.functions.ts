@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 import { dmarcDomain } from './dmarc-policy';
 import { recipientDomain } from './email-address';
 
@@ -13,6 +15,30 @@ async function admin(ctx: { supabase: any; userId: string }) {
 const PUBLIC = "id, domain, account_id, zone_id, ip, selector_a, selector_b, dkim_pub_a, dkim_pub_b, checks, checked_at, synced_at, created_at";
 const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+const quotaDomain = z.string().trim().toLowerCase().max(253).regex(DOMAIN_RE);
+
+export const readSenderDomainQuota = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: quotaDomain }).parse(input))
+  .handler(async ({ context, data }) => {
+    const db = await admin(context) as SupabaseClient<Database>;
+    const result = await db.rpc('read_sender_domain_quota', { _domain: data.domain }).maybeSingle();
+    if (result.error?.code === 'PGRST202') return null;
+    if (result.error || !result.data) throw new Error('Le compteur d’envoi du domaine est indisponible.');
+    return result.data;
+  });
+
+export const setSenderDomainQuota = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ domain: quotaDomain, limit: z.number().int().min(1).max(100_000_000).nullable() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const db = await admin(context) as SupabaseClient<Database>;
+    const domain = await db.from('sending_domains').select('id').eq('domain', data.domain).maybeSingle();
+    if (domain.error || !domain.data) throw new Error('Domaine d’envoi introuvable.');
+    const result = await db.rpc('set_sender_domain_quota', { _domain: data.domain, _daily_limit: data.limit });
+    if (result.error || !result.data) throw new Error('Impossible d’enregistrer le plafond de ce domaine.');
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'domain.quota_changed', entityType: 'sending_domain', entityId: data.domain, summary: { limit: data.limit } });
+  });
 
 export const listDomains = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -43,6 +69,9 @@ export const addDomain = createServerFn({ method: "POST" }).middleware([requireS
       created_by: context.userId,
     });
     if (error) throw new Error(error.message.includes("duplicate") ? "Ce domaine existe déjà" : error.message);
+    const { recordAuditEvent } = await import('./audit-log.server');
+    const created = await db.from('sending_domains').select('id').eq('domain', data.domain).maybeSingle();
+    if (created.data) await recordAuditEvent(db, { actorId: context.userId, action: 'domain.created', entityType: 'sending_domain', entityId: created.data.id });
     return { ok: true };
   });
 
@@ -53,7 +82,10 @@ export const updateDomain = createServerFn({ method: "POST" }).middleware([requi
   })
   .handler(async ({ data, context }) => {
     const db = await admin(context);
-    await db.from("sending_domains").update({ ip: data.ip, account_id: data.accountId, zone_id: data.zoneId }).eq("id", data.id);
+    const changed = await db.from("sending_domains").update({ ip: data.ip, account_id: data.accountId, zone_id: data.zoneId }).eq("id", data.id).select('id').maybeSingle();
+    if (changed.error) throw new Error('Impossible de modifier le domaine.');
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'domain.updated', entityType: 'sending_domain', entityId: data.id });
     return { ok: true };
   });
 
@@ -69,6 +101,26 @@ export const checkDomainDns = createServerFn({ method: "POST" }).middleware([req
     return checks;
   });
 
+export const checkDomainTls = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+ .inputValidator(i => z.object({id:z.string().uuid()}).parse(i))
+ .handler(async ({data,context}) => {
+  const db = await admin(context);
+  const {data:d,error} = await db.from('sending_domains').select(PUBLIC).eq('id',data.id).single();
+  if(error||!d) throw new Error('Domaine introuvable.');
+  const {healDomain} = await import('./domains.server');const healed=await healDomain(db,d);
+  if(!healed.acc||!healed.d.zone_id) throw new Error(healed.note||'Zone Cloudflare introuvable.');
+  const {cfCertificatePacks}=await import('./providers.server');const packs=await cfCertificatePacks(healed.acc,healed.d.zone_id);
+  const matches=packs.filter(p=>p.host.split(', ').some((host:string)=>host===healed.d.domain||host==='*.'+healed.d.domain));
+  const nearest=matches.filter(p=>p.expires_on).sort((a,b)=>Date.parse(a.expires_on)-Date.parse(b.expires_on))[0]??null;
+  const alreadyAlerted=nearest&&Date.parse(nearest.expires_on??'')-Date.now()<30*86400000
+    ? await db.from('tls_certificate_checks').select('id').eq('domain_id',data.id).eq('expires_on',nearest.expires_on).gte('last_alerted_at',new Date(Date.now()-7*86400000).toISOString()).limit(1)
+    : {data:[]};
+  if(matches.length){const saved=await db.from('tls_certificate_checks').upsert(matches.map(p=>({domain_id:data.id,certificate_host:p.host,certificate_status:p.status,expires_on:p.expires_on,checked_at:new Date().toISOString()})),{onConflict:'domain_id,certificate_host'});if(saved.error)throw new Error('Le résultat TLS a été trouvé mais son historique ne peut pas être enregistré (migration 0085).');}
+  if(nearest&&Date.parse(nearest.expires_on??'')-Date.now()<30*86400000&&!alreadyAlerted.data?.length){const {fireWebhooks}=await import('./webhooks.server');const delivered=await fireWebhooks('tls_expiration',{domain:healed.d.domain,certificate_host:nearest.host,expires_on:nearest.expires_on,status:nearest.status,days_remaining:Math.ceil((Date.parse(nearest.expires_on??'')-Date.now())/86400000)});if(delivered)await db.from('tls_certificate_checks').update({last_alerted_at:new Date().toISOString()}).eq('domain_id',data.id).eq('certificate_host',nearest.host);}
+  const {recordAuditEvent}=await import('./audit-log.server');await recordAuditEvent(db,{actorId:context.userId,action:'domain.tls_checked',entityType:'sending_domain',entityId:data.id,summary:{certificates:matches.length,expiresOn:nearest?.expires_on??null}});
+  return {certificates:matches,nearest,checkedAt:new Date().toISOString()};
+ });
+
 export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string }) => ({ id: String(i.id) }))
   .handler(async ({ data, context }) => {
@@ -79,10 +131,17 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     const healed = await healDomain(db, d);
     if (!healed.acc) throw new Error(healed.note);
     const { expectedRecords } = await import("./domains.server");
-    const { cfUpsert } = await import("./providers.server");
-    const res = await cfUpsert(healed.acc, healed.d.zone_id, expectedRecords(healed.d));
+    const { cfUpsert, cfCaptureDnsRecords } = await import("./providers.server");
+    const desiredRecords=expectedRecords(healed.d);
+    const managedRecords=desiredRecords.map(({type,name,content})=>({type,name,marker:type==='A'?'*':type==='MX'?content:(content.match(/^v=[^; ]+/i)?.[0]??content)}));
+    const snapshot=await cfCaptureDnsRecords(healed.acc,healed.d.zone_id,managedRecords);
+    const revision=await db.from('dns_config_revisions').insert({domain_id:data.id,account_id:healed.acc.id,zone_id:healed.d.zone_id,records:snapshot.records,managed_records:snapshot.managed,reason:'before_publish',created_by:context.userId});
+    if(revision.error)throw new Error('Impossible de conserver l’historique DNS. Appliquez la migration 0085 avant de publier.');
+    const res = await cfUpsert(healed.acc, healed.d.zone_id, desiredRecords);
     const bad = res.filter((r) => !r.ok);
     if (bad.length === res.length) throw new Error(bad[0]?.error ?? "Cloudflare a refusé la publication");
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'domain.dns_records_published', entityType: 'sending_domain', entityId: data.id, summary: { records: res.filter(row => row.ok).length } });
     await db.from("sending_domains").update({ synced_at: new Date().toISOString() }).eq("id", data.id);
     // Auto-push DKIM keys: bind domain to every connected KumoMTA server; agents pull keys on next heartbeat.
     let serversBound = 0;
@@ -95,6 +154,26 @@ export const syncDomainDns = createServerFn({ method: "POST" }).middleware([requ
     void serversBound;
     return res;
   });
+
+export const listDnsRevisions=createServerFn({method:'POST'}).middleware([requireSupabaseAuth])
+ .inputValidator(i=>z.object({domainId:z.string().uuid()}).parse(i))
+ .handler(async ({context,data})=>{const db=await admin(context);const {data:rows,error}=await db.from('dns_config_revisions').select('id,domain_id,reason,created_at,created_by,managed_records,records').eq('domain_id',data.domainId).order('created_at',{ascending:false}).limit(30);if(error)throw new Error('Historique DNS indisponible. Appliquez la migration 0085.');return rows??[];});
+
+export const restoreDnsRevision=createServerFn({method:'POST'}).middleware([requireSupabaseAuth])
+ .inputValidator(i=>z.object({revisionId:z.string().uuid(),confirmed:z.literal(true)}).parse(i))
+ .handler(async ({context,data})=>{
+  const db=await admin(context);const revision=await db.from('dns_config_revisions').select('*').eq('id',data.revisionId).single();if(revision.error||!revision.data)throw new Error('Révision DNS introuvable.');
+  const domain=await db.from('sending_domains').select(PUBLIC).eq('id',revision.data.domain_id).single();if(domain.error||!domain.data)throw new Error('Domaine introuvable.');
+  const {healDomain}=await import('./domains.server');const healed=await healDomain(db,domain.data);if(!healed.acc||!healed.d.zone_id)throw new Error(healed.note||'Zone Cloudflare introuvable.');
+  if(healed.d.zone_id!==revision.data.zone_id)throw new Error('La zone Cloudflare de ce domaine a changé depuis cette révision. Cette sauvegarde ne peut pas être appliquée à une autre zone.');
+  const {cfCaptureDnsRecords,cfRestoreDnsRecords}=await import('./providers.server');
+  const managed=revision.data.managed_records as {type:string;name:string;marker:string}[];const before=await cfCaptureDnsRecords(healed.acc,healed.d.zone_id,managed);
+  const history=await db.from('dns_config_revisions').insert({domain_id:domain.data.id,account_id:healed.acc.id,zone_id:healed.d.zone_id,records:before.records,managed_records:before.managed,reason:'before_restore',created_by:context.userId});if(history.error)throw new Error('Impossible de créer le point de retour courant.');
+  const restored=await cfRestoreDnsRecords(healed.acc,healed.d.zone_id,managed,revision.data.records as any[]);const failed=restored.filter(row=>!row.ok);
+  if(failed.length)throw new Error(`Restauration partielle (${failed.length}/${restored.length}). Vérifiez les autorisations Cloudflare avant un nouvel essai.`);
+  const {recordAuditEvent}=await import('./audit-log.server');await recordAuditEvent(db,{actorId:context.userId,action:'domain.dns_revision_restored',entityType:'sending_domain',entityId:domain.data.id,summary:{revisionId:data.revisionId,recordCount:restored.length}});
+  return {ok:true,restored:restored.length};
+ });
 
 export const publishInitialDane = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator(input => z.object({ domain: z.string().max(253), mx: z.string().max(253),
@@ -135,7 +214,11 @@ export const deleteDomain = createServerFn({ method: "POST" }).middleware([requi
   .inputValidator((i: { id: string }) => ({ id: String(i.id) }))
   .handler(async ({ data, context }) => {
     const db = await admin(context);
-    await db.from("sending_domains").delete().eq("id", data.id);
+    const removed = await db.from("sending_domains").select('domain').eq("id", data.id).maybeSingle();
+    const deleted = await db.from("sending_domains").delete().eq("id", data.id);
+    if (deleted.error) throw new Error('Impossible de supprimer ce domaine.');
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'domain.deleted', entityType: 'sending_domain', entityId: data.id, summary: { domain: removed.data?.domain ?? 'unknown' } });
     return { ok: true };
   });
 

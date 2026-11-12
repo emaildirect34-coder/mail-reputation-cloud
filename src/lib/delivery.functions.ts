@@ -30,12 +30,19 @@ export const readMessageTrace = createServerFn({ method: 'POST' }).middleware([r
 
     const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
     const basic = 'id,email,campaign_id,server_id,status,delivery_state,error,created_at,claimed_at,sent_at';
-    const current = await db.from('campaign_messages').select(`${basic},available_at,permit_granted_at,variant`).eq('id', reference.id).maybeSingle();
+    const queueFields = `${basic},available_at,permit_granted_at,variant` as const;
+    const current = await db.from('campaign_messages').select(`${queueFields},expired_at`).eq('id', reference.id).maybeSingle();
     let message = current.data;
     if (current.error?.code === '42703') {
-      const legacy = await db.from('campaign_messages').select(basic).eq('id', reference.id).maybeSingle();
-      if (legacy.error) throw new Error('Lecture de la file du message impossible.');
-      message = legacy.data && { ...legacy.data, available_at: null, permit_granted_at: null, variant: null };
+      const previous = await db.from('campaign_messages').select(queueFields).eq('id', reference.id).maybeSingle();
+      if (previous.error?.code === '42703') {
+        const legacy = await db.from('campaign_messages').select(basic).eq('id', reference.id).maybeSingle();
+        if (legacy.error) throw new Error('Lecture de la file du message impossible.');
+        message = legacy.data && { ...legacy.data, available_at: null, permit_granted_at: null, variant: null, expired_at: null };
+      } else {
+        if (previous.error) throw new Error('Lecture de la file du message impossible.');
+        message = previous.data && { ...previous.data, expired_at: null };
+      }
     } else if (current.error) throw new Error('Lecture de la file du message impossible.');
     if (!message) return null;
 

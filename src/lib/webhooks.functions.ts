@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
-const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'daily_report'] as const;
+const EVENTS = ['delivered', 'bounce', 'deferred', 'complaint', 'unsubscribe', 'daily_report', 'tls_expiration'] as const;
 
 async function admin(context: any) {
   const r = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
@@ -13,8 +13,25 @@ export const listWebhooks = createServerFn({ method: 'POST' }).middleware([requi
   await admin(context);
   const r = await context.supabase.from('webhook_endpoints').select('*').order('created_at');
   if (r.error) throw new Error('Lecture impossible');
-  return { hooks: r.data ?? [], events: EVENTS as unknown as string[] };
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');const serviceDb:any=supabaseAdmin;
+  const q = await serviceDb.from('webhook_retry_deliveries').select('id,endpoint_id,event,attempt_count,status,next_attempt_at,last_status,last_error,created_at,sent_at').order('created_at', { ascending: false }).limit(100);
+  if (q.error && q.error.code !== 'PGRST205') throw new Error('Lecture de la file de relance impossible');
+  const metricRows=await serviceDb.from('webhook_delivery_attempts').select('ok,duration_ms,created_at').gte('created_at',new Date(Date.now()-24*60*60_000).toISOString()).order('created_at',{ascending:false}).limit(500);
+  if(metricRows.error&&!['PGRST205','42P01'].includes(metricRows.error.code))throw new Error('Mesure des webhooks indisponible.');
+  const attempts=metricRows.data??[],times=attempts.map((x:any)=>x.duration_ms).sort((a:number,b:number)=>a-b);
+  const percentile=(p:number)=>times.length?times[Math.ceil(times.length*p)-1]:null;
+  return { hooks: r.data ?? [], events: EVENTS as unknown as string[], retries: q.data ?? [], metrics:{count:attempts.length,successRate:attempts.length?attempts.filter((x:any)=>x.ok).length/attempts.length:null,p50Ms:percentile(.5),p95Ms:percentile(.95)} };
 });
+
+export const retryWebhookNow = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(i => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await admin(context);
+    const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+    const r = await (supabaseAdmin as any).from('webhook_retry_deliveries').update({ status: 'queued', attempt_count: 1, next_attempt_at: new Date().toISOString(), lease_until: null }).eq('id', data.id).eq('status', 'dead').select('id').maybeSingle();
+    if (r.error || !r.data) throw new Error('Cette relance n’est plus disponible.');
+    return { ok: true };
+  });
 
 export const saveWebhook = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator(i => z.object({ url: z.string().url().startsWith('https://').max(500), events: z.array(z.enum(EVENTS)).min(1) }).parse(i))

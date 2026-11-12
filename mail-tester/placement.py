@@ -1,5 +1,6 @@
 """Gmail seed management and placement endpoints for the existing Mail-Tester."""
 import asyncio
+import json
 import imaplib
 import os
 import re
@@ -8,6 +9,8 @@ import ssl
 import time
 from contextlib import asynccontextmanager, contextmanager, suppress
 from datetime import datetime, timezone
+from email import policy
+from email.parser import BytesHeaderParser
 from pathlib import Path
 
 import yaml
@@ -51,12 +54,15 @@ def accounts(conn):
                 provider = entry["provider"].strip()
                 host = entry["host"].strip()
                 port = int(entry.get("port", 993))
-                if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address) or not provider or not host or not 0 < port < 65536 or not isinstance(entry["password"], str):
+                authserv = entry.get("authserv", [])
+                if (not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address) or not provider or not host
+                        or not 0 < port < 65536 or not isinstance(entry["password"], str)
+                        or not isinstance(authserv, list) or not all(isinstance(name, str) and re.fullmatch(r"\.?[a-zA-Z0-9.-]+", name) for name in authserv)):
                     raise ValueError()
                 result[address] = dict(provider=provider, password=entry["password"], host=host,
                                        port=port, username=entry.get("username"),
                                        google=host == "imap.gmail.com", spam=entry.get("spam_folder"),
-                                       other=entry.get("other_folder"))
+                                       other=entry.get("other_folder"), authserv=[name.lower() for name in authserv])
         except (KeyError, TypeError, ValueError, AttributeError, OSError, yaml.YAMLError):
             raise HTTPException(503, "Configuration des boîtes témoins du VPS invalide.") from None
     return result
@@ -75,6 +81,8 @@ def initialize():
             folder TEXT, received_at TEXT, PRIMARY KEY(test_id, address))""")
         if not any(row[1] == "provider" for row in conn.execute("PRAGMA table_info(placement_results)")):
             conn.execute("ALTER TABLE placement_results ADD COLUMN provider TEXT NOT NULL DEFAULT 'Gmail'")
+        if not any(row[1] == "authentication" for row in conn.execute("PRAGMA table_info(placement_results)")):
+            conn.execute("ALTER TABLE placement_results ADD COLUMN authentication TEXT")
 
 
 @app.get(base + "/seeds", dependencies=auth)
@@ -113,8 +121,9 @@ def delete_seed(address: str):
 
 
 def results(conn, identifier):
-    rows = conn.execute("SELECT address,placement,folder,received_at,provider FROM placement_results WHERE test_id=? ORDER BY address", (identifier,))
-    return [dict(provider=provider, address=a, placement=p, folder=f, received_at=t) for a, p, f, t, provider in rows]
+    rows = conn.execute("SELECT address,placement,folder,received_at,provider,authentication FROM placement_results WHERE test_id=? ORDER BY address", (identifier,))
+    return [dict(provider=provider, address=a, placement=p, folder=f, received_at=t,
+                 authentication=json.loads(authn) if authn else None) for a, p, f, t, provider, authn in rows]
 
 
 @app.post(base, status_code=201, dependencies=auth)
@@ -148,6 +157,39 @@ def get_placement(identifier: str):
                     status="waiting" if any(s["placement"] == "pending" for s in seeds) else "done", seeds=seeds)
 
 
+def authentication_evidence(raw, seed):
+    headers = BytesHeaderParser(policy=policy.default).parsebytes(raw)
+    # Only use the first result, inserted by the receiving service. Sites that
+    # use a different authserv-id can declare it in their private seed config.
+    result = next(iter(headers.get_all("Authentication-Results", [])), "")
+    authserv = str(result).partition(";")[0].strip().lower()
+    expected = seed.get("authserv") or (["mx.google.com"] if seed["google"] else [])
+    trusted = any(authserv == name or (name.startswith(".") and authserv.endswith(name)) for name in expected)
+    methods = {}
+    for method in ("spf", "dkim", "dmarc"):
+        matches = re.findall(r"(?:^|;)\s*" + method + r"\s*=\s*([a-z]+)\b", str(result).lower()) if trusted else []
+        methods[method] = "pass" if "pass" in matches else ("fail" if matches else "unknown")
+    signed = False
+    if methods["dkim"] == "pass" and methods["dmarc"] == "pass":
+        signatures = [dict((key.strip().lower(), value.strip()) for part in str(signature).split(";")
+                      for key, sep, value in [part.partition("=")] if sep)
+                      for signature in headers.get_all("DKIM-Signature", [])]
+        for passed in re.findall(r"(?:^|;)\s*dkim\s*=\s*pass\b([^;]*)", str(result), re.I):
+            fields = dict(re.findall(r'header\.([disb])=([^\s;]+)', passed, re.I))
+            domain = (fields.get("d") or fields.get("i", "").split("@")[-1]).strip('"').lower()
+            selector, prefix = fields.get("s", "").strip('"'), fields.get("b", "").strip('"')
+            eligible = [tags for tags in signatures if domain and tags.get("d", "").lower() == domain
+                        and (not selector or tags.get("s") == selector)
+                        and (not prefix or re.sub(r"\s+", "", tags.get("b", "")).startswith(prefix))]
+            if len(eligible) == 1 and {"list-unsubscribe", "list-unsubscribe-post"} <= {
+                    name.strip().lower() for name in eligible[0].get("h", "").split(":")}:
+                signed = True
+                break
+    https_unsub = re.search(r"<https://[^\s<>]+>", str(headers.get("List-Unsubscribe", "")), re.I)
+    return dict(**methods, one_click=bool(signed and https_unsub and
+                str(headers.get("List-Unsubscribe-Post", "")).strip() == "List-Unsubscribe=One-Click"))
+
+
 def inspect_seed(address, seed, pending):
     with mailbox(address, seed["password"], seed.get("host", "imap.gmail.com"), seed.get("port", 993), seed.get("username")) as client:
         status, entries = client.list()
@@ -166,14 +208,16 @@ def inspect_seed(address, seed, pending):
             if not pending or client.select(folder, readonly=True)[0] != "OK":
                 continue
             for identifier, token in tuple(pending.items()):
-                status, hits = client.uid("SEARCH", None, "OR", "SUBJECT", token, "BODY", token)
+                status, hits = client.uid("SEARCH", None, "OR", "HEADER", "X-Email-Direct-Placement", token,
+                                          "OR", "SUBJECT", token, "BODY", token)
                 if status != "OK" or not hits or not hits[0]:
                     continue
                 uid = hits[0].split()[-1]
-                status, metadata = client.uid("FETCH", uid, "(INTERNALDATE)")
+                status, metadata = client.uid("FETCH", uid, "(INTERNALDATE BODY.PEEK[HEADER.FIELDS (AUTHENTICATION-RESULTS DKIM-SIGNATURE LIST-UNSUBSCRIBE LIST-UNSUBSCRIBE-POST)])")
                 if status != "OK":
                     continue
-                info = b" ".join(item for item in metadata if isinstance(item, bytes))
+                info = b" ".join(item[0] for item in metadata if isinstance(item, tuple))
+                raw_headers = b"".join(item[1] for item in metadata if isinstance(item, tuple) and isinstance(item[1], bytes))
                 category = placement
                 if placement == "inbox" and seed["google"]:
                     category_status, matches = client.uid("SEARCH", None, "UID", uid, "X-GM-RAW", '"category:promotions"')
@@ -184,9 +228,10 @@ def inspect_seed(address, seed, pending):
                 date = imaplib.Internaldate2tuple(info)
                 received = iso(time.mktime(date)) if date else None
                 with db() as conn, conn:
-                    conn.execute("""UPDATE placement_results SET placement=?, folder=?, received_at=?
+                    conn.execute("""UPDATE placement_results SET placement=?, folder=?, received_at=?, authentication=?
                         WHERE test_id=? AND address=? AND placement='pending'""",
-                        (category, folder.decode("ascii", "replace").strip('"'), received, identifier, address))
+                        (category, folder.decode("ascii", "replace").strip('"'), received,
+                         json.dumps(authentication_evidence(raw_headers, seed)), identifier, address))
                 del pending[identifier]
 
 

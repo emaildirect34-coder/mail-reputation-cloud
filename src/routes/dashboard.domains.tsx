@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
 import { StatusBar } from "@/components/dash/campaign-tabs";
 import { toast } from "sonner";
-import { listDomains, addDomain, updateDomain, checkDomainDns, syncDomainDns, deleteDomain, setupTracking, trackingStatus } from "@/lib/domains.functions";
+import { listDomains, addDomain, updateDomain, checkDomainDns, checkDomainTls, syncDomainDns, listDnsRevisions, restoreDnsRevision, deleteDomain, setupTracking, trackingStatus } from "@/lib/domains.functions";
+import { SenderDomainQuota } from "@/components/dash/sender-domain-quota";
 import { listAccounts, listZones, listManagedServers } from "@/lib/providers.functions";
 import { bindDomainServer, listDomainBindings } from '@/lib/infrastructure.functions';
 import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
@@ -41,6 +42,8 @@ export function Domains() {
   const qc = useQueryClient();
   const fList = useServerFn(listDomains), fAdd = useServerFn(addDomain), fUpd = useServerFn(updateDomain);
   const fCheck = useServerFn(checkDomainDns), fSync = useServerFn(syncDomainDns), fDel = useServerFn(deleteDomain);
+  const fTls = useServerFn(checkDomainTls);
+  const fDnsRevisions=useServerFn(listDnsRevisions),fDnsRestore=useServerFn(restoreDnsRevision);
   const fAcc = useServerFn(listAccounts), fZones = useServerFn(listZones);
   const fServers = useServerFn(listManagedServers), fBind = useServerFn(bindDomainServer), fBindings = useServerFn(listDomainBindings);
   const servers = useQuery({queryKey:['domain-servers'],queryFn:()=>fServers()});
@@ -54,8 +57,10 @@ export function Domains() {
 
   const [selId, setSelId] = useState<string | null>(null);
   const cur = domains.find((d) => d.id === selId) ?? domains[0];
+  const revisions=useQuery({queryKey:['dns-revisions',cur?.id],queryFn:()=>fDnsRevisions({data:{domainId:cur!.id}}),enabled:!!cur?.id});
   const [form, setForm] = useState({ domain: "", ip: "" });
   const [busy, setBusy] = useState<string | null>(null);
+  const [tlsCheck,setTlsCheck]=useState<{domainId:string;expiresOn:string|null;hosts:string;status:string}|null>(null);
   const [cfAcc, setCfAcc] = useState(""); const [zone, setZone] = useState(""); const [ip, setIp] = useState("");
   useEffect(() => { setCfAcc(cur?.account_id ?? ""); setZone(cur?.zone_id ?? ""); setIp(cur?.ip ?? ""); }, [cur?.id]);
   const zones = useQuery({ queryKey: ["zones", cfAcc], queryFn: () => fZones({ data: { id: cfAcc } }), enabled: !!cfAcc });
@@ -155,6 +160,7 @@ export function Domains() {
             <div className="flex items-end"><Button className="w-full" variant="outline" disabled={busy === "upd"} onClick={() => run("upd", () => fUpd({ data: { id: cur.id, ip, accountId: cfAcc, zoneId: zone } }), "Réglages enregistrés")}>Enregistrer</Button></div>
           </div>
           {cfAccounts.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Ajoutez un compte Cloudflare dans Fournisseurs pour publier automatiquement.</p>}
+          <SenderDomainQuota key={cur.domain} domain={cur.domain} />
           <div className="mt-3">
             <DataTable cols={["Contrôle", "Type", "Nom", "Valeur attendue", "En ligne"]}
               rows={cur.records.map((r) => {
@@ -165,6 +171,7 @@ export function Domains() {
               })} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Sélecteurs DKIM : {cur.selector_a} / {cur.selector_b} · Dernier contrôle : {cur.checked_at ? new Date(cur.checked_at).toLocaleString("fr-FR") : "jamais"} · Dernière publication : {cur.synced_at ? new Date(cur.synced_at).toLocaleString("fr-FR") : "jamais"}</p>
+          {tlsCheck?.domainId===cur.id&&<p role="status" className={`mt-2 text-sm ${tlsCheck.expiresOn&&Date.parse(tlsCheck.expiresOn)-Date.now()<30*86400000?'text-destructive':'text-muted-foreground'}`}>{tlsCheck.expiresOn?`Certificat Cloudflare ${tlsCheck.status} · expire le ${new Date(tlsCheck.expiresOn).toLocaleDateString('fr-FR')} · ${tlsCheck.hosts}`:'Aucun certificat actif correspondant trouvé dans Cloudflare.'}</p>}
           <div className="mt-4 grid items-end gap-2 sm:grid-cols-[1fr_auto]">
             <label className="text-xs font-semibold text-muted-foreground">Serveur pour installation DKIM automatique
               <select aria-label="Serveur DKIM" className={sel} value={serverId} onChange={e=>setServerId(e.target.value)}><option value="">Choisir un serveur</option>{(servers.data ?? []).filter(s=>s.status!=='absent').map(s=><option key={s.id} value={s.id}>{s.label} · {s.ipv4 ?? 'IP en attente'}</option>)}</select>
@@ -198,10 +205,16 @@ export function Domains() {
               if (bad.length) throw new Error(`${bad.length} enregistrement(s) refusé(s) : ${first?.error ?? ""}`);
             }, "Enregistrements publiés sur Cloudflare")}><CloudUpload className="h-4 w-4" /> Publier sur Cloudflare</Button>
             <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("check", () => fCheck({ data: { id: cur.id } }), "Contrôle DNS terminé")}><RefreshCw className={`h-4 w-4 ${busy === "check" ? "animate-spin" : ""}`} /> Vérifier en direct</Button>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run("tls", async()=>{const r=await fTls({data:{id:cur.id}});setTlsCheck({domainId:cur.id,expiresOn:r.nearest?.expires_on??null,hosts:r.nearest?.host??'',status:r.nearest?.status??'—'});},"Certificat TLS contrôlé")}><RefreshCw className={`h-4 w-4 ${busy === "tls" ? "animate-spin" : ""}`} /> Vérifier l’expiration TLS</Button>
             <Button size="sm" variant="destructive" disabled={!!busy} onClick={() => { if (confirm(`Supprimer ${cur.domain} et ses clés DKIM ? (les DNS Cloudflare ne sont pas touchés)`)) run("del", () => fDel({ data: { id: cur.id } }), "Domaine supprimé"); }}><Trash2 className="h-4 w-4" /> Supprimer</Button>
           </div>
         </Panel>
       )}
+      {cur && <Panel title="Historique DNS & restauration">
+        <p className="mb-3 text-xs text-muted-foreground">Avant chaque publication ou restauration, les valeurs Cloudflare des couples nom/type concernés sont sauvegardées. Une restauration ne touche qu’à ces couples précis et crée un point de retour avant modification.</p>
+        {revisions.error&&<p role="alert" className="mb-2 text-sm text-destructive">{revisions.error.message}</p>}
+        {(revisions.data??[]).length?<DataTable cols={["Date","Action","Enregistrements","Noms/types"," "]} rows={(revisions.data??[]).map(rev=>[new Date(rev.created_at).toLocaleString('fr-FR'),rev.reason==='before_publish'?'Avant publication':'Avant restauration',String(rev.records.length),<span className="max-w-xs truncate text-xs text-muted-foreground">{rev.managed_records.map((x:any)=>`${x.type} ${x.name}`).join(' · ')}</span>,<Button size="sm" variant="outline" disabled={!!busy} onClick={()=>{const names=rev.managed_records.map((x:any)=>`${x.type} ${x.name}`).join(', ');if(confirm(`Restaurer cette version Cloudflare pour ${names} ? Les enregistrements actuels de ces noms/types seront remplacés. Un point de retour sera créé avant l’action.`))run('dns-restore',async()=>{await fDnsRestore({data:{revisionId:rev.id,confirmed:true}});await qc.invalidateQueries({queryKey:['dns-revisions',cur.id]});await qc.invalidateQueries({queryKey:['domains']});},'Version DNS restaurée');}}>Restaurer</Button>])}/>:<p className="text-sm text-muted-foreground">Aucune révision enregistrée. La première sera créée avant la prochaine publication.</p>}
+      </Panel>}
       <TrackingPanel />
       <StatusBar>{domains.length} domaine(s) · {ready} prêt(s) à envoyer · contrôle par DNS public</StatusBar>
     </>

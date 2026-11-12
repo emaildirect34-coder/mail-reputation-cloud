@@ -49,11 +49,13 @@ export const addAccount = createServerFn({ method: "POST" })
     const db = await admin(context);
     const { verifyAccount } = await import("./providers.server");
     const info = await verifyAccount({ provider: data.provider, auth_type: data.authType, secret: data.secret, email: data.email });
-    const { error } = await db.from("provider_accounts").insert({
+    const created = await db.from("provider_accounts").insert({
       provider: data.provider, label: data.label, auth_type: data.authType, secret: data.secret, email: data.email,
       status: data.provider === "google_postmaster" ? "pending" : "ok", info: info as any, created_by: context.userId, checked_at: new Date().toISOString(),
-    });
-    if (error) throw new Error(error.message);
+    }).select('id').single();
+    if (created.error || !created.data) throw new Error(created.error?.message ?? 'Impossible de créer ce compte.');
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'provider_account.created', entityType: 'provider_account', entityId: created.data.id, summary: { provider: data.provider } });
     return { ok: true };
   });
 
@@ -66,6 +68,8 @@ export const recheckAccount = createServerFn({ method: "POST" })
     let status = "ok", info: any = {};
     try { info = await verifyAccount(acc); } catch (e) { status = "error"; info = { error: (e as Error).message }; }
     await db.from("provider_accounts").update({ status, info, checked_at: new Date().toISOString() }).eq("id", data.id);
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'provider_account.checked', entityType: 'provider_account', entityId: data.id, summary: { status } });
     return { status };
   });
 
@@ -74,6 +78,8 @@ export const deleteAccount = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = await admin(context);
     await db.from("provider_accounts").delete().eq("id", data.id);
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'provider_account.deleted', entityType: 'provider_account', entityId: data.id });
     return { ok: true };
   });
 

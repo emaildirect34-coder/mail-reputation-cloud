@@ -17,7 +17,7 @@ Les 27 fichiers du VPS sont copiés octet pour octet. Les quatre fichiers exécu
 ## 1. Réinstaller l’application dans Lovable
 
 1. Ouvrir [le projet Email Direct](https://lovable.dev/projects/ece3bccf-6e15-4bfe-ac67-ca95916b3d76) et vérifier que la connexion GitHub pointe vers `emaildirect34-coder/mail-reputation-cloud`. Utiliser la révision validée du projet. La branche `main` peut être synchronisée avec Lovable, donc garder l’historique publié intact.
-2. Dans Lovable Cloud, vérifier le projet de base de données et l’état des migrations. Suivre [la checklist Lovable](../docs/LOVABLE-DEPLOY.md) pour appliquer uniquement les scripts manquants après sauvegarde. Plusieurs migrations modifient des fonctions de la file d’envoi. `0036` ajoute la confirmation groupée Bloom, `0037` crée le stockage privé et `0038` indexe la recherche d’un message dans les journaux.
+2. Dans Lovable Cloud, vérifier le projet de base de données et l’état des migrations. Suivre [la checklist Lovable](../docs/LOVABLE-DEPLOY.md) pour appliquer uniquement les scripts manquants après sauvegarde. Plusieurs migrations modifient des fonctions de la file d’envoi. `0036` ajoute la confirmation groupée Bloom, `0037` crée le stockage privé et `0038` indexe la recherche d’un message dans les journaux. Les ajouts jusqu’à `0086` et leurs prérequis Lovable sont répertoriés dans cette checklist.
 3. Vérifier le compte superadmin et les valeurs gérées par Lovable pour l’authentification. Configurer `MAILTESTER_URL=https://testeur.mailsuite.me` et `MAILTESTER_KEY` dans les secrets serveur de l’application. `MAILTESTER_KEY` doit correspondre à `API_TOKEN` sur le VPS. En cas de nouveau projet Lovable, créer ou restaurer le superadmin dans ce projet avant de réassocier les agents.
 4. Publier depuis Lovable et vérifier l’accès au tableau de bord. Depuis **Paramètres → Boîtes témoins Gmail**, vérifier les boîtes existantes ou les réajouter. Depuis le constructeur, lancer **Test Inbox** uniquement avec les boîtes dédiées. Vérifier aussi le Lab Mail-Tester et le tableau **Serveurs**.
 
@@ -36,6 +36,10 @@ Pour la reprise après coupure, appliquer la migration `0044_campaign_injection_
 Le VPS communique avec l’application par les API HTTPS authentifiées. L’accès PostgreSQL de Lovable et les clés de service restent dans Lovable.
 
 ## 2. Restaurer les composants VPS si nécessaire
+
+### Répéter la restauration hors production
+
+Depuis le dossier du projet, lancer `python reinstallation-lovable/rehearse-restore.py` avec Python 3.10 ou plus récent et Docker Compose. L’exercice crée une archive temporaire à partir des fichiers du manifeste, la restaure dans un dossier isolé, contrôle chaque empreinte et vérifie les configurations Compose de KumoMTA et de Mail-Tester. Il ne démarre aucun conteneur. Les volumes, les secrets privés et la file SMTP font l’objet d’un exercice séparé à partir d’un instantané privé.
 
 Si seul Lovable est réinstallé et que le VPS est toujours opérationnel, réutiliser les conteneurs existants. Pour une reconstruction, garder un instantané privé du VPS et sauvegarder les volumes Docker concernés avant toute modification. Vérifier les noms de projet Compose avant de restaurer des volumes pour éviter de créer des volumes vides à la place des anciens.
 
@@ -105,3 +109,7 @@ docker compose -f compose.yaml -f prochain-deploiement/compose.agent-update.yaml
 ## Intégrité et vérification finale
 
 Sur Linux, lancer `cd reinstallation-lovable/vps && sha256sum -c SHA256SUMS` pour vérifier la copie d’origine. Après réinstallation, vérifier le statut des conteneurs, l’agent dans Lovable, le parcours Mail-Tester et un test sur boîtes témoins. Vérifier séparément chaque option activée. Ne lancer aucune campagne réelle tant que ces contrôles et les migrations attendues ne sont pas confirmés.
+
+Migration 0084 adds supplier invoice CSV import and durable webhook retries. Migration 0085 adds invoice payment matching, webhook latency history, DNS snapshots and restore, stalled-campaign alerts, and recurring Cloudflare certificate checks. Apply both in order before publishing. Schedule POST /api/public/jobs/webhook-retries every 5 minutes with the existing cron bearer authentication; the existing incident-notifications job now also performs the certificate scan and must remain scheduled.
+
+Migration 0086 adds the editorial workflow, historical seed-placement store and significance-gated A/B outcomes. Configure `CAMPAIGN_AUDIT_HOSTS` in Lovable Cloud if you want the pre-send link checker to make HTTPS requests to your own approved hosts. The local email preview remains an approximation; actual rendering in Gmail, Outlook and Apple Mail still needs an external rendering service and credentials.

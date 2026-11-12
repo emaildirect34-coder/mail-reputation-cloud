@@ -65,13 +65,17 @@ export async function notifyIncidents(db: SupabaseClient<Database>) {
   const now = Date.now();
   const recent = new Date(now - 24 * 3_600_000).toISOString();
   const offline = new Date(now - 5 * 60_000).toISOString();
-  const [ips, fbl, agents, caddy] = await Promise.all([
+  const [ips, fbl, agents, caddy, sponsor, campaignIncidents] = await Promise.all([
     db.from('server_ips').select('id,address,quarantined_at').gte('quarantined_at', recent).order('quarantined_at', { ascending: false }).limit(100),
     db.from('delivery_alerts').select('id,campaign_name,isp,rate').eq('rule', 'complaint').gt('rate', 0.003)
       .gte('created_at', recent).order('created_at', { ascending: false }).limit(100),
     db.from('server_agents').select('server_id,last_seen,managed_servers!inner(label,status)')
       .neq('managed_servers.status', 'absent').lt('last_seen', offline).limit(100),
     caddyIncident(db).then(incident => ({ incident, failed: false })).catch(() => ({ incident: null, failed: true })),
+    db.from('sponsor_link_monitor').select('campaign_id,alert_since,campaigns!inner(name)')
+      .not('alert_since', 'is', null).gt('active_until', new Date(now).toISOString())
+      .order('alert_since', { ascending: false }).limit(100),
+    db.from('operations_incidents').select('id,kind,title,detail').eq('kind','campaign_stalled').is('signal_cleared_at',null).is('resolved_at',null).limit(100),
   ]);
   if (ips.error || fbl.error || agents.error) throw new Error('Lecture des incidents impossible.');
   const incidents = [
@@ -79,9 +83,12 @@ export async function notifyIncidents(db: SupabaseClient<Database>) {
     ...fbl.data.map(alert => ({ key: `complaint:${alert.id}`, text: `Plaintes FBL à ${(alert.rate * 100).toFixed(2)} % chez ${alert.isp} pour ${alert.campaign_name}.` })),
     ...agents.data.map(agent => ({ key: `offline:${agent.server_id}:${agent.last_seen}`, text: `Serveur ${agent.managed_servers.label} sans signal depuis plus de cinq minutes.` })),
     ...(caddy.incident ? [caddy.incident] : []),
+    ...(sponsor.data ?? []).map(row => ({ key: `sponsor-link:${row.campaign_id}:${row.alert_since}`,
+      text: `Lien sponsor à vérifier dans la campagne « ${row.campaigns.name} ». Consultez la surveillance dans Offres sponsors.` })),
+    ...(campaignIncidents.data??[]).map(row=>({key:`campaign-stalled:${row.id}`,text:`${row.title}. ${row.detail}`})),
   ];
   let sent = 0;
-  let failed = caddy.failed ? 1 : 0;
+  let failed = Number(caddy.failed) + Number(!!sponsor.error && !['PGRST205', '42P01'].includes(sponsor.error.code))+Number(!!campaignIncidents.error&&!['PGRST205','42P01'].includes(campaignIncidents.error.code));
   let maxProviderResponseMs = 0;
   for (const incident of incidents) {
     for (const channel of targets) {

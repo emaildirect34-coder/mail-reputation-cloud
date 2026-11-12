@@ -5,28 +5,45 @@ import { useServerFn } from '@tanstack/react-start';
 import { Rocket, Pause, Play, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { campaignTimeZone, scheduledInstant } from '@/lib/campaign-schedule';
+import { campaignSendDeadline, campaignTimeZone, scheduledInstant } from '@/lib/campaign-schedule';
 import { campaignTopics, campaignTopicLabels, isCampaignTopic } from '@/lib/campaign-topics';
 import { recipientDomain } from '@/lib/email-address';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Pill, DataTable } from './kit';
 import { CampaignDeliveryMonitor } from './campaign-delivery-monitor';
+import { CampaignConflicts } from './campaign-conflicts';
+import { SenderQuotaForecast } from './sender-quota-forecast';
 import { runDraftPreflight, type Check } from '@/lib/preflight.functions';
 import { readSending, readCampaignVmtaPools, launchCampaign, setCampaignStatus } from '@/lib/sending.functions';
+import { readContactSegments } from '@/lib/contact-insights.functions';
+import { EmailTemplateLibrary } from './email-template-library';
+import type { CampaignConflictsInput, CampaignLaunchInput } from '@/lib/sending.schemas';
 
 const cls = 'h-9 w-full rounded-md border border-border bg-card px-2 text-[12px]';
-type Fields = { name: string; fromName: string; fromEmail: string; replyTo: string; subject: string; body: string; ampHtml?: string; digestText?: string; schedule?: string; scheduleMode?: string; sponsorOfferId?: string; vmtaPoolId: string; topic: string };
+type Fields = { name: string; fromName: string; fromEmail: string; replyTo: string; senderProfileId: string; subject: string; body: string; ampHtml?: string; digestText?: string; schedule?: string; sendDeadline: string; scheduleMode?: string; sponsorOfferId?: string; serverId: string; vmtaPoolId: string; topic: string; sendWindowStart: string; sendWindowEnd: string; sendPriority: string; listId: string; segmentId: string };
+type DuplicateReview = Extract<Awaited<ReturnType<typeof launchCampaign>>, { kind: 'duplicate' }>['review'];
+const campaignStatuses: Record<string, string> = { queued: 'En file', paused: 'En pause', done: 'Terminée', cancelled: 'Annulée' };
 
-/** Real sending: picks a contact list and agent-equipped servers, then queues the campaign. */
-export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers, setServers }: {
+export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, onServerChange, onSendWindowChange, onPriorityChange, onDeadlineChange, onAudienceChange, onDraftContentChange }: {
   d: Fields; testMode: boolean; onPoolChange: (id: string) => void; onTopicChange: (topic: string) => void;
-  servers: string[]; setServers: React.Dispatch<React.SetStateAction<string[]>>;
+  onServerChange: (id: string) => void;
+  onSendWindowChange: (start: string, end: string) => void;
+  onPriorityChange: (priority: string) => void;
+  onDeadlineChange: (date: string) => void;
+  onAudienceChange: (listId: string, segmentId: string) => void;
+  onDraftContentChange: (subject: string, html: string) => void;
 }) {
   const qc = useQueryClient(), read = useServerFn(readSending), launch = useServerFn(launchCampaign), status = useServerFn(setCampaignStatus);
   const q = useQuery({ queryKey: ['sending'], queryFn: () => read(), refetchInterval: 15000 });
   const readPools = useServerFn(readCampaignVmtaPools);
   const poolQuery = useQuery({ queryKey: ['campaign-vmta-pools'], queryFn: () => readPools() });
-  const [listId, setListId] = useState(''), [busy, setBusy] = useState(false);
+  const { listId, segmentId } = d;
+  const [busy, setBusy] = useState(false);
+  const readSegments = useServerFn(readContactSegments);
+  const segments = useQuery({ queryKey: ['contact-segments', listId], queryFn: () => readSegments({ data: { listId } }), enabled: !!listId });
+  const segmentUnavailable = !!segmentId && !segments.data?.some(segment => segment.id === segmentId);
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await qc.invalidateQueries({ queryKey: ['sending'] }); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); } };
   const profile = useQuery({ queryKey: ['campaign-time-zone'], queryFn: async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -36,25 +53,35 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
   const recipientLocalTime = Boolean(d.schedule && d.scheduleMode === 'recipient');
   let scheduleLabel = '';
   let scheduleError = '';
+  let accountStart: string | null = null;
   if (d.schedule && profile.data) {
     try {
       const displayZone = recipientLocalTime ? 'UTC' : profile.data;
       const instant = scheduledInstant(d.schedule, displayZone);
       if (!recipientLocalTime && Date.parse(instant) <= Date.now()) throw new Error('Choisissez une date de programmation future.');
+      if (!recipientLocalTime) accountStart = instant;
       scheduleLabel = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short', timeZone: displayZone }).format(new Date(instant));
     } catch (error) {
       scheduleError = error instanceof Error ? error.message : 'Date de programmation invalide.';
     }
   }
+  let deadlineError = '';
+  if (d.sendDeadline && profile.data) {
+    try { campaignSendDeadline(d.sendDeadline, profile.data, accountStart); }
+    catch (error) { deadlineError = error instanceof Error ? error.message : 'Date limite invalide.'; }
+  }
+  const deadlineInvalid = !!d.sendDeadline && (!profile.data || !!deadlineError);
   const [sendWindowHours, setSendWindowHours] = useState<2 | 4 | 8 | undefined>();
   const [sunsetDays, setSunsetDays] = useState<'isp' | 'off' | 30 | 60 | 90 | 365>('isp');
   const [typoApproval, setTypoApproval] = useState('');
   const [fatigueProtection, setFatigueProtection] = useState(false);
   const [monitorPlacement, setMonitorPlacement] = useState(true);
   const [monitoredCampaign, setMonitoredCampaign] = useState<string | null>(null);
+  const [duplicateReview, setDuplicateReview] = useState<{ fingerprint: string; review: DuplicateReview } | null>(null);
   const preflight = useServerFn(runDraftPreflight);
   const [audit, setAudit] = useState<{ fingerprint: string; checks: Check[] } | null>(null);
   const [auditing, setAuditing] = useState(false);
+  const servers = d.serverId ? [d.serverId] : [];
   const auditInput = { fromEmail: d.fromEmail, serverIds: servers, listId: listId || null, poolId: d.vmtaPoolId || null, html: d.body };
   const fingerprint = JSON.stringify(auditInput);
   async function auditDraft() {
@@ -70,19 +97,44 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
   const list = q.data?.lists.find(l => l.id === listId);
   const pools = poolQuery.data ?? [];
   const selectedPool = pools.find(pool => pool.id === d.vmtaPoolId);
-  const poolUnavailable = Boolean(d.vmtaPoolId && !servers.every(id => selectedPool?.serverIds.includes(id))) || Boolean(d.vmtaPoolId && !selectedPool);
+  const poolUnavailable = !!d.vmtaPoolId && (!selectedPool || (!!d.serverId && !selectedPool.serverIds.includes(d.serverId)));
   const senderReady = !!(d.name.trim() && d.fromName.trim() && recipientDomain(d.fromEmail.trim()) && d.subject.trim());
-  const serversReady = servers.length > 0 && servers.every(id => q.data?.servers.some(server => server.id === id));
-  const submit = () => run(async () => {
-    const result = await launch({ data: {
+  const serversReady = !!q.data?.servers.some(server => server.id === d.serverId);
+  const windowEnabled = !!(d.sendWindowStart || d.sendWindowEnd);
+  const invalidWindow = windowEnabled && (!d.sendWindowStart || !d.sendWindowEnd || d.sendWindowStart === d.sendWindowEnd);
+  const forecastInput: CampaignConflictsInput | null = d.schedule ? {
+    listId, segmentId: segmentId || undefined, serverIds: servers, sponsorOfferId: d.sponsorOfferId || undefined,
+    schedule: d.schedule, sendDeadline: d.sendDeadline || undefined, scheduleTimeZone: profile.data ?? '', sunsetDays,
+    acceptTypoExclusions: typoApproval === listId, sendWindowHours, recipientLocalTime,
+    sendPriority: d.sendPriority === '1' ? 1 : d.sendPriority === '-1' ? -1 : 0,
+    sendWindow: windowEnabled ? { start: d.sendWindowStart, end: d.sendWindowEnd } : undefined,
+    weeklyDigest: !!d.digestText,
+  } : null;
+  const forecastDisabled = !list || !!list.quarantined_at || !serversReady || !scheduleLabel || invalidWindow || deadlineInvalid || segmentUnavailable;
+  const launchData: CampaignLaunchInput = {
       sponsorOfferId: d.sponsorOfferId || undefined, name: d.name, fromName: d.fromName, fromEmail: d.fromEmail,
       replyTo: d.replyTo, subject: d.subject, html: d.body, ampHtml: d.ampHtml || undefined, digestText: d.digestText || undefined, listId, serverIds: servers, vmtaPoolId: d.vmtaPoolId || undefined, schedule: d.schedule || undefined,
-      scheduleTimeZone: d.schedule ? profile.data : undefined, sunsetDays, acceptTypoExclusions: typoApproval === listId,
+      senderProfileId: d.senderProfileId || undefined,
+      segmentId: segmentId || undefined,
+      sendDeadline: d.sendDeadline || undefined, scheduleTimeZone: d.schedule || d.sendDeadline ? profile.data : undefined,
+      sunsetDays, acceptTypoExclusions: typoApproval === listId,
       topic: isCampaignTopic(d.topic) ? d.topic : undefined,
       fatigueProtection: fatigueProtection && !d.digestText,
       sendWindowHours: d.schedule ? sendWindowHours : undefined, recipientLocalTime,
+      sendWindow: windowEnabled ? { start: d.sendWindowStart, end: d.sendWindowEnd } : undefined,
+      sendPriority: d.sendPriority === '1' ? 1 : d.sendPriority === '-1' ? -1 : 0,
       monitorPlacement,
-    } });
+  };
+  const review = duplicateReview && duplicateReview.fingerprint === JSON.stringify(launchData) ? duplicateReview.review : null;
+  const submit = (confirmation?: string) => run(async () => {
+    const submitted = JSON.stringify(launchData);
+    const result = await launch({ data: { ...launchData, duplicateConfirmation: confirmation } });
+    if (result.kind === 'duplicate') {
+      setDuplicateReview({ fingerprint: submitted, review: result.review });
+      if (confirmation) toast.info('Les correspondances ont changé. Vérifie le nouveau résultat.');
+      return;
+    }
+    setDuplicateReview(null);
     toast.success(`${result.scheduledAt ? 'Envoi programmé · ' : ''}${result.total} en file · ${result.suppressed} en suppression · ${result.inactive} inactif(s) · ${result.invalid} invalide(s)`, {
       description: [
         result.fallbackTimeZones ? `${result.fallbackTimeZones} contact(s) sans fuseau ont été planifiés dans le fuseau du compte (${profile.data}).` : '',
@@ -90,11 +142,13 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
         result.typoCount ? `Dont ${result.typoCount} domaine(s) avec faute probable.` : '',
         result.roleExcluded ? `Dont ${result.roleExcluded} adresse(s) de rôle exclue(s).` : '',
         result.formatExcluded ? `${result.formatExcluded} destinataire(s) hors format choisi.` : '',
+        result.buyerExcluded ? `${result.buyerExcluded} destinataire(s) ayant déjà acheté cette offre.` : '',
+        result.brandExcluded ? `${result.brandExcluded} destinataire(s) ayant arrêté les offres de cette marque.` : '',
       ].filter(Boolean).join(' ') || undefined,
     });
-    if (result.placementMonitor === 'started') setMonitoredCampaign(result.id);
-    else if (monitorPlacement) toast.warning('Campagne enregistrée. Le test des boîtes témoins n’a pas démarré.', {
-      description: result.placementMonitor === 'migration' ? 'Appliquez la migration 0043.'
+    if (monitorPlacement || result.sendExpiresAt) setMonitoredCampaign(result.id);
+    if (monitorPlacement && result.placementMonitor !== 'started') toast.warning('Campagne en attente. Le test des boîtes témoins n’a pas démarré.', {
+      description: result.placementMonitor === 'migration' ? 'Appliquez la migration 0049.'
         : result.placementMonitor === 'unconfigured' ? 'Configurez Mail-Tester.' : 'Vérifiez Mail-Tester et les boîtes témoins enregistrées.',
     });
   });
@@ -102,13 +156,33 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
     <section id="envoi" className="card-lux mb-3 scroll-mt-24 p-3.5">
       <h2 className="mb-2 flex items-center gap-2 font-display text-[16px] font-bold text-primary"><Rocket className="size-5" />Envoi réel</h2>
       {q.error && <p role="alert" className="text-sm text-destructive">{q.error.message}</p>}
+      <div className="mb-3"><EmailTemplateLibrary subject={d.subject} html={d.body} onApply={onDraftContentChange} /></div>
       <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
         <div><span className="mb-1 block text-[11.5px] font-semibold text-muted-foreground">Liste de contacts</span>
-          <select aria-label="Liste de contacts" className={cls} value={listId} onChange={e => setListId(e.target.value)}><option value="">Choisir une liste</option>{(q.data?.lists ?? []).map(l => <option key={l.id} value={l.id} disabled={!!l.quarantined_at}>{l.name} · {l.quarantined_at ? 'En quarantaine' : `${l.active} actifs`}</option>)}</select></div>
-        <div><span className="mb-1 block text-[11.5px] font-semibold text-muted-foreground">Serveurs d’envoi (agent installé requis)</span>
-          <div className="flex flex-wrap gap-1.5">{(q.data?.servers ?? []).map(s => { const on = servers.includes(s.id); return <button key={s.id} type="button" onClick={() => setServers(p => on ? p.filter(x => x !== s.id) : [...p, s.id])} className={`rounded-md border px-2 py-1 text-[12px] font-semibold ${on ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card'}`}>{s.label}</button>; })}{!q.data?.servers.length && <span className="text-[12px] text-muted-foreground">Aucun serveur. <Link to="/dashboard/servers" className="text-primary underline">Ajouter un serveur</Link></span>}</div></div>
-        <Button disabled={busy || testMode || !list || !!list.quarantined_at || !serversReady || !senderReady || d.body.trim().length < 20 || poolUnavailable || (!!d.schedule && (!q.data?.supportsScheduling || !scheduleLabel))} onClick={submit}><Rocket className="h-4 w-4" /> {d.schedule ? 'Programmer l’envoi' : 'Lancer l’envoi'}</Button>
+          <select aria-label="Liste de contacts" className={cls} value={listId} onChange={e => onAudienceChange(e.target.value, '')}><option value="">Choisir une liste</option>{(q.data?.lists ?? []).map(l => <option key={l.id} value={l.id} disabled={!!l.quarantined_at}>{l.name} · {l.quarantined_at ? 'En quarantaine' : `${l.active} actifs`}</option>)}</select></div>
+        {(!!segments.data?.length || !!segmentId) && <label className="grid gap-1 text-xs font-semibold">Segment de la liste
+          <select className={cls} value={segmentId} onChange={event => onAudienceChange(listId, event.target.value)}>
+            <option value="">Toute la liste</option>
+            {segmentUnavailable && <option value={segmentId} disabled>{segments.isPending ? 'Chargement du segment…' : 'Segment indisponible'}</option>}
+            {segments.data?.map(segment => <option key={segment.id} value={segment.id}>{segment.name}</option>)}
+          </select>
+        </label>}
+        <label className="space-y-1"><span className="block text-[11.5px] font-semibold text-muted-foreground">Serveur d’envoi</span>
+          <select className={cls} value={d.serverId} disabled={busy || q.isPending} onChange={e => onServerChange(e.target.value)}>
+            <option value="">{q.isPending ? 'Chargement des serveurs…' : 'Choisir le serveur de cette campagne'}</option>
+            {d.serverId && !serversReady && <option value={d.serverId} disabled>Serveur enregistré indisponible</option>}
+            {(q.data?.servers ?? []).map(server => <option key={server.id} value={server.id}>{server.label}</option>)}
+          </select>
+        </label>
+        <Button disabled={busy || testMode || !list || !!list.quarantined_at || !serversReady || !senderReady || invalidWindow || deadlineInvalid || d.body.trim().length < 20 || poolUnavailable || segmentUnavailable || (!!d.schedule && (!q.data?.supportsScheduling || !scheduleLabel))} onClick={() => void submit()}><Rocket className="h-4 w-4" /> {d.schedule ? 'Valider et programmer' : 'Lancer l’envoi'}</Button>
       </div>
+      {q.data?.servers.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Aucun serveur avec agent. <Link to="/dashboard/servers" className="text-primary underline">Ajouter un serveur</Link></p>}
+      <label className="mt-3 grid max-w-xs gap-1 text-sm">
+        Priorité dans la file d’envoi
+        <select className={cls} value={d.sendPriority} onChange={event => onPriorityChange(event.target.value)}>
+          <option value="1">Haute</option><option value="0">Normale</option><option value="-1">Basse</option>
+        </select>
+      </label>
       {list?.quarantined_at && <p role="alert" className="mt-2 text-xs text-destructive">Liste en quarantaine. {list.quarantine_reason}</p>}
       <div className="mt-3 space-y-2">
         <Button size="sm" variant="outline" disabled={auditing || !d.fromEmail.trim() || !servers.length} onClick={() => void auditDraft()}>
@@ -120,7 +194,7 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
       </div>
       <label className="mt-3 flex items-start gap-2 text-sm">
         <input type="checkbox" checked={monitorPlacement} onChange={event => setMonitorPlacement(event.target.checked)} />
-        <span>Envoyer une copie aux boîtes témoins depuis le premier serveur sélectionné.{d.schedule ? ' La copie part dès la programmation de la campagne.' : ''}</span>
+        <span>Tester avant d’envoyer. Chaque fournisseur reste en attente jusqu’à validation de ses boîtes témoins.</span>
       </label>
       <label className="mt-3 grid max-w-sm gap-1 text-sm">
         Pool VMTA marketing
@@ -129,8 +203,8 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
           {d.vmtaPoolId && !selectedPool && <option value={d.vmtaPoolId}>Pool indisponible</option>}
           {pools.map(pool => <option key={pool.id} value={pool.id}>{pool.name}</option>)}
         </select>
-        <span className="text-xs text-muted-foreground">Un pool choisi doit disposer d’une IPv4 utilisable sur chaque serveur sélectionné.</span>
-        {poolUnavailable && <span className="text-xs text-destructive">Ce pool ne couvre pas les serveurs choisis.</span>}
+        <span className="text-xs text-muted-foreground">Le pool choisi doit disposer d’une IPv4 utilisable sur le serveur sélectionné.</span>
+        {poolUnavailable && <span className="text-xs text-destructive">Ce pool est indisponible pour ce serveur.</span>}
         {poolQuery.error && <span role="alert" className="text-xs text-destructive">Impossible de charger les pools.</span>}
       </label>
       <label className="mt-3 grid max-w-sm gap-1 text-sm">
@@ -177,6 +251,15 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
           <option value="8">Répartir sur 8 heures</option>
         </select>
       </label>}
+      <fieldset className="mt-3 max-w-sm space-y-2 text-sm">
+        <legend className="font-medium">Plage horaire autorisée</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <label>Début<input className={cls} type="time" value={d.sendWindowStart} onChange={event => onSendWindowChange(event.target.value, d.sendWindowEnd)} /></label>
+          <label>Fin<input className={cls} type="time" value={d.sendWindowEnd} onChange={event => onSendWindowChange(d.sendWindowStart, event.target.value)} /></label>
+        </div>
+        <p className="text-xs text-muted-foreground">Facultatif. Heure locale du destinataire, avec le fuseau du compte en secours.</p>
+        {invalidWindow && <p role="alert" className="text-xs text-destructive">Renseignez deux heures différentes.</p>}
+      </fieldset>
       {d.schedule && <p className="mt-2 text-sm" role="status">
         {q.data?.supportsScheduling === false ? 'La programmation nécessite la mise à jour de la base de données.' : scheduleError || (scheduleLabel
           ? recipientLocalTime
@@ -184,6 +267,17 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
             : `Envoi prévu le ${scheduleLabel} (${profile.data}).`
           : profile.error?.message || 'Chargement du fuseau horaire…')}
       </p>}
+      <label className="mt-3 grid max-w-sm gap-1 text-sm">
+        Date limite d’envoi
+        <Input className={cls} type="datetime-local" value={d.sendDeadline} onChange={event => onDeadlineChange(event.target.value)} />
+        <span className="text-xs text-muted-foreground">Facultative{profile.data ? ' · ' + profile.data : ''}. À cette heure, les messages encore en attente d’une autorisation d’envoi expirent.</span>
+      </label>
+      {deadlineError && <p role="alert" className="mt-1 text-sm text-destructive">{deadlineError}</p>}
+      {!!d.sendDeadline && !deadlineError && profile.error && <p role="alert" className="mt-1 text-sm text-destructive">{profile.error.message}</p>}
+      {forecastInput && <>
+        <CampaignConflicts disabled={forecastDisabled} input={forecastInput} />
+        <SenderQuotaForecast disabled={forecastDisabled || !recipientDomain(d.fromEmail.trim())} input={{ ...forecastInput, fromEmail: d.fromEmail }} />
+      </>}
       <p className="mt-2 text-[12px] text-muted-foreground">{testMode ? 'Désactivez le Mode Test pour lancer un envoi réel. ' : ''}Les adresses désinscrites ou en liste de suppression sont retirées automatiquement. Un lien de désinscription en un clic est ajouté à chaque email.{list ? ` Liste choisie : ${list.active} contact(s) actif(s).` : ''} <Link to="/dashboard/suppression" className="text-primary underline">Gérer les listes</Link></p>
       {!!q.data?.campaigns.length && <div className="mt-3"><DataTable cols={['Campagne', 'Objet', 'Programmation', 'Envoyés', 'En file', 'Échecs', 'Exclus', 'État', '']} rows={q.data.campaigns.map(c => [c.name, c.subject, c.scheduled_at ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: profile.data ?? 'UTC' }).format(new Date(c.scheduled_at)) + ' (' + (profile.data ?? 'UTC') + ')' : '—', String(c.sent), String(c.queued), String(c.failed), String(c.suppressed),
         <Pill tone={c.status === 'done' ? 'ok' : c.status === 'queued' ? 'warn' : 'neutral'}>{c.status === 'queued' && c.scheduled_at && Date.parse(c.scheduled_at) > Date.now() ? 'Planifiée' : ({ queued: 'En cours', paused: 'En pause', done: 'Terminée', cancelled: 'Annulée' } as Record<string, string>)[c.status] ?? c.status}</Pill>,
@@ -195,6 +289,29 @@ export function LaunchPanel({ d, testMode, onPoolChange, onTopicChange, servers,
           </>}
         </div>])} /></div>}
       <CampaignDeliveryMonitor id={monitoredCampaign} close={() => setMonitoredCampaign(null)} />
+      <Dialog open={!!review} onOpenChange={open => { if (!open && !busy) setDuplicateReview(null); }}>
+        <DialogContent className="max-h-[85dvh] max-w-4xl overflow-auto">
+          <DialogTitle>Campagne potentiellement en double</DialogTitle>
+          <DialogDescription>
+            {review?.overlap.toLocaleString('fr-FR')} destinataire(s) du brouillon figurent déjà dans les campagnes ci-dessous. Vérifie le chevauchement avant de continuer.
+          </DialogDescription>
+          {review && <>
+            <DataTable cols={['Campagne', 'Date prévue ou création', 'État', 'Correspondance', 'Destinataires communs']} rows={review.campaigns.map(campaign => [
+              campaign.name,
+              new Date(campaign.scheduled_at ?? campaign.created_at).toLocaleString('fr-FR', { timeZone: profile.data ?? 'UTC' }),
+              campaignStatuses[campaign.status] ?? campaign.status,
+              [campaign.same_body ? 'Même contenu HTML' : '', campaign.same_offer ? 'Même offre sponsor' : ''].filter(Boolean).join(' · '),
+              campaign.overlap.toLocaleString('fr-FR'),
+            ])} />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={busy} onClick={() => setDuplicateReview(null)}>Revoir la campagne</Button>
+              <Button disabled={busy} onClick={() => void submit(review.token)}>
+                {busy ? 'Vérification…' : d.schedule ? 'Confirmer et programmer' : 'Confirmer et lancer'}
+              </Button>
+            </div>
+          </>}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

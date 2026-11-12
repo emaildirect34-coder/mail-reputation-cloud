@@ -1,9 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseContacts, assignServers, concentratedImport } from '@/lib/sending.schemas';
+import { parseContacts, assignServers, concentratedImport, launchInput } from '@/lib/sending.schemas';
 import { renderMessage } from '@/lib/sending.server';
 import PostalMime from 'postal-mime';
 
 describe('sending rules', () => {
+  it('requires an explicit single sending server for a new campaign', () => {
+    const server = '10000000-0000-4000-8000-000000000001';
+    const otherServer = '10000000-0000-4000-8000-000000000002';
+    const input = { name: 'Campagne', fromName: 'Email Direct', fromEmail: 'sender@example.org',
+      subject: 'Offre', html: '<p>Voici la nouvelle offre</p>', listId: '20000000-0000-4000-8000-000000000001' };
+    expect(launchInput.safeParse({ ...input, serverIds: [] }).success).toBe(false);
+    expect(launchInput.safeParse({ ...input, serverIds: [server, otherServer] }).success).toBe(false);
+    const campaign = launchInput.parse({ ...input, serverIds: [server] });
+    expect(assignServers(['first@example.org', 'second@example.org'], campaign.serverIds).map(row => row.server)).toEqual([server, server]);
+  });
+  it('preserves the direct post-purchase link in both MIME parts without a tracking pixel', async () => {
+    const link = 'https://app.example.org/apres-achat/' + 'a'.repeat(48);
+    const campaign = { from_name: 'Example', from_email: 'sender@example.org', reply_to: null,
+      subject: 'Merci', html: `<p><a href="${link}">Votre avis</a></p>`, purchase_thank_you: true };
+    const message = { id: 'message-id', email: 'dest@example.org', first_name: null, unsub_token: 'token' };
+    const mime = await PostalMime.parse(renderMessage(campaign, message, 'https://app.example.org'));
+    expect(mime.html).toContain(`href="${link}"`);
+    expect(mime.text).toContain(link);
+    expect(mime.html).not.toContain('/api/public/t/');
+  });
   it('serializes MIME with CRLF and leaves SMTP transparency to the transport', async () => {
     const html = '<p>Alpha</p>\n.\r<p>Beta</p>\r\n..';
     const mime = renderMessage({ from_name: 'Example', from_email: 'sender@example.org', reply_to: null, subject: 'Hello', html },
@@ -50,6 +70,17 @@ describe('sending rules', () => {
       vi.stubEnv('LIST_ARCHIVE_URL', 'https://lists.example.org/archive');
       expect(renderMessage({ ...campaign, list_id: id }, message, origin)).toContain('List-Archive: <https://lists.example.org/archive>');
     } finally { vi.unstubAllEnvs(); }
+  });
+  it('renders sender verification codes without tracking or a mailing-list footer', async () => {
+    const mime = renderMessage({
+      from_name: 'Email Direct', from_email: 'sender@example.org', reply_to: null,
+      subject: 'Vérification', html: '<p>Code <strong>03182759</strong></p>', sender_verification: true,
+    }, { id: 'message-id', email: 'dest@example.org', first_name: null, unsub_token: 'token' }, 'https://app.example.org');
+    const parsed = await PostalMime.parse(mime);
+    expect(parsed.text).toContain('03182759');
+    expect(parsed.html).toBe('<p>Code <strong>03182759</strong></p>');
+    expect(mime).toContain('Auto-Submitted: auto-generated');
+    expect(mime).not.toContain('List-Unsubscribe');
   });
   it('folds long Unicode subjects and keeps display names and message identity readable', async () => {
     const subject = 'Café ☕ '.repeat(40).trimEnd();

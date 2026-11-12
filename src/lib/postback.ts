@@ -15,6 +15,31 @@ export function parsePostback(p: URLSearchParams): Postback | { error: string } 
   return { clickId, txid, amountCents, status, currency: c === 'EUR' || c === 'USD' || c === 'GBP' ? c : null };
 }
 const clickMacro = /\{click_id\}|%7bclick_id%7d/gi;
+export function purchasePostbackSignal(p: URLSearchParams) {
+  const transaction = pick(p, ['txid', 'transaction_id', 'conversion_id', 'order_id']);
+  const event = pick(p, ['event', 'event_id']);
+  const status = pick(p, ['status', 'state']).toLowerCase();
+  if (!transaction || transaction.length > 120 || /[{}#]/.test(transaction)) return { event: null, status: null };
+  const purchaseStatus =
+    ['approved', 'confirmed', 'paid', '1'].includes(status) ? 'approved' :
+    ['pending', 'hold', '2'].includes(status) ? 'pending' :
+    ['rejected', 'reject', 'declined', 'reversed', '0', 'chargeback', 'refunded', 'cancelled'].includes(status) ? 'rejected' : null;
+  return { event: /^[a-zA-Z0-9_.:-]{1,100}$/.test(event) ? event : null, status: purchaseStatus };
+}
 export const hasClickId = (url: string) => url.search(clickMacro) >= 0;
 export const fillClickId = (url: string, token: string) => url.replace(clickMacro, token);
 export async function sha256Hex(s: string) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+
+export async function postbackReferenceFingerprint(accountId: string, transactionId: string) {
+  return transactionId ? sha256Hex(JSON.stringify([accountId, transactionId])) : '';
+}
+
+export function checkPostbackDiagnostic(params: URLSearchParams, clickId: string, expectedEvent: string) {
+  const parsed = parsePostback(params);
+  if ('error' in parsed) return parsed.error;
+  if (parsed.clickId !== clickId) return 'Le clic de test n’a pas été retourné.';
+  const signal = purchasePostbackSignal(params);
+  if (signal.event !== expectedEvent) return 'Le code de l’événement ne correspond pas.';
+  if (signal.status !== 'approved') return 'Le statut d’achat confirmé manque.';
+  return null;
+}

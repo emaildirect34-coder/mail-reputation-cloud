@@ -33,6 +33,9 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   const since = new Date(Date.now() - 3600_000).toISOString();
   const ev = await db.from('delivery_events').select('recipient,event_type').eq('server_id', serverId).gte('occurred_at', since).limit(20000);
   const health = ispHealth(ev.error ? [] : ev.data ?? []);
+  const googleHold = await db.from('delivery_provider_holds').select('until_at').eq('reason', 'gmail_rate')
+    .gte('until_at', new Date(Date.now() - 20 * 60_000).toISOString()).limit(1);
+  const googleRecovery = !googleHold.error && !!googleHold.data?.length;
   const matrixEnabled = process.env['KUMO_ISP_SOURCE_ROUTING'] === 'true';
   const history = matrixEnabled ? await db.rpc('source_isp_history', { _server: serverId, _domains: routingDomains }) : null;
   if (history?.error) throw new Error('Historique IP × FAI indisponible. La configuration existante est conservée.');
@@ -143,7 +146,7 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
   L.push(`  local provider = SHARED_ISP[domain]`);
   L.push(`  local telco = provider and provider ~= 'microsoft'`);
   L.push(`  if provider then`);
-  L.push(`    local cap = telco and 3 or 10`);
+  L.push(`    local cap = provider == 'orange' and 2 or (telco and 3 or 10)`);
   L.push(`    limits[provider .. '-' .. source] = telco and '2/s,max_burst=1' or '5/s,max_burst=1'`);
   L.push(`    connections = math.min(connections, cap); shared_connections[provider .. '-' .. source] = cap`);
   L.push(`  end`);
@@ -160,11 +163,12 @@ export async function buildBundle(db: any, serverId: string, withKeys: boolean):
     L.push(`  path.tls_private_key = '/opt/kumomta/etc/tls/smtp-client-key.pem'`);
   }
   L.push(`  if domain == 'gmail.com' or domain == 'googlemail.com' or string.match(site or '', '%.google%.com$') or string.match(site or '', '%.googlemail%.com$') then`);
-  L.push(`    path.connection_limit = math.min(connections, 10); shared_connections['google-' .. source] = 10`);
-  L.push(`    path.max_connection_rate = '30/min,max_burst=3'; path.max_deliveries_per_connection = 20`);
+  L.push(`    path.connection_limit = math.min(connections, ${googleRecovery ? 1 : 10}); shared_connections[${googleRecovery ? "'google-recovery'" : "'google-' .. source"}] = ${googleRecovery ? 1 : 10}`);
+  L.push(`    path.max_connection_rate = '${googleRecovery ? "1/min,max_burst=1" : "30/min,max_burst=3"}'; path.max_deliveries_per_connection = 20`);
   L.push(`  end`);
   L.push(`  path.enable_pipelining = not telco and not SMTP_LOCKSTEP_SITES[site]`);
   L.push(`  if telco then path.max_recipients_per_batch = 1 end`);
+  L.push(`  if provider == 'orange' then path.max_deliveries_per_connection = 100 end`);
   L.push(`  return kumo.make_egress_path(path)`);
   L.push(`end)`, '');
   L.push(`local DKIM = {`);

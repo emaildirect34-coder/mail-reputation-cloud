@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { readAb, startAb, decideAbNow } from "@/lib/ab.functions";
+import { wilson95 } from "@/lib/ab-confidence";
 
 export const Route = createFileRoute("/dashboard/campaigns_/ab")({
   head: () => ({ meta: [
@@ -29,15 +30,16 @@ function AbPage() {
   const qc = useQueryClient(), read = useServerFn(readAb), start = useServerFn(startAb), decide = useServerFn(decideAbNow);
   const q = useQuery({ queryKey: ["ab"], queryFn: () => read(), refetchInterval: 30000 });
   const [cid, setCid] = useState(""), [variants, setVariants] = useState([{ subject: "", fromName: "" }, { subject: "", fromName: "" }]);
-  const [share, setShare] = useState(20), [hours, setHours] = useState(4), [metric, setMetric] = useState<"open" | "click">("open"), [busy, setBusy] = useState(false);
+  const [share, setShare] = useState(20), [hours, setHours] = useState(4), [minSample, setMinSample] = useState(100), [metric, setMetric] = useState<"open" | "click">("open"), [busy, setBusy] = useState(false);
   const tests = q.data?.tests ?? [], eligible = q.data?.eligible ?? [];
   const camp = eligible.find(c => c.id === cid);
+  const estimatedPerVariant = camp ? Math.floor(Math.max(variants.length, Math.round(camp.total * share / 100)) / variants.length) : 0;
   const setV = (i: number, k: "subject" | "fromName", v: string) => setVariants(p => p.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true);
     try {
-      const r = await start({ data: { campaignId: cid, variants, pct: share, hours, metric } });
+      const r = await start({ data: { campaignId: cid, variants, pct: share, hours, minSample, metric } });
       toast.success(`Test lancé : ${r.sample} contacts testés, ${r.holdout} recevront le gagnant.`);
       setCid(""); setVariants([{ subject: "", fromName: "" }, { subject: "", fromName: "" }]);
       await qc.invalidateQueries({ queryKey: ["ab"] });
@@ -84,7 +86,9 @@ function AbPage() {
           <div><Label>Échantillon testé : {share} % de la liste</Label><input aria-label="Échantillon" type="range" min={5} max={50} value={share} onChange={e => setShare(+e.target.value)} className="w-full" /></div>
           <div><Label>Choisir le gagnant après : {hours} h</Label><input aria-label="Durée" type="range" min={1} max={72} value={hours} onChange={e => setHours(+e.target.value)} className="w-full" /></div>
         </div>
-        <p className="text-xs text-muted-foreground">Un champ vide reprend l'objet ou l'expéditeur de la campagne. Le reste de la liste attend et reçoit automatiquement la version gagnante.</p>
+        <div className="grid gap-1 sm:max-w-sm"><Label htmlFor="ab-min-sample">Minimum d’envois par version : {minSample}</Label><input id="ab-min-sample" aria-label="Minimum d’envois par version" type="range" min={30} max={1000} step={10} value={minSample} onChange={e => setMinSample(+e.target.value)} className="w-full" /></div>
+        {camp && estimatedPerVariant < minSample && <p role="status" className="text-xs text-amber-700">Avec cet échantillon, environ {estimatedPerVariant} envoi(s) par version sont prévus. Le test terminera sans résultat concluant et la version A sera utilisée, sauf si vous augmentez l’échantillon ou réduisez le minimum.</p>}
+        <p className="text-xs text-muted-foreground">Un champ vide reprend l'objet ou l'expéditeur de la campagne. Le reste attend la fin du test. Un gagnant n’est retenu que si l’écart est statistiquement détectable et que chaque version atteint le minimum choisi ; sinon, la version A part au reste de la liste.</p>
         <Button className="w-fit" disabled={busy || !cid}><FlaskConical className="size-4" />Lancer le test</Button>
       </form>
     </Panel>
@@ -92,17 +96,20 @@ function AbPage() {
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {tests.map(t => <Panel key={t.id} title={t.name}>
         <p className="mb-2 text-xs text-muted-foreground">
-          {t.ab_winner != null ? `Gagnant : version ${String.fromCharCode(65 + t.ab_winner)} — envoyée au reste de la liste` : `Gagnant choisi le ${new Date(t.ab_decide_at!).toLocaleString("fr-FR")} · critère : ${t.ab_metric === "click" ? "clics" : "ouvertures"}`}
+          {t.ab_decision_state === "significant" ? `Écart détectable : version ${String.fromCharCode(65 + (t.ab_winner ?? 0))} envoyée au reste de la liste.` : t.ab_decision_state === "insufficient_sample" ? `Échantillon insuffisant (minimum ${t.ab_min_sample} envois par version) : version A envoyée au reste de la liste.` : t.ab_decision_state === "inconclusive" ? "Aucun écart statistiquement concluant : version A envoyée au reste de la liste." : `Test en cours${t.ab_decide_at ? ` · décision prévue le ${new Date(t.ab_decide_at).toLocaleString("fr-FR")}` : ''} · critère : ${t.ab_metric === "click" ? "clics" : "ouvertures"}`}
         </p>
         <div className="space-y-2">
           {t.variants.map((v, i) => { const best = t.ab_winner === i; const rate = t.ab_metric === "click" ? v.clicked : v.opened;
+            const interval = wilson95(rate, v.sent);
             return <div key={i} className={`rounded-xl border p-3 ${best ? "border-neon-green bg-neon-green/10" : "border-border"}`}>
               <div className="flex items-center justify-between text-sm font-semibold"><span>Version {String.fromCharCode(65 + i)} {best && <Trophy className="inline size-4 text-neon-green" />}</span><span>{pct(rate, v.sent)}</span></div>
               <p className="truncate text-xs">{v.subject} · {v.fromName}</p>
               <p className="text-xs text-muted-foreground">{v.sent}/{v.assigned} envoyés · {v.opened} ouvertures ({pct(v.opened, v.sent)}) · {v.clicked} clics ({pct(v.clicked, v.sent)})</p>
+              <p className="text-xs text-muted-foreground">Intervalle indicatif à 95 % du critère {t.ab_metric === 'click' ? 'clic' : 'ouverture'} : {interval ? `${(interval[0] * 100).toFixed(1)}–${(interval[1] * 100).toFixed(1)} %` : 'en attente de données'}.</p>
             </div>; })}
         </div>
-        {t.ab_winner == null && <Button size="sm" variant="outline" className="mt-3" onClick={async () => { try { await decide({ data: { campaignId: t.id } }); toast.success("Gagnant choisi."); qc.invalidateQueries({ queryKey: ["ab"] }); } catch (e) { toast.error((e as Error).message); } }}><Trophy className="size-4" />Choisir le gagnant maintenant</Button>}
+        {t.ab_winner != null && <p className="mt-2 text-xs text-muted-foreground">La décision compare chaque variante au meilleur taux observé avec correction des comparaisons multiples et exige au moins {t.ab_min_sample} envois par version. Les proxys d’ouverture et les scanners de liens peuvent fausser les mesures.</p>}
+        {t.ab_winner == null && <Button size="sm" variant="outline" className="mt-3" onClick={async () => { try { const r = await decide({ data: { campaignId: t.id } }); toast.success(r.state === "significant" ? "Un écart concluant a été détecté." : "Pas de résultat concluant : la version A sera utilisée."); qc.invalidateQueries({ queryKey: ["ab"] }); } catch (e) { toast.error((e as Error).message); } }}><Trophy className="size-4" />Terminer le test</Button>}
       </Panel>)}
     </div>
     {!q.isLoading && !tests.length && <p className="text-sm text-muted-foreground">Aucun test pour l'instant.</p>}

@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Copy } from "lucide-react";
+import { Plus, Copy, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
-import { listWebhooks, saveWebhook, toggleWebhook, testWebhook, sendReportNow } from "@/lib/webhooks.functions";
+import { listWebhooks, saveWebhook, toggleWebhook, testWebhook, sendReportNow, retryWebhookNow } from "@/lib/webhooks.functions";
 
 export const Route = createFileRoute("/dashboard/webhooks")({
   head: () => ({
@@ -23,11 +23,11 @@ export const Route = createFileRoute("/dashboard/webhooks")({
   component: Webhooks,
 });
 
-const EV_LABEL: Record<string, string> = { delivered: "Livrés", bounce: "Rebonds", deferred: "Différés", complaint: "Plaintes spam", unsubscribe: "Désinscriptions", daily_report: "Rapport quotidien (8 h)" };
+const EV_LABEL: Record<string, string> = { delivered: "Livrés", bounce: "Rebonds", deferred: "Différés", complaint: "Plaintes spam", unsubscribe: "Désinscriptions", daily_report: "Rapport quotidien (8 h)", tls_expiration: "Certificat TLS bientôt expiré" };
 
 function Webhooks() {
   const qc = useQueryClient();
-  const fList = useServerFn(listWebhooks), fSave = useServerFn(saveWebhook), fToggle = useServerFn(toggleWebhook), fTest = useServerFn(testWebhook), fReport = useServerFn(sendReportNow);
+  const fList = useServerFn(listWebhooks), fSave = useServerFn(saveWebhook), fToggle = useServerFn(toggleWebhook), fTest = useServerFn(testWebhook), fReport = useServerFn(sendReportNow), fRetry = useServerFn(retryWebhookNow);
   const [report, setReport] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["webhooks"], queryFn: () => fList() });
   const [url, setUrl] = useState("");
@@ -46,6 +46,11 @@ function Webhooks() {
         <Stat label="En échec" value={String(hooks.filter((h) => h.fail_count > 0).length)} />
         <Stat label="Envois totaux" value={hooks.reduce((n, h) => n + h.sent_count, 0).toLocaleString("fr-FR")} />
       </div>
+      <Panel title="Qualité de livraison des webhooks · dernières 24 h">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4"><Stat label="Tentatives mesurées" value={String(q.data?.metrics.count ?? 0)}/><Stat label="Réussite HTTP" value={q.data?.metrics.successRate==null?'—':`${(q.data.metrics.successRate*100).toFixed(1)} %`}/><Stat label="Latence médiane" value={q.data?.metrics.p50Ms==null?'—':`${q.data.metrics.p50Ms} ms`}/><Stat label="Latence P95" value={q.data?.metrics.p95Ms==null?'—':`${q.data.metrics.p95Ms} ms`}/></div>
+        <p className="mt-2 text-xs text-muted-foreground">Échantillon plafonné aux 500 tentatives les plus récentes.</p>
+        {!q.data?.metrics.count&&<p className="mt-2 text-xs text-muted-foreground">Les mesures démarrent après l’application de la migration 0085.</p>}
+      </Panel>
       {q.error && <p role="alert" className="text-sm text-destructive">{q.error.message}</p>}
 
       <Panel title="Ajouter un webhook">
@@ -87,7 +92,11 @@ function Webhooks() {
             ])}
           />
         )}
-        <p className="mt-2 text-xs text-muted-foreground">Un webhook en échec 20 fois de suite est désactivé automatiquement.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Un endpoint en échec 20 fois de suite est désactivé automatiquement. Les tentatives sont conservées dans la file ci-dessous.</p>
+      </Panel>
+      <Panel title="File de relance des webhooks">
+        {(q.data?.retries ?? []).length ? <DataTable cols={["Événement", "État", "Tentatives", "Prochaine action", "Dernier résultat", ""]} rows={(q.data?.retries ?? []).map((r) => [EV_LABEL[r.event] ?? r.event, <Pill tone={r.status === "sent" ? "ok" : r.status === "dead" ? "bad" : "warn"}>{r.status === "sent" ? "Envoyé" : r.status === "dead" ? "À vérifier" : r.status === "sending" ? "En cours" : "En attente"}</Pill>, String(r.attempt_count), r.status === "queued" ? new Date(r.next_attempt_at).toLocaleString("fr-FR") : "—", <span className="text-xs">{r.last_error ?? (r.last_status ? `HTTP ${r.last_status}` : "—")}</span>, r.status === "dead" ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void run(() => fRetry({ data: { id: r.id } }))}><RotateCw className="size-3"/>Relancer</Button> : "—"])}/> : <p className="text-sm text-muted-foreground">Aucune tentative à relancer.</p>}
+        <p className="mt-2 text-xs text-muted-foreground">Relances automatiques avec délais croissants, jusqu’à 12 tentatives. Les éléments terminaux restent visibles et peuvent être relancés manuellement.</p>
       </Panel>
       <Panel title="Rapport quotidien">
         <p className="mb-2 text-sm text-muted-foreground">Chaque matin à 8 h (Paris), un bilan des dernières 24 h — livraisons par FAI, rebonds, plaintes, revenus, IP en quarantaine, serveurs hors ligne — est envoyé aux webhooks abonnés à « Rapport quotidien ». Les URL Slack et Discord reçoivent un message lisible.</p>

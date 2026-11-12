@@ -28,6 +28,15 @@ export function scheduledInstant(local: string, timeZone: string) {
   return new Date(matches[0]!).toISOString();
 }
 
+export function campaignSendDeadline(local: string, timeZone: string, scheduledAt: string | null, now = Date.now()) {
+  const deadline = scheduledInstant(local, timeZone);
+  if (Date.parse(deadline) <= now) throw new Error('Choisissez une date limite future.');
+  if (scheduledAt && Date.parse(deadline) <= Date.parse(scheduledAt)) {
+    throw new Error('La date limite doit suivre le départ programmé.');
+  }
+  return deadline;
+}
+
 export function recipientTimeZone(value: string) {
   const timeZone = value.trim();
   if (timeZone.length > 80 || !/^[A-Za-z][A-Za-z0-9_+/-]*$/.test(timeZone)) {

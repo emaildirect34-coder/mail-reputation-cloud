@@ -223,7 +223,15 @@ export type PlacementSeed = { provider: string; address: string; placement: 'inb
 export const placementNew = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await gate(context, '/dashboard/inbox-tester');
   const r = await mt('/api/v1/placement', { method: 'POST', body: '{}' });
-  return r.configured ? { configured: true, test: r.body as { id: string; token: string; seeds: PlacementSeed[]; expires_at: string } } : { configured: false, test: null };
+  if (!r.configured) return { configured: false, test: null };
+  const test = r.body as { id: string; token: string; seeds: PlacementSeed[]; expires_at: string };
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const saved = await (supabaseAdmin as any).from('seed_placement_runs').insert({
+    placement_id: test.id, token: test.token, status: 'waiting', seeds: test.seeds, started_by: context.userId,
+    expires_at: test.expires_at ?? new Date(Date.now() + 48 * 3600_000).toISOString(),
+  });
+  if (saved.error) throw new Error('Le test a été créé, mais son historique n’a pas pu être enregistré. Appliquez la migration 0086.');
+  return { configured: true, test };
 });
 export const placementResult = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator(i => z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{4,64}$/) }).parse(i))
@@ -231,9 +239,34 @@ export const placementResult = createServerFn({ method: 'POST' }).middleware([re
     await gate(context, '/dashboard/inbox-tester');
     try {
       const r = await mt('/api/v1/placement/' + data.id);
-      return r.configured ? { configured: true, result: r.body as { id: string; token: string; status: 'waiting' | 'done'; seeds: PlacementSeed[] }, error: null } : { configured: false, result: null, error: null };
+      if (!r.configured) return { configured: false, result: null, error: null };
+      const result = r.body as { id: string; token: string; status: 'waiting' | 'done'; seeds: PlacementSeed[] };
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const completedAt = result.status === 'done' ? new Date().toISOString() : null;
+      const saved = await (supabaseAdmin as any).from('seed_placement_runs').update({ seeds: result.seeds, status: result.status, checked_at: new Date().toISOString(), completed_at: completedAt }).eq('placement_id', data.id);
+      if (saved.error) throw new Error('Le résultat est disponible, mais son historique n’a pas pu être actualisé. Appliquez la migration 0086.');
+      return { configured: true, result, error: null };
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Résultat indisponible.';
       return { configured: true, result: null, error: message.startsWith('Mail-Tester 404:') ? 'Test introuvable ou expiré.' : message };
     }
   });
+
+export const placementHistory = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await gate(context, '/dashboard/inbox-tester');
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const result = await (supabaseAdmin as any).from('seed_placement_runs').select('placement_id,status,seeds,started_at,completed_at').order('started_at', { ascending: false }).limit(100);
+  if (result.error) {
+    if (['PGRST205','42P01'].includes(result.error.code)) return null;
+    throw new Error('Historique de placement indisponible.');
+  }
+  const rows = result.data ?? [];
+  const providers = new Map<string, { provider: string; observations: number; inbox: number; promotions: number; spam: number; missing: number; pending: number }>();
+  for (const run of rows) for (const seed of (Array.isArray(run.seeds) ? run.seeds : []) as PlacementSeed[]) {
+    const entry = providers.get(seed.provider) ?? { provider: seed.provider, observations: 0, inbox: 0, promotions: 0, spam: 0, missing: 0, pending: 0 };
+    entry.observations++; entry[seed.placement]++; providers.set(seed.provider, entry);
+  }
+  return { runs: rows.map((r: any) => ({ id: r.placement_id, status: r.status, started_at: r.started_at, completed_at: r.completed_at,
+    counts: Object.fromEntries(['inbox','promotions','spam','missing','pending'].map(key => [key, Array.isArray(r.seeds) ? r.seeds.filter((s: PlacementSeed) => s.placement === key).length : 0])) })),
+    providers: [...providers.values()].sort((a,b) => a.provider.localeCompare(b.provider)), total: rows.length };
+});

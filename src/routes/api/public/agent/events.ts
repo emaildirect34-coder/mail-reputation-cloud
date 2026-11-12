@@ -3,12 +3,15 @@ import { deliveryBatch } from '@/lib/delivery.schemas';
 import { z } from 'zod';
 
 const batch = z.object({
+  scanThrough: z.string().datetime({ offset: true }).optional(),
   events: deliveryBatch.shape.events.min(0),
   receptions: z.array(z.object({
     messageId: z.string().uuid(), recipient: z.string().trim().min(1).max(320),
     occurredAt: z.string().datetime({ offset: true }),
   })).max(500).default([]),
-}).refine(value => value.events.length + value.receptions.length > 0 && value.events.length + value.receptions.length <= 500);
+}).refine(value => value.scanThrough
+  ? value.events.length + value.receptions.length === 0
+  : value.events.length + value.receptions.length > 0 && value.events.length + value.receptions.length <= 500);
 export const Route = createFileRoute('/api/public/agent/events')({ server:{ handlers:{ POST:async ({request})=>{
   const { agentFromRequest } = await import('@/lib/kumo.server');
   const agent = await agentFromRequest(request);
@@ -19,6 +22,12 @@ export const Route = createFileRoute('/api/public/agent/events')({ server:{ hand
   let raw:unknown; try { raw=JSON.parse(body); } catch { return new Response('Bad request',{status:400}); }
   const parsed = batch.safeParse(raw);
   if (!parsed.success) return new Response('Bad request',{status:400});
+  if (parsed.data.scanThrough) {
+    const scanned = await agent.db.rpc('record_agent_smtp_scan', { _server: agent.serverId, _through: parsed.data.scanThrough });
+    if (scanned.error?.code === 'PGRST202') return new Response('Scan reporting unavailable', { status: 400 });
+    if (scanned.error || !scanned.data) return new Response('Scan not acknowledged', { status: 503 });
+    return Response.json({ accepted: 0 }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   const { acceptedDeliveryEvents } = await import('@/lib/delivery-events.server');
   let events: Awaited<ReturnType<typeof acceptedDeliveryEvents>>;
   try {

@@ -64,11 +64,19 @@ sync_holds() { KUMO_AGENT_API="$API" python3 /usr/local/bin/kumo-campaign-contro
 if ! sync_holds; then
   ERR='"Synchronisation des pauses KumoMTA indisponible"'
 fi
-CPU=$(top -bn1 | awk '/Cpu/ {print 100-$8; exit}'); RAM=$(free | awk '/Mem/ {printf "%.0f", $3/$2*100}')
+CPU=$(top -bn1 | awk '/Cpu/ {print 100-$8; exit}'); RAM=$(free | awk '/Mem/ {printf "%.0f", $3/$2*100}'); DISK=$(df -Pk "$DIR" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
 APPLIED=$(cat $DIR/.hash 2>/dev/null || echo "")
 if [ "$ERR" = null ] && [ "$HASH" != "$APPLIED" ]; then ERR='"Nouvelle configuration KumoMTA non appliquée"'; fi
-jq -n --arg a "1.1" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "\${CPU:-0}" --argjson r "\${RAM:-0}" \\
-  '{agentVersion:$a,kumoVersion:$k,installed:$i,failed:$f,error:$e,metrics:{cpu:$c,ram:$r,vmtaRouting:true,preferencePermit:true}} + (if $h=="" then {} else {appliedHash:$h} end)' \\
+MAINTENANCE=null
+SINCE=$(echo "$B" | jq -r '.maintenanceSince // empty')
+if [ -n "$SINCE" ] && [ "$ERR" = null ] && curl -fsS --max-time 3 http://127.0.0.1:8000/api/check-liveness/v1 >/dev/null; then
+  MAINTENANCE=$(curl -fsS --max-time 3 http://127.0.0.1:8000/metrics.json | jq -ce --arg since "$SINCE" '
+    .message_count | select(.type == "gauge") | .value
+    | select(type == "number" and . >= 0 and . <= 9007199254740991 and floor == .)
+    | {since:$since,messages:.}') || MAINTENANCE=null
+fi
+jq -n --arg a "1.3" --arg k "$(/opt/kumomta/sbin/kumod --version 2>/dev/null | head -1 | cut -c1-40)" --arg h "$APPLIED" --argjson i "$INSTALLED" --argjson f "$FAILED" --argjson e "$ERR" --argjson c "\${CPU:-0}" --argjson r "\${RAM:-0}" --argjson d "\${DISK:-0}" --argjson m "$MAINTENANCE" \\
+  '{agentVersion:$a,kumoVersion:$k,installed:$i,failed:$f,error:$e,metrics:{cpu:$c,ram:$r,diskUsedPct:$d,vmtaRouting:true,preferencePermit:true,campaignApproval:true}} + (if $h=="" then {} else {appliedHash:$h} end) + (if $m==null then {} else {maintenance:$m} end)' \\
   | curl -fsS --max-time 30 -X POST -H "$H" -H 'Content-Type: application/json' --data @- "$API/report" >/dev/null || exit 1
 [ "$ERR" = null ] || exit 1
 J=$(curl -fsS --max-time 30 -H "$H" "$API/jobs" || echo '{"jobs":[]}')
@@ -91,7 +99,7 @@ if [ "$(echo "$J" | jq '.jobs | length')" -gt 0 ]; then
     fi
     CHECKED=$((CHECKED + 1))
     id=$(echo "$job" | jq -r .id)
-    permit=$(jq -nc --arg i "$id" '{action:"permit",id:$i}' | curl -fsS --max-time 10 -H "$H" -H 'Content-Type: application/json' --data @- "$API/campaign-control") || break
+    permit=$(echo "$job" | jq -c '{action:"permit",id} + (if .approvalRevision then {approvalRevision} else {} end)' | curl -fsS --max-time 10 -H "$H" -H 'Content-Type: application/json' --data @- "$API/campaign-control") || break
     if ! echo "$permit" | jq -e '.allowed == true' >/dev/null; then
       if [ "$HOLD_REFRESHED" = 0 ]; then sync_holds >&2 || break; HOLD_REFRESHED=1; fi
       continue

@@ -49,6 +49,7 @@ const sections: Section[] = [
   ]},
   { title: "Domain Intelligence", items: [
     { to: "/dashboard/domains", icon: Globe, label: "Domaines" },
+    { to: "/dashboard/sender-profiles", icon: Mail, label: "Profils expéditeur" },
     { to: "/dashboard/dns", icon: CloudCog, label: "DNS & Automatisation" },
     { to: "/dashboard/lab", icon: KeyRound, label: "DKIM / SPF / DMARC" },
     { to: "/dashboard/lab", icon: BadgeCheck, label: "BIMI & VMC" },
@@ -81,6 +82,8 @@ const sections: Section[] = [
 ];
 const cockpit: Item[] = [
   { to: "/dashboard", icon: LayoutGrid, label: "Vue d'ensemble" },
+  { to: "/dashboard/incidents", icon: ShieldAlert, label: "Incidents" },
+  { to: "/dashboard/operations", icon: Activity, label: "Opérations" },
   { to: "/dashboard/logs", icon: Activity, label: "Activité en direct" },
   { to: "/dashboard/agent", icon: Bot, label: "Agent Hermes AI", badge: "NEW" },
 ];

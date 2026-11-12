@@ -26,7 +26,7 @@ function bundle() {
   }, 'fixture', false);
 }
 
-afterEach(() => { vi.unstubAllEnvs(); dataByTable.delete('server_ips'); observations = []; });
+afterEach(() => { vi.unstubAllEnvs(); dataByTable.delete('server_ips'); dataByTable.delete('delivery_provider_holds'); observations = []; });
 
 describe('Kumo SMTP transport policy', () => {
   it('requires authenticated modern TLS only when the operator enables the strict profile', async () => {
@@ -91,5 +91,14 @@ describe('Kumo SMTP transport policy', () => {
     vi.stubEnv('KUMO_SMTP_LOCKSTEP_SITES', 'mx.\u0001example.org');
 
     await expect(bundle()).rejects.toThrow('KUMO_SMTP_LOCKSTEP_SITES');
+  });
+
+  it('caps Orange and shares a single Gmail connection during recovery', async () => {
+    dataByTable.set('delivery_provider_holds', [{ until_at: new Date().toISOString() }]);
+    const { lua } = await bundle();
+    expect(lua).toContain("provider == 'orange' and 2");
+    expect(lua).toContain("provider == 'orange' then path.max_deliveries_per_connection = 100");
+    expect(lua).toContain("shared_connections['google-recovery'] = 1");
+    expect(lua).toContain("path.max_connection_rate = '1/min,max_burst=1'");
   });
 });

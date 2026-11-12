@@ -9,7 +9,7 @@ import { DataTable, Pill } from './kit';
 const eventNames: Record<string, string> = {
   delivered: 'Accepté en SMTP', bounce: 'Rebond', deferred: 'Report SMTP', complaint: 'Plainte',
 };
-const queueNames: Record<string, string> = { queued: 'En file', claimed: 'Réservé par un agent', sent: 'Confié à KumoMTA', failed: 'Écarté ou en échec' };
+const queueNames: Record<string, string> = { queued: 'En file', claimed: 'Réservé par un agent', sent: 'Confié à KumoMTA', failed: 'Écarté ou en échec', skipped: 'Écarté avant envoi', expired: 'Expiré avant envoi' };
 const deliveryNames: Record<string, string> = { pending: 'En attente', delivered: 'Accepté en SMTP', deferred: 'Report SMTP', bounced: 'Rebond', complained: 'Plainte' };
 const formatDate = (value: string) => new Date(value).toLocaleString('fr-FR');
 
@@ -23,6 +23,7 @@ export function MessageTrace({ reference, onClose }: { reference: string; onClos
     { label: 'Dernière prise en charge par l’agent', at: trace.message.claimed_at },
     { label: 'Dernière autorisation d’injection', at: trace.message.permit_granted_at },
     { label: 'Injection confirmée par KumoMTA', at: trace.message.sent_at },
+    { label: 'Expiré avant envoi', at: trace.message.expired_at },
   ] : [];
 
   return <Dialog open={!!reference} onOpenChange={open => { if (!open) onClose(); }}>
@@ -43,7 +44,7 @@ export function MessageTrace({ reference, onClose }: { reference: string; onClos
           <div><dt className="text-muted-foreground">Campagne</dt><dd>{trace.campaign?.name ?? '—'}</dd></div>
           <div><dt className="text-muted-foreground">Objet enregistré dans la campagne</dt><dd>{trace.campaign?.subject ?? '—'}{trace.message.variant !== null && ` · Variante ${trace.message.variant + 1}`}</dd></div>
           <div><dt className="text-muted-foreground">État de la file</dt><dd>{queueNames[trace.message.status] ?? trace.message.status}</dd></div>
-          <div><dt className="text-muted-foreground">Dernier état de livraison</dt><dd>{deliveryNames[trace.message.delivery_state] ?? trace.message.delivery_state}</dd></div>
+          <div><dt className="text-muted-foreground">Dernier état de livraison</dt><dd>{trace.message.status === 'expired' ? 'Aucune tentative SMTP' : deliveryNames[trace.message.delivery_state] ?? trace.message.delivery_state}</dd></div>
         </dl>
         {trace.message.error && <p className="break-words text-sm text-destructive">Motif enregistré · {trace.message.error}</p>}
         <h3 className="font-semibold">Étapes de la file</h3>

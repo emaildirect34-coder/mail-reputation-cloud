@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { Monitor, Smartphone, Moon, Sun, Maximize2, X, Shuffle } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Monitor, Smartphone, Moon, Sun, Maximize2, X, Shuffle, ImageOff } from "lucide-react";
 import { expand, countVariants } from "@/lib/spintax";
+import { auditEmailAccessibility, auditEmailClientCompatibility } from "@/lib/email-accessibility";
+import { preflightCampaignLinks } from "@/lib/campaign-preflight.functions";
 
 // Macros actually replaced at send time (see renderMessage).
 export const MACROS = [
@@ -18,6 +21,8 @@ export function fillSample(html: string, seed = "preview") {
 
 // Approximates mail-app dark mode (Gmail/Apple Mail invert light backgrounds).
 const DARK = `<style>html{filter:invert(1) hue-rotate(180deg);background:#fff}img,video,[style*="background-image"]{filter:invert(1) hue-rotate(180deg)}</style>`;
+const NO_IMAGES = `<meta http-equiv="Content-Security-Policy" content="img-src 'none'; media-src 'none'; frame-src 'none'; object-src 'none'">`;
+type LinkCheck = { checked: number; truncated: boolean; summary: { ok: number; issue: number; manual: number }; results: { type: 'link'|'image'; url: string; status: 'ok'|'issue'|'manual'; detail: string; code?: number }[] };
 
 function stats(html: string) {
   const kb = new Blob([html]).size / 1024;
@@ -29,7 +34,20 @@ function stats(html: string) {
 
 export function EmailPreview({ html, subject, fromName }: { html: string; subject: string; fromName: string }) {
   const [mobile, setMobile] = useState(false), [dark, setDark] = useState(false), [full, setFull] = useState(false), [seed, setSeed] = useState(0);
-  const doc = fillSample(html, `p${seed}`) + (dark ? DARK : "");
+  const [client, setClient] = useState<'gmail' | 'outlook' | 'apple'>('gmail');
+  const [hideImages, setHideImages] = useState(false);
+  const preflight = useServerFn(preflightCampaignLinks);
+  const [linkCheck, setLinkCheck] = useState<LinkCheck | null>(null);
+  const [checking, setChecking] = useState(false), [linkError, setLinkError] = useState('');
+  const [audit, setAudit] = useState<{ html: string; issues: string[]; compatibility: string[] }>();
+  const sample = fillSample(html, `p${seed}`);
+  const frameHtml = hideImages
+    ? sample.replace(/^(\s*<!doctype[^>]*>)?/i, doctype => doctype + NO_IMAGES)
+    : sample;
+  const clientCss = client === 'outlook' ? '<style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}img{display:block;max-width:100%}</style>'
+    : client === 'apple' ? '<style>body{font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;-webkit-text-size-adjust:100%}img{max-width:100%;height:auto}</style>'
+      : '<style>body{font-family:Arial,sans-serif}img{max-width:100%;height:auto}</style>';
+  const doc = clientCss + frameHtml + (dark ? DARK : "");
   const variants = countVariants(subject) * countVariants(html);
   const s = stats(html);
   const btn = (on: boolean) => `grid size-7 place-items-center rounded-md border border-border ${on ? "bg-primary text-primary-foreground" : "bg-card"}`;
@@ -45,14 +63,41 @@ export function EmailPreview({ html, subject, fromName }: { html: string; subjec
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1">
+        <select aria-label="Style d’aperçu client" className="h-7 rounded-md border bg-card px-2 text-xs" value={client} onChange={event => setClient(event.target.value as typeof client)}>
+          <option value="gmail">Simulation Gmail</option><option value="outlook">Simulation de styles Outlook</option><option value="apple">Simulation de styles Apple Mail</option>
+        </select>
         <button type="button" aria-label="Ordinateur" className={btn(!mobile)} onClick={() => setMobile(false)}><Monitor className="size-3.5" /></button>
         <button type="button" aria-label="Mobile" className={btn(mobile)} onClick={() => setMobile(true)}><Smartphone className="size-3.5" /></button>
-        <button type="button" aria-label="Mode sombre" className={btn(dark)} onClick={() => setDark(v => !v)}>{dark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}</button>
+        <button type="button" aria-label="Mode sombre" aria-pressed={dark} className={btn(dark)} onClick={() => setDark(v => !v)}>{dark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}</button>
+        <button type="button" aria-label="Bloquer les images" title="Bloquer les images" aria-pressed={hideImages} className={btn(hideImages)} onClick={() => setHideImages(v => !v)}><ImageOff className="size-3.5" /></button>
         <button type="button" aria-label="Plein écran" className={btn(false)} onClick={() => setFull(true)}><Maximize2 className="size-3.5" /></button>
         <button type="button" aria-label="Autre variation" title="Générer une autre variation" className={btn(false)} onClick={() => setSeed(v => v + 1)}><Shuffle className="size-3.5" /></button>
         <span className={`rounded px-1.5 py-0.5 text-[10.5px] font-semibold ${variants > 1 ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>{variants >= 1e12 ? "1000 Md+" : variants.toLocaleString("fr-FR")} variation{variants > 1 ? "s" : ""}</span>
-        <span className="ml-auto text-[11px] text-muted-foreground">{mobile ? "Mobile 375 px" : "Ordinateur"}{dark ? " · sombre" : ""}</span>
+        <span className="ml-auto text-[11px] text-muted-foreground">{mobile ? "Mobile 375 px" : "Ordinateur"}{dark ? " · sombre simulé" : ""}{hideImages ? " · images bloquées" : ""}</span>
       </div>
+      <button type="button" className="text-xs font-semibold text-primary underline"
+        onClick={() => setAudit({ html: doc, issues: auditEmailAccessibility(doc), compatibility: auditEmailClientCompatibility(doc) })}>Vérifier l’accessibilité et la compatibilité</button>
+      <button type="button" disabled={checking || !html.trim()} className="ml-3 text-xs font-semibold text-primary underline disabled:opacity-50"
+        onClick={async () => { setChecking(true); setLinkError(''); try { setLinkCheck(await preflight({ data: { html: sample } })); } catch (e) { setLinkError(e instanceof Error ? e.message : 'Vérification impossible.'); } finally { setChecking(false); } }}>
+        {checking ? 'Vérification des liens…' : 'Vérifier les liens et images avant envoi'}
+      </button>
+      {linkError && <p role="alert" className="text-xs text-destructive">{linkError}</p>}
+      {linkCheck && <div role="status" className="space-y-1 rounded-md border p-2 text-xs">
+        <p className="font-semibold">Contrôle préalable : {linkCheck.summary.ok} accessible(s), {linkCheck.summary.issue} anomalie(s), {linkCheck.summary.manual} à vérifier manuellement.</p>
+        {linkCheck.checked === 0 && <p>Aucun lien externe ou image distante à contrôler.</p>}
+        <ul className="max-h-40 space-y-1 overflow-auto">{linkCheck.results.map((item, i) => <li key={`${item.type}-${item.url}-${i}`} className="break-all">
+          <span className={item.status === 'issue' ? 'font-semibold text-destructive' : item.status === 'ok' ? 'text-emerald-700' : 'text-muted-foreground'}>{item.status === 'ok' ? 'OK' : item.status === 'issue' ? 'À corriger' : 'À vérifier'}</span>
+          {' · '}{item.type === 'link' ? 'Lien' : 'Image'} · {item.url}{item.code ? ` · HTTP ${item.code}` : ''} — {item.detail}
+        </li>)}</ul>
+        {linkCheck.truncated && <p className="text-muted-foreground">Seuls les 40 premiers liens et images ont été contrôlés.</p>}
+        <p className="text-muted-foreground">Les redirections et les hôtes hors liste autorisée ne sont pas suivis. Un résultat accessible ne garantit pas le rendu par les fournisseurs de messagerie.</p>
+      </div>}
+      {audit?.html === doc && <div role="status" className="text-xs text-muted-foreground">
+        {audit.issues.length ? <ul className="list-disc pl-4">{audit.issues.map(issue => <li key={issue}>{issue}</li>)}</ul> : <p>Aucune anomalie détectée par les contrôles rapides.</p>}
+        <p>Les contrastes vérifiés utilisent les couleurs hexadécimales déclarées dans le HTML.</p>
+        {!!audit.compatibility.length && <><p className="mt-2 font-semibold">Compatibilité e-mail à vérifier</p><ul className="list-disc pl-4">{audit.compatibility.map(issue => <li key={issue}>{issue}</li>)}</ul></>}
+      </div>}
+      <p className="text-[10px] text-muted-foreground">Aperçu simulé : ces vues ajustent largeur et styles généraux. Le rendu réel par Gmail, Outlook ou Apple Mail nécessite un service de prévisualisation connecté.</p>
       {frame("h-56")}
       <div className="flex flex-wrap gap-1.5 text-[11px]">
         <span className={`rounded px-1.5 py-0.5 ${s.kb > 102 ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>{s.kb.toFixed(1)} Ko{s.kb > 102 ? " — coupé par Gmail" : ""}</span>
@@ -67,6 +112,7 @@ export function EmailPreview({ html, subject, fromName }: { html: string; subjec
               <button type="button" aria-label="Ordinateur" className={btn(!mobile)} onClick={() => setMobile(false)}><Monitor className="size-3.5" /></button>
               <button type="button" aria-label="Mobile" className={btn(mobile)} onClick={() => setMobile(true)}><Smartphone className="size-3.5" /></button>
               <button type="button" aria-label="Mode sombre" className={btn(dark)} onClick={() => setDark(v => !v)}>{dark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}</button>
+              <button type="button" aria-label="Bloquer les images" aria-pressed={hideImages} className={btn(hideImages)} onClick={() => setHideImages(v => !v)}><ImageOff className="size-3.5" /></button>
               <button type="button" aria-label="Fermer" className={`${btn(false)} ml-auto`} onClick={() => setFull(false)}><X className="size-3.5" /></button>
             </div>
             {frame("h-[80vh]")}

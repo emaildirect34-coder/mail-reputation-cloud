@@ -71,7 +71,7 @@ function mailingListHeaders(listId: string | null | undefined, origin: string) {
   return headers;
 }
 
-export function renderMessage(c: { id?: string; from_name: string; from_email: string; reply_to: string | null; subject: string; html: string; amp_html?: string | null; list_id?: string | null }, m: { id: string; email: string; first_name: string | null; unsub_token: string }, origin: string, trackOrigin = origin) {
+export function renderMessage(c: { id?: string; from_name: string; from_email: string; reply_to: string | null; subject: string; html: string; amp_html?: string | null; list_id?: string | null; purchase_thank_you?: boolean; placement_probe_token?: string | null; sender_verification?: boolean }, m: { id: string; email: string; first_name: string | null; unsub_token: string }, origin: string, trackOrigin = origin) {
   const unsub = `${origin}/api/public/unsub/${m.unsub_token}`;
   const preferenceOrigin = process.env['BRANDED_PREFERENCES_ENABLED'] === 'true' ? trackOrigin : origin;
   const preferences = `${preferenceOrigin}/preferences/${m.unsub_token}`;
@@ -84,10 +84,11 @@ export function renderMessage(c: { id?: string; from_name: string; from_email: s
   const domain = c.from_email.split('@')[1] ?? 'localhost';
   // Click tracking only rewrites links written literally in the template, so the redirect endpoint can verify them.
   const track = `${trackOrigin}/api/public/c/${m.unsub_token}?u=`;
-  let body = fill(c.html.replace(trackableHref, (_, u: string) => `href="${track}${encodeURIComponent(u.replaceAll('&amp;', '&'))}"`), true);
-  if (!c.html.includes('{unsubscribe_url}')) body += `\n<p style="font-size:11px;color:#888">Pour ne plus recevoir nos emails : <a href="${unsub}">se désinscrire</a>.</p>`;
-  if (!c.html.includes('{preferences_url}')) body += `\n<p style="font-size:11px;color:#555"><a href="${preferences}">Gérer mes préférences e-mail</a></p>`;
-  body += `\n<img src="${trackOrigin}/api/public/t/${m.unsub_token}" width="1" height="1" alt="" style="display:none">`;
+  const automatic = c.purchase_thank_you || c.sender_verification;
+  let body = fill(automatic ? c.html : c.html.replace(trackableHref, (_, u: string) => `href="${track}${encodeURIComponent(u.replaceAll('&amp;', '&'))}"`), true);
+  if (!c.sender_verification && !c.html.includes('{unsubscribe_url}')) body += `\n<p style="font-size:11px;color:#888">Pour ne plus recevoir nos emails : <a href="${unsub}">se désinscrire</a>.</p>`;
+  if (!automatic && !c.html.includes('{preferences_url}')) body += `\n<p style="font-size:11px;color:#555"><a href="${preferences}">Gérer mes préférences e-mail</a></p>`;
+  if (!automatic) body += `\n<img src="${trackOrigin}/api/public/t/${m.unsub_token}" width="1" height="1" alt="" style="display:none">`;
   const senderName = `From: ${encodeHeader(c.from_name, true)}`;
   const sender = `<${c.from_email}>`;
   const separator = (senderName.split('\r\n').at(-1)?.length ?? 0) + sender.length + 1 > 76 ? '\r\n ' : ' ';
@@ -99,7 +100,9 @@ export function renderMessage(c: { id?: string; from_name: string; from_email: s
     `${senderName}${separator}${sender}`, `To: <${m.email}>`, `Subject: ${encodeHeader(fill(c.subject, false))}`,
     `Date: ${new Date().toUTCString().replace('GMT', '+0000')}`, `Message-ID: <${m.id}@${domain}>`,
     ...(c.reply_to ? [`Reply-To: <${c.reply_to}>`] : []),
-    `List-Unsubscribe: <${unsub}>, <mailto:unsubscribe@${domain}?subject=${m.unsub_token}>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+    ...(automatic ? ['Auto-Submitted: auto-generated'] : []),
+    ...(c.placement_probe_token && /^ED-[A-Z0-9]{5,32}$/.test(c.placement_probe_token) ? [`X-Email-Direct-Placement: ${c.placement_probe_token}`] : []),
+    ...(c.sender_verification ? [] : [`List-Unsubscribe: <${unsub}>, <mailto:unsubscribe@${domain}?subject=${m.unsub_token}>`, 'List-Unsubscribe-Post: List-Unsubscribe=One-Click']),
     ...mailingListHeaders(c.list_id, origin),
     ...(c.list_id ? ['Precedence: bulk', 'X-Auto-Response-Suppress: OOF, AutoReply'] : []),
     ...(feedbackId ? [feedbackId] : []),
@@ -114,8 +117,8 @@ export function renderMessage(c: { id?: string; from_name: string; from_email: s
   const plain = plainEmailText(fill(c.html, true));
   const fallback = [
     plain || 'Consultez la version HTML pour voir le contenu de ce message.',
-    ...(!plain.includes(unsub) ? [`Se désinscrire ${unsub}`] : []),
-    ...(!plain.includes(preferences) ? [`Gérer mes préférences ${preferences}`] : []),
+    ...(!c.sender_verification && !plain.includes(unsub) ? [`Se désinscrire ${unsub}`] : []),
+    ...(!automatic && !plain.includes(preferences) ? [`Gérer mes préférences ${preferences}`] : []),
   ].join('\n\n');
   const boundary = `ed-${crypto.randomUUID()}`;
   return [

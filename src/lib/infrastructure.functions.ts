@@ -12,14 +12,18 @@ async function admin(ctx: { supabase: any; userId: string }) {
 }
 const check = (error: {message:string} | null) => { if (error) throw new Error(error.message); };
 
+async function canReadInfrastructure(context: Parameters<typeof admin>[0], path: string) {
+  const { data: superadmin } = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
+  if (superadmin) return true;
+  const tasks = await context.supabase.from('worker_tasks').select('allowed_paths').eq('user_id', context.userId).eq('status', 'active');
+  if (!tasks.data?.some((task: { allowed_paths: string[] }) => task.allowed_paths.includes(path))) throw new Error('Accès non autorisé');
+  return false;
+}
+
 export const readInfrastructure = createServerFn({method:'POST'}).middleware([requireSupabaseAuth])
   .inputValidator((i:{path:string}) => z.object({path:z.enum(['/dashboard/servers','/dashboard/ips','/dashboard/pools','/dashboard/warmup'])}).parse(i))
   .handler(async ({data,context}) => {
-    const {data:superadmin} = await context.supabase.rpc('has_role',{_user_id:context.userId,_role:'superadmin'});
-    if (!superadmin) {
-      const tasks = await context.supabase.from('worker_tasks').select('allowed_paths').eq('user_id',context.userId).eq('status','active');
-      if (!tasks.data?.some(t => t.allowed_paths.includes(data.path))) throw new Error('Accès non autorisé');
-    }
+    const superadmin = await canReadInfrastructure(context, data.path);
     const db = context.supabase;
     const results = await Promise.all([
       db.from('managed_servers').select('*').order('created_at'),
@@ -30,6 +34,41 @@ export const readInfrastructure = createServerFn({method:'POST'}).middleware([re
     ]);
     for (const r of results) check(r.error);
     return {servers:results[0].data ?? [] as Tables<'managed_servers'>[], ips:results[1].data ?? [] as Tables<'server_ips'>[], pools:results[2].data ?? [] as Tables<'vmta_pools'>[], warmups:results[3].data ?? [] as Tables<'warmup_plans'>[], agents:results[4].data ?? [], isAdmin:!!superadmin};
+  });
+
+export const readServerMaintenance = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => uuidInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await canReadInfrastructure(context, '/dashboard/servers');
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const result = await supabaseAdmin.rpc('read_server_maintenance', { _server: data.id }).maybeSingle();
+    if (result.error?.code === 'PGRST202') return null;
+    check(result.error);
+    if (!result.data) throw new Error('Serveur introuvable');
+    return result.data;
+  });
+
+export const readServerConfigHistory = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => uuidInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await canReadInfrastructure(context, '/dashboard/servers');
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const result = await supabaseAdmin.from('server_config_revisions').select('config_hash,first_seen_at')
+      .eq('server_id', data.id).order('first_seen_at', { ascending: false }).limit(25);
+    if (result.error?.code === 'PGRST205' || result.error?.code === '42P01') return null;
+    check(result.error);
+    return result.data ?? [];
+  });
+
+export const setServerMaintenance = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(input => uuidInput.extend({ enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const db = await admin(context);
+    const result = await db.rpc('set_server_maintenance', { _server: data.id, _enabled: data.enabled });
+    check(result.error);
+    if (!result.data) throw new Error('Serveur indisponible');
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: data.enabled ? 'server.maintenance_enabled' : 'server.maintenance_disabled', entityType: 'managed_server', entityId: data.id });
   });
 
 export const syncInventory = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>uuidInput.parse(i))
@@ -51,11 +90,13 @@ export const syncInventory = createServerFn({method:'POST'}).middleware([require
     }
     const missing = (saved.data ?? []).filter(s=>!remote.some(r=>r.external_id===s.external_id)).map(s=>s.id);
     if (missing.length) { check((await db.from('managed_servers').update({status:'absent',synced_at:now}).in('id',missing)).error); check((await db.from('server_ips').update({active:false}).in('server_id',missing)).error); }
+    const { recordAuditEvent } = await import('./audit-log.server');
+    await recordAuditEvent(db, { actorId: context.userId, action: 'server.inventory_synced', entityType: 'provider_account', entityId: data.id, summary: { servers: remote.length, ips: remote.reduce((n,s)=>n+s.ips.length,0) } });
     return {servers:remote.length,ips:remote.reduce((n,s)=>n+s.ips.length,0)};
   });
 
 export const createPool = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>poolInput.parse(i))
-  .handler(async ({data,context}) => {const db=await admin(context); check((await db.from('vmta_pools').insert({...data,created_by:context.userId})).error); return {ok:true};});
+  .handler(async ({data,context}) => {const db=await admin(context); const result=await db.from('vmta_pools').insert({...data,created_by:context.userId}).select('id').single(); check(result.error); if (!result.data) throw new Error('Pool non créé.'); const { recordAuditEvent } = await import('./audit-log.server'); await recordAuditEvent(db,{actorId:context.userId,action:'pool.created',entityType:'vmta_pool',entityId:result.data.id}); return {ok:true};});
 export const assignIpPool = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>assignmentInput.parse(i))
   .handler(async ({data,context}) => {const db=await admin(context); const r=await db.from('server_ips').update({pool_id:data.poolId}).eq('id',data.ipId).eq('active',true).select('id').single(); check(r.error); return {ok:true};});
 export const saveWarmup = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(i=>warmupInput.parse(i))

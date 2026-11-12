@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Ban, BadgeCheck, Braces, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleHelp, Code2, FileCode2, FlaskConical, Folder, Gauge, Globe2, Pointer, Image, Link2, Mail, MapPin, Network, Palette, Play, RefreshCw, Reply, Rocket, Save, Search, Send, Server, ShieldCheck, Tag, Target, Trash2, TrendingUp, Upload, Users, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
 import { LaunchPanel } from "@/components/dash/launch-panel";
@@ -15,9 +16,16 @@ import { EmailPreview, MACROS } from '@/components/dash/email-preview';
 import { VisualEmailEditor } from '@/components/dash/visual-email-editor';
 import { SubjectOptimizer } from '@/components/dash/subject-optimizer';
 import { renderWeeklyDigest } from '@/lib/weekly-digest';
-import { inboxTestServers } from '@/lib/sending.functions';
+import { inboxTestServers, readCampaignVersion } from '@/lib/sending.functions';
+import { readSenderProfiles } from '@/lib/sender-profiles.functions';
+import { campaignVersionKey } from '@/lib/campaign-version';
+import { isCampaignTopic } from '@/lib/campaign-topics';
 
 export const Route = createFileRoute("/dashboard/campaigns_/new")({
+  validateSearch: (search: Record<string, unknown>): { campaign?: string; version?: number } => {
+    const result = campaignVersionKey.safeParse({ id: search['campaign'], version: search['version'] });
+    return result.success ? { campaign: result.data.id, version: result.data.version } : {};
+  },
   head: () => ({ meta: [
     { title: "Campaign Builder — Email Direct" },
     { name: "description", content: "Créez, testez et pilotez vos campagnes : offre, structure email, corps HTML, délivrabilité et préflight sur une seule page." },
@@ -29,9 +37,12 @@ export const Route = createFileRoute("/dashboard/campaigns_/new")({
 });
 
 const initial = {
-  name: "", schedule: "", scheduleMode: "account", vmtaPoolId: "", topic: "", offer: "", sponsorOfferId: "",
-  fromName: "Email Direct", fromEmail: "", replyTo: "", subject: "", body: "", ampHtml: "",
+  name: "", schedule: "", sendDeadline: "", scheduleMode: "account", serverId: "", vmtaPoolId: "", topic: "", offer: "", sponsorOfferId: "",
+  fromName: "Email Direct", fromEmail: "", replyTo: "", senderProfileId: "", subject: "", body: "", ampHtml: "",
   digestMode: "off", digestText: "",
+  sendWindowStart: "", sendWindowEnd: "",
+  sendPriority: "0",
+  listId: "", segmentId: "",
 };
 type Draft = typeof initial;
 const storageKey = "email-direct-campaign-draft";
@@ -58,19 +69,29 @@ function Chip({ children, onClick }: { children: ReactNode; onClick?: () => void
 }
 
 function Builder() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const loadVersion = useServerFn(readCampaignVersion);
+  const restoring = !!search.campaign && search.version != null;
+  const version = useQuery({
+    queryKey: ['campaign-version', search.campaign, search.version], enabled: restoring,
+    queryFn: () => loadVersion({ data: { id: search.campaign!, version: search.version! } }),
+  });
   const readOffers=useServerFn(campaignOffers);
   const sponsorOffers=useQuery({queryKey:['campaign-offers'],queryFn:()=>readOffers()});
   const readServers = useServerFn(inboxTestServers);
   const inventory = useQuery({ queryKey: ['campaign-send-servers'], queryFn: () => readServers() });
+  const readProfiles = useServerFn(readSenderProfiles);
+  const profileQuery = useQuery({ queryKey: ['sender-profiles'], queryFn: () => readProfiles() });
   const [d, setD] = useState<Draft>(initial);
   const [writingGoal, setWritingGoal] = useState('');
   const [writingAudience, setWritingAudience] = useState('');
-  const [chosen, setChosen] = useState<string[]>([]);
   const [testMode, setTestMode] = useState(true);
   const [live, setLive] = useState(true);
   const [preview, setPreview] = useState(initial.body);
   const [lastTest, setLastTest] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
+  const [launchPanelKey, setLaunchPanelKey] = useState(0);
   const digestMode = d.digestMode === 'on';
   let content = d.body;
   let digestError = '';
@@ -79,23 +100,39 @@ function Builder() {
     catch (error) { content = ''; digestError = (error as Error).message; }
   }
   const sendDraft = digestMode ? { ...d, body: content, ampHtml: '', sponsorOfferId: '' } : { ...d, digestText: '' };
+  const selectedServer = inventory.data?.find(server => server.id === d.serverId);
   useEffect(() => { setHasDraft(Boolean(localStorage.getItem(storageKey))); }, []);
   useEffect(() => { if (live) setPreview(content); }, [content, live]);
   const u = (k: keyof Draft, v: string) => setD(p => ({ ...p, [k]: v }));
-  const inp = (k: keyof Draft, ph = "", type = "text") => <input aria-label={k} type={type} value={d[k]} placeholder={ph} onChange={e => u(k, e.target.value)} className={inCls} />;
+  const inp = (k: keyof Draft, ph = "", type = "text", locked = false) => <input aria-label={k} type={type} value={d[k]} placeholder={ph} readOnly={locked} onChange={e => u(k, e.target.value)} className={inCls} />;
+  const profiles = (profileQuery.data ?? []).filter(profile => profile.enabled && profile.verified);
+  const selectedProfile = profiles.find(profile => profile.id === d.senderProfileId);
+  const profileChanged = selectedProfile && (selectedProfile.from_name !== d.fromName || selectedProfile.from_email !== d.fromEmail || (selectedProfile.reply_to ?? '') !== d.replyTo);
+  const selectProfile = (id: string) => {
+    const profile = profiles.find(item => item.id === id);
+    setD(previous => ({
+      ...previous, senderProfileId: profile?.id ?? '',
+      ...(profile ? { fromName: profile.from_name, fromEmail: profile.from_email, replyTo: profile.reply_to ?? '' } : {}),
+    }));
+  };
   const area = (k: keyof Draft, h: string, ph = "", mono = false) => <textarea aria-label={k} value={d[k]} placeholder={ph} onChange={e => u(k, e.target.value)} className={`w-full resize-y rounded-md border border-border bg-card p-2 text-[11.5px] focus:outline-none focus:ring-1 focus:ring-ring ${h} ${mono ? "font-mono leading-5" : ""}`} />;
 
   const checks = [
     { l: "Structure", ok: Boolean(d.name.trim()) },
     { l: "Contenu", ok: content.trim().length > 20 },
     { l: "En-têtes", ok: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.fromEmail) && Boolean(d.subject) },
-    { l: "Serveurs", ok: chosen.some(id => inventory.data?.some(server => server.id === id)) },
+    { l: "Serveur d’envoi", ok: !!selectedServer },
   ];
   const passed = checks.filter(c => c.ok).length;
   const ready = passed === checks.length;
+  const checklist = digestMode
+    ? ['Vérifier les titres, résumés et liens des rubriques.', 'Vérifier que l’audience a choisi le récapitulatif hebdomadaire.', 'Prévisualiser le récapitulatif sur mobile.']
+    : d.sponsorOfferId
+      ? ['Vérifier l’offre, ses pays autorisés et la date de fin.', 'Vérifier que le lien sponsor contient l’identifiant de clic et que le postback a été testé.', 'Tester les liens du créatif et son placement sur les boîtes témoins.']
+      : ['Vérifier l’objet, le nom expéditeur et l’adresse de réponse.', 'Relire l’aperçu sur mobile et avec les images bloquées.', 'Vérifier la liste, les exclusions et le créneau avant l’envoi.'];
   const save = () => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ d, chosen, testMode })); setHasDraft(true);
+      localStorage.setItem(storageKey, JSON.stringify({ d, testMode })); setHasDraft(true);
       toast.success("Brouillon enregistré dans ce navigateur.");
     } catch { toast.error("Enregistrement impossible dans ce navigateur."); }
   };
@@ -103,11 +140,36 @@ function Builder() {
     try {
       const raw = localStorage.getItem(storageKey); if (!raw) return;
       const data = JSON.parse(raw);
-      if (data.d && typeof data.d === "object") setD({ ...initial, ...Object.fromEntries(Object.entries(data.d).filter(([k, v]) => k in initial && typeof v === "string")) });
-      setChosen(Array.isArray(data.chosen) ? data.chosen.filter((s: unknown) => typeof s === "string" && /^[a-f0-9-]{36}$/i.test(s)) : []);
+      if (data.d && typeof data.d === "object") {
+        const draft = { ...initial, ...Object.fromEntries(Object.entries(data.d).filter(([k, v]) => k in initial && typeof v === "string")) };
+        if (!('serverId' in data.d) && Array.isArray(data.chosen) && data.chosen.length === 1 && typeof data.chosen[0] === 'string') {
+          draft.serverId = data.chosen[0];
+        }
+        setD(draft);
+      }
       setTestMode(data.testMode !== false); toast.success("Configuration restaurée.");
     } catch { toast.error("Configuration illisible."); }
   };
+  const closeVersion = () => void navigate({ search: {}, replace: true });
+  function restoreArchivedVersion() {
+    const selected = version.data;
+    if (!selected || version.isFetching || version.isError) return;
+    const snapshot = selected.snapshot;
+    setD({
+      ...initial, name: snapshot.name, subject: snapshot.subject, fromName: snapshot.fromName, fromEmail: snapshot.fromEmail,
+      replyTo: snapshot.replyTo ?? '', body: snapshot.html, ampHtml: snapshot.ampHtml ?? '',
+      sponsorOfferId: selected.sponsorAvailable ? snapshot.sponsorId ?? '' : '',
+      offer: selected.sponsorAvailable ? snapshot.sponsorName ?? '' : '',
+      topic: snapshot.topic && isCampaignTopic(snapshot.topic) ? snapshot.topic : '',
+      digestMode: selected.digestSource ? 'on' : 'off', digestText: selected.digestSource ?? '',
+    });
+    setLive(true);
+    setTestMode(true);
+    setLastTest(null);
+    setLaunchPanelKey(key => key + 1);
+    closeVersion();
+    toast.success(`Version ${selected.version} restaurée dans le brouillon.`);
+  }
   const runTests = () => { setLastTest(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })); ready ? toast.success("Contrôles du brouillon réussis.") : toast.error(`${checks.length - passed} contrôle(s) à corriger.`); };
 
   return <div id="top" className="scroll-mt-24 space-y-3 pb-4">
@@ -124,7 +186,7 @@ function Builder() {
         <TrendingUp className="size-8 text-neon-green" />
       </div>
       <div className="ml-auto flex flex-wrap justify-end gap-2">
-        <CampaignInboxTest draft={sendDraft} />
+        <CampaignInboxTest draft={sendDraft} server={selectedServer} />
         <button onClick={() => save()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold text-primary"><Save className="size-4" />Enregistrer</button>
         <button onClick={() => toast("Survolez chaque champ : chaque colonne correspond à une étape de la campagne.")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold"><CircleHelp className="size-4 text-primary" />Aide</button>
         <button disabled={!hasDraft} onClick={restore} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-[12px] whitespace-nowrap font-semibold disabled:opacity-50"><Folder className="size-4 text-primary" />Configs enregistrées</button>
@@ -132,11 +194,26 @@ function Builder() {
     </div>
 
     <CampaignTabs active="new" />
+    {restoring && <section className="card-lux space-y-2 p-3.5 text-sm" aria-label="Restaurer une version">
+      <h2 className="font-semibold">Restaurer la version {search.version}</h2>
+      {version.isPending && <p role="status">Chargement de la version…</p>}
+      {version.error && <p role="alert" className="text-destructive">{version.error.message}</p>}
+      {version.data && <>
+        <p><strong>{version.data.snapshot.name}</strong> · {version.data.snapshot.subject}</p>
+        <p className="text-muted-foreground">Cette version remplacera le brouillon à l’écran. Le mode test sera activé. Choisis de nouveau la liste, le serveur et la date avant de programmer.</p>
+        {version.data.snapshot.sponsorId && !version.data.sponsorAvailable && <p role="status">L’offre sponsor a changé ou est indisponible. Vérifie les liens du message et choisis une offre avant l’envoi.</p>}
+        {version.data.snapshot.weeklyDigest && !version.data.digestSource && <p role="status">Cette version ancienne sera chargée en HTML. Vérifie le format de la campagne avant l’envoi.</p>}
+      </>}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={!version.data || version.isFetching || version.isError} onClick={restoreArchivedVersion}>Charger dans le brouillon</Button>
+        <Button size="sm" variant="outline" onClick={closeVersion}>Annuler</Button>
+      </div>
+    </section>}
 
     {/* KPIs */}
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:[&>*]:col-span-2 lg:[&>*:nth-child(n+4)]:col-span-3 xl:grid-cols-5 xl:[&>*]:col-span-1 xl:[&>*:nth-child(n+4)]:col-span-1">
       <Kpi icon={<Server />} label="Serveurs avec agent" value={inventory.data ? String(inventory.data.length) : "—"} sub="Inventaire KumoMTA" tone="blue" />
-      <Kpi icon={<Network />} label="Serveurs sélectionnés" value={String(chosen.length)} sub="VMTA / SMTP" tone="blue" />
+      <Kpi icon={<Network />} label="Serveur de la campagne" value={selectedServer ? "1" : "—"} sub={selectedServer?.label ?? "À choisir dans Envoi réel"} tone="blue" />
       <Kpi icon={<Check />} label="Champs renseignés" value={`${passed} / ${checks.length}`} sub={ready ? "Contrôles du brouillon réussis" : "Préflight en attente"} tone={ready ? "green" : "amber"} />
     </div>
 
@@ -164,9 +241,18 @@ function Builder() {
       {/* Structure */}
       <div className="contents">
         <Col id="structure" title="Structure Email" icon={<Mail />}>
-          <Row label="From Name">{inp("fromName")}</Row>
-          <Row label="From Email">{inp("fromEmail", "", "email")}</Row>
-          <Row label="Reply To">{inp("replyTo", "", "email")}</Row>
+          <Row label="Profil expéditeur">
+            <select aria-label="Profil expéditeur" className={inCls} value={d.senderProfileId} onChange={event => selectProfile(event.target.value)}>
+              <option value="">Saisie manuelle</option>
+              {d.senderProfileId && !selectedProfile && <option value={d.senderProfileId} disabled>Profil indisponible</option>}
+              {profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.label} · {profile.from_email}</option>)}
+            </select>
+            <Link to="/dashboard/sender-profiles" className="mt-1 inline-block text-xs text-primary underline">Gérer les profils</Link>
+            {profileChanged && <Button className="ml-2" size="sm" variant="outline" onClick={() => selectProfile(d.senderProfileId)}>Réappliquer le profil</Button>}
+          </Row>
+          <Row label="From Name">{inp("fromName", "", "text", !!d.senderProfileId)}</Row>
+          <Row label="From Email">{inp("fromEmail", "", "email", !!d.senderProfileId)}</Row>
+          <Row label="Reply To">{inp("replyTo", "", "email", !!d.senderProfileId)}</Row>
           <Row label="Subject"><div className="flex items-center gap-2">{inp("subject")}<AiDiagnostic compact input={{skill:'subject',subject:d.subject,body:d.body}} before={d.subject} onApply={v=>u('subject',v)}/></div></Row>
           <SubjectOptimizer subject={d.subject} body={d.body} offer={d.offer} onApply={(s, p) => setD(prev => {
             const tag = `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${p.replace(/[<>&]/g, '')}</div>`;
@@ -246,18 +332,12 @@ function Builder() {
       {/* Délivrabilité */}
       <div className="contents">
         <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
-          <p className="text-[13px] font-bold text-primary">Serveurs de livraison</p>
+          <p className="text-[13px] font-bold text-primary">Serveur de livraison</p>
           {inventory.isPending && <p role="status" className="text-xs">Chargement des serveurs…</p>}
           {inventory.error && <p role="alert" className="text-xs text-destructive">{inventory.error.message}</p>}
-          {inventory.data?.map(server => <label key={server.id} className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={chosen.includes(server.id)} onChange={event => {
-              const checked = event.target.checked;
-              setChosen(current => checked ? [...current, server.id] : current.filter(id => id !== server.id));
-            }} />
-            {server.label}
-          </label>)}
           {inventory.data?.length === 0 && <p className="text-xs text-muted-foreground">Aucun serveur avec agent installé.</p>}
-          <p className="text-xs text-muted-foreground">Le pool et la programmation s’ajustent dans Envoi réel.</p>
+          {selectedServer && <p className="text-sm">{selectedServer.label}</p>}
+          <a href="#envoi" className="text-xs font-medium text-primary underline">{selectedServer ? "Modifier le serveur d’envoi" : "Choisir le serveur dans Envoi réel"}</a>
           </Col>
 
         <details className="card-lux mb-3 break-inside-avoid p-3.5"><summary className="flex cursor-pointer list-none items-center gap-2 text-[14px] font-bold text-primary"><Braces className="size-5" />Variables (Placeholders)<span className="ml-auto text-lg">+</span></summary>
@@ -266,11 +346,17 @@ function Builder() {
       </div>
     </div>
 
-    <LaunchPanel d={sendDraft} testMode={testMode} servers={chosen} setServers={setChosen} onPoolChange={id => u("vmtaPoolId", id)} onTopicChange={topic => u("topic", topic)} />
+    <LaunchPanel key={launchPanelKey} d={sendDraft} testMode={testMode} onServerChange={id => u("serverId", id)} onPoolChange={id => u("vmtaPoolId", id)} onTopicChange={topic => u("topic", topic)} onPriorityChange={priority => u("sendPriority", priority)} onDeadlineChange={date => u("sendDeadline", date)} onSendWindowChange={(start, end) => setD(previous => ({ ...previous, sendWindowStart: start, sendWindowEnd: end }))}
+      onAudienceChange={(listId, segmentId) => setD(previous => ({ ...previous, listId, segmentId }))}
+      onDraftContentChange={(subject, body) => setD(previous => ({ ...previous, subject, body }))} />
 
     {/* Préflight */}
     <section id="preflight" className="card-lux mb-3 break-inside-avoid scroll-mt-24 p-3.5">
       <h2 className="mb-2 flex items-center gap-2 font-display text-[16px] font-bold text-primary"><FlaskConical className="size-5" />Résultats des tests & Préflight</h2>
+      <details className="mb-3 rounded-lg border p-2 text-sm">
+        <summary className="cursor-pointer font-medium">Checklist {digestMode ? 'du récapitulatif' : d.sponsorOfferId ? 'de l’offre sponsor' : 'de l’envoi standard'}</summary>
+        <ul className="mt-2 list-disc space-y-1 pl-5">{checklist.map(item => <li key={item}>{item}</li>)}</ul>
+      </details>
       <div className="grid items-center gap-3 lg:grid-cols-[1fr_1.4fr_1fr_auto]">
         <div className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5"><span className={`grid size-9 place-items-center rounded-full ${ready ? "bg-neon-green text-primary-foreground" : "bg-neon-amber/20 text-neon-amber"}`}><Check className="size-5" /></span><div><p className="text-[13px] font-bold">{lastTest ? (ready ? "Contrôles du brouillon réussis" : "Corrections nécessaires") : "Tests en attente..."}</p><p className="text-[11.5px] text-muted-foreground">Préflight : validation des paramètres, serveurs et contenu.</p></div></div>
         <div className="rounded-xl border border-border/60 p-2.5">

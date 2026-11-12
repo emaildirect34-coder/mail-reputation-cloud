@@ -15,21 +15,22 @@ export const abInput = z.object({
   variants: z.array(z.object({ subject: z.string().trim().max(300), fromName: z.string().trim().max(120) })).min(2).max(3),
   pct: z.number().int().min(5).max(50),
   hours: z.number().int().min(1).max(72),
+  minSample: z.number().int().min(30).max(1000),
   metric: z.enum(['open', 'click']),
 });
 
 export const readAb = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const db = await admin(context);
-  const camps = await db.from('campaigns').select('id,name,subject,from_name,status,total,ab_variants,ab_metric,ab_decide_at,ab_winner,created_at').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(50);
+  const camps = await db.from('campaigns').select('id,name,subject,from_name,status,total,ab_variants,ab_metric,ab_decide_at,ab_winner,ab_min_sample,ab_decision_state,created_at').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(50);
   check(camps.error);
   type V = { subject: string; fromName: string; assigned: number; sent: number; opened: number; clicked: number };
-  const tests: { id: string; name: string; ab_metric: string | null; ab_decide_at: string | null; ab_winner: number | null; variants: V[] }[] = [];
+  const tests: { id: string; name: string; ab_metric: string | null; ab_decide_at: string | null; ab_winner: number | null; ab_min_sample: number; ab_decision_state: 'significant'|'inconclusive'|'insufficient_sample'|null; variants: V[] }[] = [];
   const eligible: { id: string; name: string; subject: string; from_name: string; total: number }[] = [];
   for (const c of (camps.data ?? []) as any[]) {
     if (Array.isArray(c.ab_variants)) {
       const variants = await Promise.all((c.ab_variants as any[]).map(async (v: any, i: number): Promise<V> => {
         const base = () => db.from('campaign_messages').select('id', { count: 'exact', head: true }).eq('campaign_id', c.id).eq('variant', i);
-        const [all, sent, opened, clicked] = await Promise.all([base(), base().eq('status', 'sent'), base().not('opened_at', 'is', null), base().not('clicked_at', 'is', null)]);
+        const [all, sent, opened, clicked] = await Promise.all([base(), base().or('status.eq.sent,sent_at.not.is.null'), base().not('opened_at', 'is', null), base().not('clicked_at', 'is', null)]);
         return { ...v, assigned: all.count ?? 0, sent: sent.count ?? 0, opened: opened.count ?? 0, clicked: clicked.count ?? 0 };
       }));
       tests.push({ ...c, variants });
@@ -50,7 +51,7 @@ export const startAb = createServerFn({ method: 'POST' }).middleware([requireSup
     if ((started.count ?? 0) > 0) throw new Error('L’envoi a déjà commencé : le test A/B doit être créé avant le premier envoi.');
     const variants = data.variants.map(v => ({ subject: v.subject || c.data!.subject, fromName: v.fromName || c.data!.from_name }));
     // Hold sending while variants are assigned.
-    check((await db.from('campaigns').update({ status: 'paused', ab_variants: variants, ab_metric: data.metric, ab_decide_at: new Date(Date.now() + data.hours * 3600_000).toISOString() }).eq('id', data.campaignId)).error);
+    check((await db.from('campaigns').update({ status: 'paused', ab_variants: variants, ab_metric: data.metric, ab_min_sample: data.minSample, ab_decision_state: null, ab_decide_at: new Date(Date.now() + data.hours * 3600_000).toISOString() }).eq('id', data.campaignId)).error);
     const ids: string[] = [];
     for (let from = 0; ; from += 1000) {
       const r = await db.from('campaign_messages').select('id').eq('campaign_id', data.campaignId).eq('status', 'queued').range(from, from + 999); check(r.error);
@@ -69,7 +70,12 @@ export const startAb = createServerFn({ method: 'POST' }).middleware([requireSup
 export const decideAbNow = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(i => z.object({ campaignId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const db = await admin(context);
-    check((await db.from('campaigns').update({ ab_decide_at: new Date().toISOString() }).eq('id', data.campaignId).is('ab_winner', null)).error);
+    const due = await db.from('campaigns').update({ ab_decide_at: new Date().toISOString() }).eq('id', data.campaignId).is('ab_winner', null).select('id').maybeSingle();
+    check(due.error);
+    if (!due.data) throw new Error('Ce test n’existe plus ou un gagnant a déjà été choisi.');
     check((await db.rpc('decide_ab_winners' as any)).error);
-    return { ok: true };
+    const result = await db.from('campaigns').select('ab_winner,ab_decision_state').eq('id', data.campaignId).maybeSingle();
+    check(result.error);
+    if (result.data?.ab_winner == null) throw new Error('Chaque version doit avoir au moins un envoi effectué avant de choisir le gagnant.');
+    return { ok: true, state: result.data?.ab_decision_state };
   });

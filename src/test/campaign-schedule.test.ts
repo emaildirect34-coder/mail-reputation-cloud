@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planRecipientSchedule, scheduledInstant } from '@/lib/campaign-schedule';
+import { campaignSendDeadline, planRecipientSchedule, scheduledInstant } from '@/lib/campaign-schedule';
 
 describe('campaign scheduling', () => {
   it('uses the account time zone instead of the server time zone', () => {
@@ -12,6 +12,14 @@ describe('campaign scheduling', () => {
     expect(() => scheduledInstant('2027-02-31T12:00', 'Europe/Paris')).toThrow();
     expect(() => scheduledInstant('2027-03-28T02:30', 'Europe/Paris')).toThrow();
     expect(() => scheduledInstant('2027-10-31T02:30', 'Europe/Paris')).toThrow();
+  });
+
+  it('requires a cutoff after both the current time and the planned start', () => {
+    const now = Date.parse('2027-07-12T08:00:00Z');
+    const departure = '2027-07-12T10:00:00.000Z';
+    expect(campaignSendDeadline('2027-07-12T12:01', 'Europe/Paris', departure, now)).toBe('2027-07-12T10:01:00.000Z');
+    expect(() => campaignSendDeadline('2027-07-12T12:00', 'Europe/Paris', departure, now)).toThrow('départ programmé');
+    expect(() => campaignSendDeadline('2027-07-12T10:00', 'Europe/Paris', null, now)).toThrow('date limite future');
   });
 
   it('uses local time and spreads recipients within each time zone, including the account fallback', () => {

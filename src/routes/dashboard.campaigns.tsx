@@ -5,7 +5,8 @@ import { Layers, Plus } from "lucide-react";
 import { CampaignTabs, ModuleHeader } from "@/components/dash/campaign-tabs";
 import { DataTable, Panel, Stat } from "@/components/dash/kit";
 import { Button } from "@/components/ui/button";
-import { readCampaignList } from "@/lib/sending.functions";
+import { CampaignOutcomeComparison } from "@/components/dash/campaign-outcomes";
+import { readCampaignList, readDeliverySourceQuality } from "@/lib/sending.functions";
 
 export const Route = createFileRoute("/dashboard/campaigns")({
   head: () => ({ meta: [{ title: "Campagnes — Email Direct" }] }),
@@ -15,6 +16,8 @@ export const Route = createFileRoute("/dashboard/campaigns")({
 function Overview() {
   const read = useServerFn(readCampaignList);
   const q = useQuery({ queryKey: ["campaign-list"], queryFn: () => read(), refetchInterval: 30_000 });
+  const readQuality = useServerFn(readDeliverySourceQuality);
+  const quality = useQuery({ queryKey: ["campaign-source-quality"], queryFn: () => readQuality(), enabled: q.data?.isAdmin === true });
   const rows = q.data?.rows ?? [];
   const n = (value: number) => q.data ? value.toLocaleString("fr-FR") : "—";
   return <div className="space-y-3">
@@ -36,5 +39,12 @@ function Overview() {
         row.name, row.subject, n(row.queued), n(row.injected),
       ])} />}
     </Panel>
+    {q.data?.isAdmin && <CampaignOutcomeComparison campaigns={rows} />}
+    {q.data?.isAdmin && <Panel title="Qualité par liste sur les 7 derniers jours">
+      {quality.isPending ? <p role="status">Chargement…</p> : quality.error ? <p role="alert">{quality.error.message}</p>
+        : quality.data?.length ? <DataTable cols={["Liste source", "SMTP acceptés", "Rebonds", "Plaintes reçues", "Désabonnements"]}
+          rows={quality.data.map(row => [row.source, row.accepted, row.hard_bounces, row.complaints, row.unsubscribes])} />
+          : <p className="text-sm text-muted-foreground">{quality.data ? "Aucun événement observé." : "Données indisponibles. Appliquez la migration 0051."}</p>}
+    </Panel>}
   </div>;
 }

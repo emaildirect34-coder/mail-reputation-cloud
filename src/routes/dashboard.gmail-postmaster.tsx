@@ -96,7 +96,7 @@ function GmailPostmaster() {
 
   return (
     <>
-      <PageHeader title="Gmail Postmaster en direct" desc="Données officielles Google Postmaster Tools, actualisées toutes les 5 minutes."
+      <PageHeader title="Gmail Postmaster" desc="Le tableau se rafraîchit toutes les 5 minutes. Les données officielles de Google sont généralement publiées avec un délai pouvant dépasser 24 heures."
         action={<div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!stats.length}><Download className="mr-1 h-4 w-4" />CSV</Button>
           <Button size="sm" onClick={() => { loadDomains(); load(); }} disabled={loading}><RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Actualiser</Button>

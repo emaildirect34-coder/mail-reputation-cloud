@@ -1,6 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { z } from 'zod';
 import { InfrastructurePage } from '@/components/dash/infrastructure';
 export const Route = createFileRoute('/dashboard/servers')({
+  validateSearch: (search: Record<string, unknown>): { server?: string } => {
+    const server = z.string().uuid().safeParse(search['server']);
+    return server.success ? { server: server.data } : {};
+  },
   head: () => ({ meta: [
     { title: 'Serveurs réels — Email Direct' },
     { name: 'description', content: 'Inventaire réel multi-comptes Linode, Vultr, Hetzner et DigitalOcean.' },
@@ -9,5 +14,10 @@ export const Route = createFileRoute('/dashboard/servers')({
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },
   ] }),
-  component: () => <InfrastructurePage view="servers" />,
+  component: ServersPage,
 });
+
+function ServersPage() {
+  const { server } = Route.useSearch();
+  return <InfrastructurePage key={server} view="servers" initialServerId={server ?? ''} />;
+}

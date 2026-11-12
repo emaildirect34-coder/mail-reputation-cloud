@@ -22,6 +22,7 @@ export const launchInput = z.object({
   name: z.string().trim().min(1).max(120),
   fromName: z.string().trim().min(1).max(120),
   fromEmail: z.string().trim().email(),
+  senderProfileId: z.string().uuid().optional(),
   replyTo: z.string().trim().email().or(z.literal('')).optional(),
   subject: z.string().trim().min(1).max(300),
   html: z.string().min(20).max(500_000),
@@ -30,18 +31,36 @@ export const launchInput = z.object({
   fatigueProtection: z.boolean().optional(),
   monitorPlacement: z.boolean().optional(),
   listId: z.string().uuid(),
-  serverIds: z.array(z.string().uuid()).min(1).max(100),
+  segmentId: z.string().uuid().optional(),
+  serverIds: z.array(z.string().uuid()).length(1, 'Choisissez un seul serveur d’envoi pour cette campagne.'),
   vmtaPoolId: z.string().uuid().optional(),
   topic: z.enum(campaignTopics).optional(),
   sponsorOfferId: z.string().uuid().optional(),
   schedule: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
+  sendDeadline: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
   scheduleTimeZone: z.string().max(80).optional(),
   sunsetDays: z.union([z.literal('isp'), z.literal('off'), z.literal(30), z.literal(60), z.literal(90), z.literal(365)]).default('isp'),
   acceptTypoExclusions: z.boolean().optional(),
   sendWindowHours: z.union([z.literal(2), z.literal(4), z.literal(8)]).optional(),
   recipientLocalTime: z.boolean().optional(),
+  sendPriority: z.union([z.literal(-1), z.literal(0), z.literal(1)]).optional(),
+  duplicateConfirmation: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  sendWindow: z.object({
+    start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+    end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  }).refine(window => window.start !== window.end, 'Choisissez deux heures différentes.').optional(),
 });
+export type CampaignLaunchInput = z.input<typeof launchInput>;
 export const campaignStatusInput = z.object({ id: z.string().uuid(), status: z.enum(['queued', 'paused', 'cancelled']) });
+
+export const campaignConflictsInput = launchInput.pick({
+  listId: true, segmentId: true, serverIds: true, sponsorOfferId: true, schedule: true, sendDeadline: true, scheduleTimeZone: true,
+  sunsetDays: true, acceptTypoExclusions: true, sendWindowHours: true, recipientLocalTime: true,
+  sendPriority: true, sendWindow: true,
+}).required({ schedule: true, scheduleTimeZone: true }).extend({ weeklyDigest: z.boolean() });
+export type CampaignConflictsInput = z.input<typeof campaignConflictsInput>;
+export const senderQuotaForecastInput = campaignConflictsInput.extend({ fromEmail: launchInput.shape.fromEmail });
+export type SenderQuotaForecastInput = z.input<typeof senderQuotaForecastInput>;
 
 /** Parse email and first name, with an optional third column for the IANA time zone. */
 export function parseContacts(text: string, withTimeZones = false) {

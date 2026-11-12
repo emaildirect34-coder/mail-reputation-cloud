@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, FlaskConical, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, Pill, DataTable, Stat } from "@/components/dash/kit";
-import { placementNew, placementResult, type PlacementSeed } from "@/lib/ops.functions";
+import { placementHistory, placementNew, placementResult, type PlacementSeed } from "@/lib/ops.functions";
 
 export const Route = createFileRoute("/dashboard/inbox-tester")({
   head: () => ({
@@ -32,7 +33,8 @@ const LABEL: Record<PlacementSeed["placement"], [string, "ok" | "warn" | "bad" |
 type Test = { id: string; token: string; seeds: PlacementSeed[]; status?: string };
 
 function InboxTester() {
-  const fNew = useServerFn(placementNew), fRes = useServerFn(placementResult);
+  const fNew = useServerFn(placementNew), fRes = useServerFn(placementResult), fHistory = useServerFn(placementHistory);
+  const history = useQuery({ queryKey: ['placement-history'], queryFn: () => fHistory(), refetchInterval: 60000 });
   const [test, setTest] = useState<Test | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ function InboxTester() {
     try {
       const r = await fRes({ data: { id } });
       if (r.error) setError(r.error);
-      else if (r.result) { setError(null); setTest(current => current?.id === id ? r.result : current); }
+      else if (r.result) { setError(null); setTest(current => current?.id === id ? r.result : current); void history.refetch(); }
     } catch {
       setError("Impossible d’actualiser le test. Réessayez dans quelques instants.");
     }
@@ -57,7 +59,7 @@ function InboxTester() {
     try {
       const r = await fNew();
       if (!r.configured || !r.test) setError("Le serveur Mail-Tester n'est pas connecté.");
-      else setTest(r.test);
+      else { setTest(r.test); void history.refetch(); }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Impossible de créer le test.";
       setError(message.startsWith("Mail-Tester 409:") ? "Ajoutez une boîte témoin dans Paramètres → Boîtes témoins Gmail." : message);
@@ -107,6 +109,19 @@ function InboxTester() {
       ) : (
         <Panel><p className="text-sm text-muted-foreground">Cliquez sur « Nouveau test » pour recevoir la liste des boîtes témoins et votre code de test.</p></Panel>
       )}
+      <Panel title="Tendances historiques des boîtes témoins">
+        {history.data === null ? <p className="text-sm text-muted-foreground">Appliquez la migration 0086 pour conserver l’historique des tests.</p> : history.isPending ? <p className="text-sm text-muted-foreground">Chargement de l’historique…</p> : history.error ? <p role="alert" className="text-sm text-destructive">{history.error.message}</p> : !history.data?.total ? <p className="text-sm text-muted-foreground">Les tendances apparaîtront après le premier test.</p> : <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Résultats observés dans les boîtes témoins des 100 derniers tests. Ils indiquent uniquement le placement de ces adresses de test.</p>
+          <DataTable cols={["Fournisseur", "Observations", "Réception", "Promotions", "Spam", "Non reçu"]} rows={history.data.providers.map(row => {
+            const completed = row.observations - row.pending, percent = (n: number) => completed ? `${Math.round(n / completed * 100)} %` : '—';
+            return [row.provider, String(row.observations), percent(row.inbox), percent(row.promotions), percent(row.spam), percent(row.missing)];
+          })} />
+          <DataTable cols={["Test", "Date", "État", "Boîtes en réception", "Spam", "Non reçu"]} rows={history.data.runs.slice(0, 10).map(run => [
+            <code className="text-xs">{run.id}</code>, new Date(run.started_at).toLocaleString('fr-FR'), run.status === 'done' ? 'Terminé' : 'En cours',
+            String(run.counts.inbox + run.counts.promotions), String(run.counts.spam), String(run.counts.missing),
+          ])} />
+        </div>}
+      </Panel>
     </>
   );
 }

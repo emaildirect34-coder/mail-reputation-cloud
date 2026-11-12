@@ -22,7 +22,7 @@ function headers(a: Account): Record<string, string> {
 }
 
 async function call(a: Account, path: string, init: RequestInit = {}) {
-  const res = await fetch(BASES[a.provider] + path, { ...init, headers: { ...headers(a), ...(init.headers as any) } });
+  const res = await fetch(BASES[a.provider] + path, { ...init, signal: init.signal ?? AbortSignal.timeout(7000), headers: { ...headers(a), ...(init.headers as any) } });
   const text = await res.text();
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
@@ -137,6 +137,54 @@ export async function deploy(a: Account, o: { plan: string; region: string; labe
 export async function cfZones(a: Account) {
   const r = await call(a, "/zones?per_page=50");
   return (r.result as any[]).map((z) => ({ id: z.id, name: z.name, status: z.status }));
+}
+
+export async function cfCertificatePacks(a: Account, zoneId: string) {
+  if (a.provider !== 'cloudflare') throw new Error('Compte Cloudflare requis.');
+  const r = await call(a, `/zones/${zoneId}/ssl/certificate_packs?status=all&per_page=50`);
+  const certificates=((r.result ?? []) as any[]).flatMap(pack => (pack.certificates ?? []).map((cert: any) => ({
+    host: (cert.hosts ?? pack.hosts ?? []).join(', '), status: String(cert.status ?? pack.status ?? 'unknown'),
+    expires_on: cert.expires_on ?? null,
+  })));
+  const byHost=new Map<string,typeof certificates[number]>();
+  for(const cert of certificates){const current=byHost.get(cert.host);if(!current||cert.status==='active'&&current.status!=='active'||cert.status===current.status&&cert.expires_on&&(!current.expires_on||Date.parse(cert.expires_on)<Date.parse(current.expires_on)))byHost.set(cert.host,cert);}
+  return [...byHost.values()];
+}
+
+type ManagedDnsRecord={type:string;name:string;marker:string};
+function matchesManagedDns(item:ManagedDnsRecord,record:any){
+  if(record.type!==item.type||record.name.toLowerCase()!==item.name.toLowerCase())return false;
+  if(item.type==='TXT')return String(record.content??'').replace(/^"|"$/g,'').toLowerCase().startsWith(item.marker.toLowerCase());
+  if(item.type==='MX')return String(record.content??'').replace(/\.$/,'').toLowerCase()===item.marker.replace(/\.$/,'').toLowerCase();
+  return item.marker==='*';
+}
+export async function cfCaptureDnsRecords(a: Account, zoneId: string, managed: ManagedDnsRecord[]) {
+  const unique=[...new Map(managed.map(item=>[`${item.type}:${item.name.toLowerCase()}:${item.marker}`,item])).values()];
+  const all=await Promise.all(unique.map(async item=>{
+    const q=new URLSearchParams({type:item.type,'name.exact':item.name,per_page:'100'});
+    const r=await call(a,`/zones/${zoneId}/dns_records?${q}`);
+    return ((r.result??[]) as any[]).filter(x=>matchesManagedDns(item,x)).map(x=>({id:x.id,type:x.type,name:x.name,content:x.content,ttl:x.ttl,priority:x.priority,proxied:x.proxied,data:x.data}));
+  }));
+  return {managed:unique,records:all.flat()};
+}
+
+export async function cfRestoreDnsRecords(a: Account, zoneId: string, managed: ManagedDnsRecord[], snapshot: any[]) {
+  const results:{type:string;name:string;ok:boolean;error?:string}[]=[];
+  for(const item of managed){
+    try{
+      const q=new URLSearchParams({type:item.type,'name.exact':item.name,per_page:'100'});const r=await call(a,`/zones/${zoneId}/dns_records?${q}`);
+      const current=((r.result??[]) as any[]).filter(x=>matchesManagedDns(item,x));
+      const wanted=snapshot.filter(x=>matchesManagedDns(item,x));
+      for(let i=0;i<Math.max(current.length,wanted.length);i++){
+        const body=wanted[i];const present=current[i];
+        if(body&&present){const {id:_id,...record}=body;await call(a,`/zones/${zoneId}/dns_records/${present.id}`,{method:'PUT',body:JSON.stringify(record)});}
+        else if(body) {const {id:_id,...record}=body;await call(a,`/zones/${zoneId}/dns_records`,{method:'POST',body:JSON.stringify(record)});}
+        else if(present) await call(a,`/zones/${zoneId}/dns_records/${present.id}`,{method:'DELETE'});
+      }
+      results.push({type:item.type,name:item.name,ok:true});
+    }catch(e){results.push({type:item.type,name:item.name,ok:false,error:(e as Error).message.slice(0,250)});}
+  }
+  return results;
 }
 
 export async function cfPublishInitialTlsa(a: Account, zoneId: string, owner: string, fingerprint: string) {

@@ -4,7 +4,8 @@ import hero from "@/assets/cockpit-hero.jpg.asset.json";
 import worldMap from "@/assets/world-map.jpg.asset.json";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { readCockpitInventory, readCockpitTraffic } from "@/lib/cockpit.functions";
+import { readCockpitInventory, readCockpitTraffic, readOperationsWidgets } from "@/lib/cockpit.functions";
+import { formatAge } from "@/lib/operations-widgets";
 import { Button } from "@/components/ui/button";
 import { Ring, Spark, smoothPath } from "@/components/dash/lux";
 import { BadgeCheck, Bot, Boxes, CheckCircle2, ChevronRight, CircleDot, Globe, Mail, Radio, Recycle, Send, ShieldCheck, Star, Target, UserRound, Zap } from "lucide-react";
@@ -105,6 +106,58 @@ function Chart({ data }: { data: Point[] }) {
   </svg>;
 }
 
+const operationTime = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' });
+const utcTime = (date: string | null) => date ? operationTime.format(new Date(date)) + ' UTC' : '—';
+
+function OperationWidgets() {
+  const read = useServerFn(readOperationsWidgets);
+  const query = useQuery({ queryKey: ['operations-widgets'], queryFn: () => read(), refetchInterval: 60_000 });
+  if (query.isPending) return null;
+  if (query.error) return <Widget title="Exploitation" icon={<Radio />}><p role="alert">{query.error.message}</p></Widget>;
+  if (!query.data) return null;
+  const { openIncidents, sponsorAlerts, unreviewedInjections, planner, queue, servers, lastSeed, observedAt, recentReports, reportsWithGaps } = query.data;
+  const checked = Date.parse(observedAt);
+  return <>
+    <Widget title="À traiter aujourd’hui" icon={<Radio />}>
+      <ul className="space-y-2 text-sm">
+        <li><Link className="text-primary underline" to="/dashboard/incidents">{fmt(openIncidents)} incident(s) actif(s)</Link></li>
+        <li><Link className="text-primary underline" to="/dashboard/templates">{fmt(sponsorAlerts)} alerte(s) sur des liens sponsor</Link></li>
+        <li><Link className="text-primary underline" to="/dashboard/campaigns/list">{fmt(unreviewedInjections)} injection(s) à vérifier</Link></li>
+        <li><Link className="text-primary underline" to="/dashboard/finance">
+          {recentReports ? `${fmt(reportsWithGaps)} rapport(s) avec écart sur ${fmt(recentReports)} récents` : 'Consulter les rapports de conversion'}
+        </Link></li>
+      </ul>
+    </Widget>
+    <Widget title="Planning des prochaines 24 heures" icon={<Send />}>
+      {planner.length ? <ul className="max-h-56 space-y-2 overflow-auto text-xs">
+        {planner.map(item => <li key={item.id} className="border-b pb-1">
+          <Link className="font-semibold text-primary underline" to="/dashboard/campaigns/list" search={{ monitor: item.id }}>{item.name}</Link>
+          <p>{utcTime(item.next_at)} · {item.auto_pause_reason ?? (item.status === 'paused' ? 'En pause' : 'Premier message prévu')}</p>
+        </li>)}
+      </ul> : <Empty>Aucun départ programmé dans les prochaines 24 heures.</Empty>}
+    </Widget>
+    <Widget title="Âge des messages dus en file" icon={<Mail />}>
+      {queue.length ? <ul className="max-h-56 space-y-2 overflow-auto text-xs">
+        {queue.map(item => <li key={item.server_id + ':' + item.provider} className="border-b pb-1">
+          <b>{item.label} · {item.provider}</b>
+          <p>{fmt(item.waiting)} en attente · médiane {formatAge(item.median)} · plus ancien {formatAge(item.oldest)}</p>
+        </li>)}
+      </ul> : <Empty>Aucun message arrivé à son créneau en attente d’autorisation.</Empty>}
+    </Widget>
+    <Widget title="Fraîcheur et configuration des agents" icon={<ShieldCheck />}>
+      <p className="mb-2 text-xs">Dernière observation témoin {utcTime(lastSeed)}</p>
+      {servers.length ? <ul className="max-h-56 space-y-2 overflow-auto text-xs">
+        {servers.map(server => <li key={server.id} className="border-b pb-1">
+          <Link to="/dashboard/servers" search={{ server: server.id }} className="font-semibold text-primary underline">{server.label}</Link>
+          <p>{server.applied === null ? 'Configuration non comparée' : server.applied ? 'Configuration appliquée' : 'Écart de configuration'}</p>
+          <p>Agent {utcTime(server.last_seen)} · Journaux {utcTime(server.observed_through)}
+            {server.observed_through && checked - Date.parse(server.observed_through) > 5 * 60_000 ? ' · lecture en retard' : ''}</p>
+        </li>)}
+      </ul> : <Empty>Aucun serveur enregistré.</Empty>}
+    </Widget>
+  </>;
+}
+
 function Cockpit() {
   const [period, setPeriod] = useState<Period>("24h");
   const traffic = useServerFn(readCockpitTraffic);
@@ -186,7 +239,8 @@ function Cockpit() {
       <Widget title="Placement des boîtes témoins Gmail" icon={<Target />} action={<span className="cockpit-chip">{period}</span>}><div className="flex items-center gap-4"><Ring value={percent(placement.inbox, seedCount) ?? 0} size={92} stroke={9} tone="blue"><div><b className="text-base text-primary">{pct(percent(placement.inbox, seedCount))}</b><p className="text-[9px]">Réception</p></div></Ring><ul className="flex-1 space-y-2 text-[10px]">{[["Réception", placement.inbox], ["Promotions", placement.promotions], ["Spam", placement.spam], ["Non reçu", placement.missing]].map(([label, value]) => <li key={label} className="flex items-center gap-2"><CircleDot className="h-3 w-3 text-primary" /><span>{label}</span><b className="ml-auto">{seedCount ? value : "—"}</b></li>)}</ul></div><Empty>{seedCount ? seedCount + " résultats témoins parmi les 30 derniers tests suivis." : "Aucun résultat témoin Gmail sur cette période."}</Empty></Widget>
       <Widget title="Flux d’événements récents" icon={<Radio />} action={<Detail to="/dashboard/logs">Voir tout</Detail>}><ul className="cockpit-flow">{data?.recent.map(event => { const [label, tone] = types[event.event_type] ?? [event.event_type, "blue"]; return <li key={event.id}><time dateTime={event.occurred_at}>{clock.format(new Date(event.occurred_at))}</time><span className={"cockpit-flow-dot cockpit-tone-" + tone}><Zap className="h-2.5 w-2.5" /></span><span className="min-w-0 flex-1 truncate">{label}{event.smtp_code ? " · " + event.smtp_code : ""}</span><span className="cockpit-chip">{event.isp}</span></li>; })}</ul>{!data?.recent.length && <Empty>Aucun événement chargé.</Empty>}</Widget>
       <Widget title="Conformité & Sécurité" icon={<ShieldCheck />}><div className="flex items-center gap-3"><Ring value={compliance ?? 0} size={92} stroke={9}><div><b className="text-lg text-primary">{pct(compliance)}</b><p className="text-[9px]">Contrôles DNS</p></div></Ring><ul className="flex-1 space-y-1 text-[9px]">{domains.map(({ key, ok, checked: count }, index) => <li className="flex items-center gap-1" key={key}><CircleDot className="h-2.5 w-2.5 text-primary" /><span>{["SPF", "DKIM A", "DKIM B", "DMARC", "MTA-STS", "TLS-RPT"][index]}</span><span className="ml-auto text-primary">{count ? ok + "/" + count : "—"}</span></li>)}</ul></div><Detail to="/dashboard/domains" /></Widget>
-      <Widget title="Actions rapides" icon={<Zap />}><div className="flex flex-wrap gap-2"><Detail to="/dashboard/campaigns/new">Configurer une campagne</Detail><Detail to="/dashboard/logs/smtp">Voir les rapports</Detail><Detail to="/dashboard/preflight">Lancer un préflight</Detail><Detail to="/dashboard/agent">Ouvrir Atlas IA</Detail></div></Widget>
+      <Widget title="Actions rapides" icon={<Zap />}><div className="flex flex-wrap gap-2"><Detail to="/dashboard/campaigns/new">Configurer une campagne</Detail><Detail to="/dashboard/logs/smtp">Voir les rapports</Detail><Detail to="/dashboard/preflight">Lancer un préflight</Detail><Detail to="/dashboard/incidents">Centre d’incidents</Detail><Detail to="/dashboard/servers">Maintenance des serveurs</Detail><Detail to="/dashboard/agent">Ouvrir Atlas IA</Detail></div></Widget>
+      <OperationWidgets />
     </div>
   </div>;
 }

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 const input = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('permit'), id: z.string().uuid() }),
+  z.object({ action: z.literal('permit'), id: z.string().uuid(), approvalRevision: z.string().uuid().optional() }),
   z.object({ action: z.literal('release'), ids: z.array(z.string().uuid()).min(1).max(200) }),
   z.object({ action: z.literal('confirm-suppressions'), ids: z.array(z.string().uuid()).min(1).max(200) }),
 ]);
@@ -15,9 +15,13 @@ export const Route = createFileRoute('/api/public/agent/campaign-control')({
         const { agentFromRequest } = await import('@/lib/kumo.server');
         const agent = await agentFromRequest(request);
         if (!agent) return new Response('Unauthorized', { status: 401 });
-        const holds = await agent.db.rpc('agent_campaign_holds', { _server: agent.serverId });
+        const args = { _server: agent.serverId };
+        const [holds, provider] = await Promise.all([
+          agent.db.rpc('agent_campaign_holds', args), agent.db.rpc('agent_provider_holds', args),
+        ]);
         if (holds.error) return new Response('Unavailable', { status: 503 });
-        return Response.json({ holds: holds.data }, { headers: noStore });
+        if (provider.error && provider.error.code !== 'PGRST202') return new Response('Unavailable', { status: 503 });
+        return Response.json({ holds: holds.data, ...(provider.error ? {} : { providerHolds: provider.data }) }, { headers: noStore });
       },
       POST: async ({ request }) => {
         const { agentFromRequest } = await import('@/lib/kumo.server');
@@ -31,7 +35,10 @@ export const Route = createFileRoute('/api/public/agent/campaign-control')({
         const body = input.safeParse(raw);
         if (!body.success) return new Response('Bad request', { status: 400 });
         if (body.data.action === 'permit') {
-          const permit = await agent.db.rpc('agent_may_inject', { _server: agent.serverId, _id: body.data.id });
+          const args = { _server: agent.serverId, _id: body.data.id };
+          const permit = body.data.approvalRevision
+            ? await agent.db.rpc('agent_may_inject_approved', { ...args, _revision: body.data.approvalRevision })
+            : await agent.db.rpc('agent_may_inject', args);
           if (permit.error) return new Response('Unavailable', { status: 503 });
           return Response.json({ allowed: permit.data === true }, { headers: noStore });
         }

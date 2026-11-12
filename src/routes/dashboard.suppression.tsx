@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBar } from "@/components/dash/campaign-tabs";
+import { ContactInsights, ContactListInsights } from "@/components/dash/contact-insights";
 import { readSending, createList, importContacts, importSuppressions, createSubscriptionConfirmation, exportSubscriptionProofs } from "@/lib/sending.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -50,6 +51,7 @@ function Suppression() {
         <Stat label="Listes" value={String(lists.length)} /><Stat label="Plaintes FBL" value={String(s["complaint"] ?? 0)} /><Stat label="Contacts actifs" value={String(lists.reduce((a, l) => a + l.active, 0))} /><Stat label="Adresses supprimées" value={String(totalSupp)} /><Stat label="Désinscriptions" value={String(s["unsubscribe"] ?? 0)} />
       </div>
       {q.error && <p role="alert" className="text-sm text-destructive">{q.error.message}</p>}
+      {q.data && <><ContactInsights /><ContactListInsights lists={lists} /></>}
       <Panel title="Importer des contacts">
         <form className="grid gap-3" onSubmit={e => { e.preventDefault(); run(async () => {
           const r = await fImport({ data: { listId, text: contacts, withTimeZones, ...(importReview ? { reviewedBatch: importReview.batch } : {}) } });

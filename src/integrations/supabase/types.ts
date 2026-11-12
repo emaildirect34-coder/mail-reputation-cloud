@@ -14,6 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: { id: number; actor_id: string | null; action: string; entity_type: string; entity_id: string | null; summary: Json; created_at: string }
+        Insert: { actor_id?: string | null; action: string; entity_type: string; entity_id?: string | null; summary?: Json }
+        Update: never
+        Relationships: []
+      }
+      campaign_exclusions: {
+        Row: { campaign_id: string; contact_id: string | null; email_md5: string; reason: string; created_at: string }
+        Insert: { campaign_id: string; contact_id?: string | null; email_md5: string; reason: string }
+        Update: never
+        Relationships: [{ foreignKeyName: 'campaign_exclusions_campaign_id_fkey'; columns: ['campaign_id']; isOneToOne: false; referencedRelation: 'campaigns'; referencedColumns: ['id'] }]
+      }
+      recipient_topic_preferences: {
+        Row: { email_md5: string; topics: string[] }
+        Insert: { email_md5: string; topics: string[] }
+        Update: { topics?: string[] }
+        Relationships: []
+      }
+      recipient_weekly_preferences: {
+        Row: { email_md5: string }
+        Insert: { email_md5: string }
+        Update: never
+        Relationships: []
+      }
+      recipient_digest_preferences: {
+        Row: { email_md5: string }
+        Insert: { email_md5: string }
+        Update: never
+        Relationships: []
+      }
+      recipient_snoozes: {
+        Row: { email_md5: string; until_at: string }
+        Insert: { email_md5: string; until_at: string }
+        Update: { until_at?: string }
+        Relationships: []
+      }
+      recipient_sponsor_blocks: {
+        Row: { recipient_md5: string; brand_id: string; blocked_at: string }
+        Insert: { recipient_md5: string; brand_id: string; blocked_at?: string }
+        Update: never
+        Relationships: []
+      }
+      recipient_mailbox_holds: {
+        Row: { email_md5: string; until_at: string }
+        Insert: { email_md5: string; until_at: string }
+        Update: { until_at?: string }
+        Relationships: []
+      }
+      subscription_confirmations: {
+        Row: { token_hash: string; list_id: string; email_md5: string; confirmed_at: string }
+        Insert: { token_hash: string; list_id: string; email_md5: string; confirmed_at?: string }
+        Update: never
+        Relationships: []
+      }
+      sender_reply_channels: {
+        Row: { profile_id: string; token_hash: string }
+        Insert: { profile_id: string; token_hash: string }
+        Update: { token_hash?: string }
+        Relationships: []
+      }
+      campaign_followup_tasks: {
+        Row: { id: string; campaign_id: string; task_key: string; title: string; status: 'open' | 'done'; note: string; created_at: string; completed_at: string | null }
+        Insert: { campaign_id: string; task_key: string; title: string; status?: 'open' | 'done'; note?: string }
+        Update: { status?: 'open' | 'done'; note?: string; completed_at?: string | null }
+        Relationships: [{ foreignKeyName: 'campaign_followup_tasks_campaign_id_fkey'; columns: ['campaign_id']; isOneToOne: false; referencedRelation: 'campaigns'; referencedColumns: ['id'] }]
+      }
+      email_templates: {
+        Row: { id: string; name: string; subject: string; html: string; version: number; created_at: string; updated_at: string }
+        Insert: { name: string; subject?: string; html?: string }
+        Update: { name?: string; subject?: string; html?: string; version?: number; updated_at?: string }
+        Relationships: []
+      }
+      email_template_versions: {
+        Row: { template_id: string; version: number; created_at: string; snapshot: Json }
+        Insert: never
+        Update: never
+        Relationships: [{ foreignKeyName: 'email_template_versions_template_id_fkey'; columns: ['template_id']; isOneToOne: false; referencedRelation: 'email_templates'; referencedColumns: ['id'] }]
+      }
+      email_content_blocks: {
+        Row: { id: string; name: string; html: string; created_at: string; updated_at: string }
+        Insert: { name: string; html: string }
+        Update: { name?: string; html?: string; updated_at?: string }
+        Relationships: []
+      }
+      server_config_revisions: {
+        Row: { server_id: string; config_hash: string; first_seen_at: string }
+        Insert: { server_id: string; config_hash: string }
+        Update: never
+        Relationships: [{ foreignKeyName: 'server_config_revisions_server_id_fkey'; columns: ['server_id']; isOneToOne: false; referencedRelation: 'managed_servers'; referencedColumns: ['id'] }]
+      }
+      operational_job_runs: {
+        Row: { id: string; job: string; status: string; started_at: string; finished_at: string | null; duration_ms: number | null; created_at: string }
+        Insert: { job: string; status: string }
+        Update: { status?: string; finished_at?: string | null; duration_ms?: number | null }
+        Relationships: []
+      }
+      sender_profile_replies: {
+        Row: { id: string; profile_id: string; message_id: string; source_hash: string; received_at: string; handled_at: string | null }
+        Insert: never
+        Update: { handled_at: string | null }
+        Relationships: [{ foreignKeyName: "sender_profile_replies_message_id_fkey"; columns: ["message_id"]; isOneToOne: false; referencedRelation: "campaign_messages"; referencedColumns: ["id"] }]
+      }
+      contact_segments: {
+        Row: { id: string; list_id: string; name: string; provider: string | null; preference: string; revision: string }
+        Insert: { list_id: string; name: string; provider: string | null; preference: string }
+        Update: { name?: string; provider?: string | null; preference?: string; revision?: string }
+        Relationships: []
+      }
+      campaign_no_send_days: {
+        Row: { day: string; reason: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      campaign_notes: {
+        Row: { id: string; campaign_id: string; category: string; note: string; created_at: string; created_by: string }
+        Insert: { campaign_id: string; category: string; note: string; created_by: string }
+        Update: never
+        Relationships: []
+      }
+      sponsor_offer_daily_targets: {
+        Row: { offer_id: string; daily_limit: number }
+        Insert: { offer_id: string; daily_limit: number }
+        Update: { daily_limit?: number }
+        Relationships: []
+      }
+      sponsor_postback_rejections: {
+        Row: { account_id: string; bucket: string; reason: string; reference_hash: string; attempts: number; last_seen: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      sponsor_postback_diagnostics: {
+        Row: { account_id: string; token_hash: string; expected_event: string; expires_at: string; checked_at: string | null; succeeded: boolean | null; detail: string | null }
+        Insert: { account_id: string; token_hash: string; expected_event: string; expires_at: string; checked_at?: string | null; succeeded?: boolean | null; detail?: string | null }
+        Update: { checked_at?: string | null; succeeded?: boolean | null; detail?: string | null }
+        Relationships: []
+      }
+      sponsor_link_monitor: {
+        Row: { campaign_id: string; checked_at: string | null; next_check_at: string; lease_id: string | null; active_until: string; result: Json | null; baseline: Json; alert_since: string | null }
+        Insert: never
+        Update: never
+        Relationships: [{ foreignKeyName: "sponsor_link_monitor_campaign_id_fkey"; columns: ["campaign_id"]; isOneToOne: true; referencedRelation: "campaigns"; referencedColumns: ["id"] }]
+      }
+      sponsor_conversion_reports: {
+        Row: { campaign_id: string; date_from: string; date_to: string; transaction_ids: string[]; imported_at: string; imported_by: string }
+        Insert: { campaign_id: string; date_from: string; date_to: string; transaction_ids: string[]; imported_at?: string; imported_by: string }
+        Update: { transaction_ids?: string[]; imported_at?: string; imported_by?: string }
+        Relationships: [{ foreignKeyName: "sponsor_conversion_reports_campaign_id_fkey"; columns: ["campaign_id"]; isOneToOne: false; referencedRelation: "campaigns"; referencedColumns: ["id"] }]
+      }
       caddy_probe_state: {
         Row: {
           checked_at: string
@@ -37,6 +187,7 @@ export type Database = {
       }
       campaign_messages: {
         Row: {
+          expired_at: string | null
           available_at: string | null
           campaign_id: string
           claimed_at: string | null
@@ -44,6 +195,8 @@ export type Database = {
           contact_id: string | null
           created_at: string
           delivery_state: string
+          delivery_wave: number | null
+          send_time_zone: string | null
           email: string
           error: string | null
           first_name: string | null
@@ -60,6 +213,7 @@ export type Database = {
         }
         Insert: {
           available_at?: string | null
+          send_time_zone?: string | null
           campaign_id: string
           claimed_at?: string | null
           clicked_at?: string | null
@@ -153,10 +307,22 @@ export type Database = {
           amp_html: string | null
           topic: string | null
           weekly_digest: boolean
+          purchase_thank_you: boolean
+          requires_placement: boolean
+          placement_probe_token: string | null
+          placement_probe_of: string | null
           fatigue_protection: boolean
         }
         Insert: {
+          approval_required?: boolean
+          sender_profile_id?: string
+          history_digest_source?: string
+          send_expires_at?: string | null
           ab_decide_at?: string | null
+          send_window_start?: number | null
+          send_window_end?: number | null
+          sponsor_brand_id?: string | null
+          send_priority?: number
           ab_metric?: string | null
           ab_variants?: Json | null
           ab_winner?: number | null
@@ -181,10 +347,12 @@ export type Database = {
           amp_html?: string | null
           topic?: string | null
           weekly_digest?: boolean
+          requires_placement?: boolean
           fatigue_protection?: boolean
         }
         Update: {
           ab_decide_at?: string | null
+          send_priority?: number
           ab_metric?: string | null
           ab_variants?: Json | null
           ab_winner?: number | null
@@ -234,6 +402,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sender_profiles: {
+        Row: { id: string; label: string; from_name: string; from_email: string; reply_to: string | null; enabled: boolean;
+          from_verified_at: string | null; reply_verified_at: string | null; created_at: string }
+        Insert: { label: string; from_name: string; from_email: string; reply_to: string | null; enabled?: boolean }
+        Update: { label?: string; from_name?: string; from_email?: string; reply_to?: string | null; enabled?: boolean }
+        Relationships: []
+      }
+      operations_incidents: {
+        Row: {
+          id: string; signal_key: string; kind: 'campaign_blocked' | 'injection_uncertain' | 'agent_offline' | 'campaign_stalled'; title: string;
+          detail: string; server_id: string | null; affected_campaigns: Json; affected_messages: number | null;
+          started_at: string; last_observed_at: string; signal_cleared_at: string | null; assigned_to: string | null;
+          resolved_at: string | null; resolved_by: string | null; resolution_note: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      campaign_versions: {
+        Row: { campaign_id: string; version: number; created_at: string; source: 'existing' | 'created' | 'edited' | 'sponsor'; snapshot: Json }
+        Insert: never
+        Update: never
+        Relationships: []
       }
       contact_lists: {
         Row: {
@@ -568,6 +760,7 @@ export type Database = {
           id: string
           ipv4: string | null
           label: string
+          maintenance_since: string | null
           monthly_price: number | null
           plan: string | null
           provider: string
@@ -969,10 +1162,12 @@ export type Database = {
       sponsor_offers: {
         Row: {
           account_id: string
+          brand_id: string | null
           category: string
           created_at: string
           currency: string
           daily_cap: number | null
+          delivery_paused: boolean
           external_id: string | null
           geo: string[]
           html: string
@@ -1008,6 +1203,7 @@ export type Database = {
           tracking_url?: string
         }
         Update: {
+          delivery_paused?: boolean
           account_id?: string
           category?: string
           created_at?: string
@@ -1036,6 +1232,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_provider_holds: {
+        Row: { provider: string; sender_domain: string; reason: string; occurred_at: string; until_at: string | null }
+        Insert: { provider: string; sender_domain: string; reason: string; occurred_at: string; until_at?: string | null }
+        Update: { reason?: string; occurred_at?: string; until_at?: string | null }
+        Relationships: []
+      }
+      campaign_placement_releases: {
+        Row: { campaign_id: string; provider: string; released_at: string }
+        Insert: { campaign_id: string; provider: string; released_at?: string }
+        Update: { released_at?: string }
+        Relationships: []
+      }
+      sponsor_purchase_settings: {
+        Row: { offer_id: string; event_key: string; thank_you_enabled: boolean; review_url: string | null; consent_list_id: string | null }
+        Insert: { offer_id: string; event_key: string; thank_you_enabled?: boolean; review_url?: string | null; consent_list_id?: string | null }
+        Update: { event_key?: string; thank_you_enabled?: boolean; review_url?: string | null; consent_list_id?: string | null }
+        Relationships: []
       }
       sponsor_postbacks: {
         Row: {
@@ -1264,7 +1478,7 @@ export type Database = {
         Relationships: []
       }
       campaign_placement_monitors: {
-        Row: { campaign_id: string; test_campaign_id: string; server_id: string; placement_id: string; expires_at: string; seeds: Json; observed_at: string | null; completed_at: string | null }
+        Row: { campaign_id: string; test_campaign_id: string; server_id: string; placement_id: string; expires_at: string; seeds: Json; observed_at: string | null; completed_at: string | null; unsubscribe_https_verified_at: string | null }
         Insert: { campaign_id: string; test_campaign_id: string; server_id: string; placement_id: string; expires_at: string; seeds: Json; observed_at?: string | null; completed_at?: string | null }
         Update: { seeds?: Json; observed_at?: string | null; completed_at?: string | null }
         Relationships: []
@@ -1274,6 +1488,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      read_weekly_operations_report: { Args: { _now?: string }; Returns: Json }
+      erase_contact_data: { Args: { _email_md5: string }; Returns: Json }
+      record_sender_profile_reply: { Args: { _token_hash: string; _message: string; _domain: string; _source_hash: string; _received_at: string }; Returns: string }
+      read_campaign_outcome_comparison: { Args: { _left: string; _right: string }; Returns: Json }
+      save_email_template: { Args: { _id: string | null; _name: string; _subject: string; _html: string }; Returns: { id: string; version: number }[] }
+      restore_email_template_version: { Args: { _id: string; _version: number }; Returns: { id: string; version: number }[] }
+      record_server_config_revision: { Args: { _server: string; _hash: string }; Returns: boolean }
+      start_operational_job: { Args: { _job: string }; Returns: string }
+      finish_operational_job: { Args: { _id: string; _success: boolean; _duration_ms: number }; Returns: boolean }
+      preview_contact_segment: { Args: { _list: string; _segment: string | null; _provider: string | null; _preference: string }; Returns: { revision: string | null; previous: number; next: number; entering: number; leaving: number }[] }
+      filter_contact_segment_page: { Args: { _list: string; _ids: string[]; _provider: string | null; _preference: string }; Returns: string[] }
+      read_contact_list_insights: { Args: { _list: string }; Returns: Json }
+      record_campaign_unsubscribe_reason: { Args: { _token: string; _reason: string }; Returns: boolean }
+      read_campaign_unsubscribe_reasons: { Args: Record<PropertyKey, never>; Returns: { reason: string; total: number }[] }
+      record_sponsor_purchase_review: { Args: { _hash: string; _rating: number; _comment: string }; Returns: boolean }
+      read_sponsor_purchase_reviews: { Args: { _offer: string }; Returns: { total: number; average_rating: number | null }[] }
+      read_contact_history: { Args: { _email: string }; Returns: Json }
+      read_offer_contact_cohorts: { Args: { _offer: string }; Returns: { month: string | null; accepted: number; purchases: number; unsubscribed: number }[] }
+      set_campaign_no_send_day: { Args: { _day: string; _reason: string | null }; Returns: boolean }
+      read_operations_widgets: { Args: Record<PropertyKey, never>; Returns: Json }
+      read_sponsor_offer_widgets: { Args: { _offer: string }; Returns: Json }
+      log_sponsor_postback_rejection: { Args: { _account: string; _reason: string; _reference_hash: string }; Returns: undefined }
+      claim_sponsor_link_checks: { Args: Record<PropertyKey, never>; Returns: { campaign_id: string; lease_id: string; html: string; tracking_url: string; offer_status: string; baseline: Json }[] }
+      finish_sponsor_link_check: { Args: { _campaign: string; _lease: string; _result: Json; _baseline: Json; _alert: boolean }; Returns: boolean }
+      read_sponsor_conversion_reconciliation: { Args: { _campaign: string; _from: string; _to: string; _offset: number }; Returns: Json }
       add_suppressions: {
         Args: { _reason: string; _source: string; _values: string[] }
         Returns: number
@@ -1303,6 +1542,7 @@ export type Database = {
           sent: number
         }[]
       }
+      sponsor_followup_blocked_contacts: { Args: { _offer: string; _ids: string[] }; Returns: string[] }
       campaign_sunset_contacts: {
         Args: { _days: number; _ids: string[] }
         Returns: string[]
@@ -1317,6 +1557,7 @@ export type Database = {
           available_at: string | null
           campaign_id: string
           claimed_at: string | null
+          claimed_revision: string | null
           clicked_at: string | null
           contact_id: string | null
           created_at: string
@@ -1406,6 +1647,126 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_sponsor_purchase_postback: {
+        Args: Database['public']['Functions']['record_sponsor_postback']['Args'] & {
+          _click_id: string; _event: string | null; _purchase_status: string | null; _public_origin: string
+        }
+        Returns: boolean
+      }
+      read_sponsor_buyers: {
+        Args: { _offer: string; _offset: number }
+        Returns: { email: string; purchases: number; last_purchase_at: string; subscribed: boolean; thank_you_status: string }[]
+      }
+      read_purchase_feedback: {
+        Args: { _hash: string }
+        Returns: { review_url: string | null; can_subscribe: boolean; confirmed: boolean }[]
+      }
+      confirm_purchase_offers: { Args: { _hash: string; _topics: string[]; _weekly: boolean; _statement: string }; Returns: string }
+      start_campaign_preflight: { Args: { _campaign: string; _server: string; _placement: string; _token: string; _expires: string; _seeds: Json }; Returns: undefined }
+      release_campaign_provider: { Args: { _campaign: string; _provider: string }; Returns: boolean }
+      read_sponsor_delivery_quality: {
+        Args: { _offer: string | null }
+        Returns: { source: string; accepted: number; hard_bounces: number; complaints: number; unsubscribes: number }[]
+      }
+      agent_provider_holds: { Args: { _server: string }; Returns: { campaign: string; domain: string; until_at: string | null }[] }
+      read_campaign_wave_status: {
+        Args: { _campaign: string }
+        Returns: { provider: string; wave: number; planned: number; accepted: number; deferred: number; bounced: number; complaints: number; remaining: number; state: string }[]
+      }
+      record_agent_smtp_scan: { Args: { _server: string; _through: string }; Returns: boolean }
+      read_campaign_smtp_scans: {
+        Args: { _campaign: string }
+        Returns: { server_id: string; label: string; reported_at: string | null; observed_through: string | null; last_event_at: string | null; current_scan: boolean }[]
+      }
+      prepare_campaign_unsubscribe_probe: { Args: { _campaign: string }; Returns: { id: string; token: string }[] }
+      finish_campaign_unsubscribe_probe: { Args: { _probe: string; _http_ok: boolean }; Returns: boolean }
+      set_sponsor_offer_brand: { Args: { _offer: string; _name: string }; Returns: boolean }
+      read_sponsor_offer_brand: { Args: { _offer: string }; Returns: string | null }
+      list_sponsor_brands: { Args: Record<PropertyKey, never>; Returns: string[] }
+      read_recipient_sponsor_options: { Args: { _token: string; _scope: string }; Returns: { id: string; name: string; blocked: boolean }[] }
+      set_recipient_sponsor_option: { Args: { _token: string; _scope: string; _brand: string; _blocked: boolean }; Returns: string }
+      sponsor_preference_blocked_contacts: { Args: { _brand: string; _ids: string[] }; Returns: string[] }
+      set_server_campaign_capacity: { Args: { _server: string; _per_minute: number | null }; Returns: boolean }
+      set_server_maintenance: { Args: { _server: string; _enabled: boolean }; Returns: boolean }
+      read_server_maintenance: {
+        Args: { _server: string }
+        Returns: { maintenance_since: string | null; queued: number; claimed: number; kumo_messages: number | null; ready: boolean }[]
+      }
+      read_campaign_queue_priority: {
+        Args: { _campaign: string }
+        Returns: { server_id: string; label: string; priority: number; per_minute: number | null; reserved: number; waiting_reason: string | null }[]
+      }
+      read_campaign_retry_status: { Args: { _campaign: string }; Returns: { confirmed: number; uncertain: number }[] }
+      expire_campaign_messages: { Args: { _server?: string | null; _campaign?: string | null; _limit?: number }; Returns: number }
+      read_campaign_deadline: { Args: { _campaign: string }; Returns: { send_expires_at: string; deadline_reached: boolean; expired: number }[] }
+      set_sender_domain_quota: { Args: { _domain: string; _daily_limit: number | null }; Returns: boolean }
+      read_sender_domain_quota: {
+        Args: { _domain: string }
+        Returns: { domain: string; daily_limit: number | null; used: number; reset_at: string; exhausted: boolean }[]
+      }
+      read_campaign_sender_domain_quota: {
+        Args: { _campaign: string }
+        Returns: { domain: string; daily_limit: number | null; used: number; reset_at: string; exhausted: boolean; waiting: boolean }[]
+      }
+      forecast_sender_domain_queue: {
+        Args: { _domain: string; _as_of: string; _through: string }
+        Returns: { daily_limit: number; used: number; cohorts: Json }[]
+      }
+      forecast_sender_domain_draft_days: {
+        Args: { _slots: Json; _window_start: number | null; _window_end: number | null; _deadline: string | null }
+        Returns: { day: string; eligible: boolean; volume: number }[]
+      }
+      read_campaign_delivery_reconciliation: {
+        Args: { _campaign: string }
+        Returns: { planned: number; tracked: number; excluded_before: number; retries: number; observed_at: string; outcomes: Json }[]
+      }
+      sync_operations_incidents: { Args: never; Returns: boolean }
+      sync_stalled_campaign_incidents: { Args: never; Returns: number }
+      sender_profile_usable: {
+        Args: { _profile: string; _server: string; _from_name: string; _from_email: string; _reply_to: string | null }
+        Returns: boolean
+      }
+      issue_sender_profile_code: {
+        Args: { _profile: string; _server: string; _email: string; _code: string; _hash: string; _actor: string }
+        Returns: string
+      }
+      confirm_sender_profile_code: {
+        Args: { _profile: string; _email: string; _hash: string; _actor: string }
+        Returns: string
+      }
+      read_agent_sender_profile_codes: { Args: { _server: string; _ids: string[] }; Returns: { message_id: string; code: string }[] }
+      operations_incident_assignees: { Args: never; Returns: { id: string; label: string }[] }
+      manage_operations_incident: {
+        Args: { _id: string; _actor: string; _action: string; _assignee?: string | null; _note?: string }
+        Returns: boolean
+      }
+      lease_campaign_duplicate_review: { Args: { _body: string; _offer: string | null; _token: string; _renew?: boolean }; Returns: boolean }
+      release_campaign_duplicate_review: { Args: { _token: string }; Returns: undefined }
+      find_campaign_duplicates: {
+        Args: { _body: string; _offer: string | null; _recipients: string[]; _as_of: string }
+        Returns: { overlap: number; matches: Json }[]
+      }
+      approve_scheduled_campaign: { Args: { _campaign: string; _revision: string }; Returns: boolean }
+      forecast_campaign_conflicts: {
+        Args: {
+          _recipients: Json; _server: string; _priority: number; _as_of: string; _cap_hours: number;
+          _window_start: number | null; _window_end: number | null; _draft_deadline?: string
+        }
+        Returns: { overlap: number; draft_at_risk: number; campaigns: Json }[]
+      }
+      agent_may_inject_approved: { Args: { _server: string; _id: string; _revision: string }; Returns: boolean }
+      read_scheduled_campaign_approval: {
+        Args: { _campaign: string }
+        Returns: {
+          revision: string; approved_at: string | null; pending: boolean; changes: string[];
+          subject: string; from_name: string; from_email: string; reply_to: string | null;
+          html: string | null; amp_html: string | null; variants: Json | null; scheduled_at: string | null;
+          list_name: string | null; recipient_count: number; servers: string[]; pool: string | null;
+          sponsor_url: string | null; outdated_agents: string[]; routing_mismatch: boolean
+        }[]
+      }
+      retry_confirmed_campaign_messages: { Args: { _campaign: string }; Returns: { requeued: number; excluded: number; uncertain: number }[] }
+      close_campaign_if_idle: { Args: { _campaign: string; _server: string }; Returns: undefined }
       read_recipient_preferences: { Args: { _token: string }; Returns: Json }
       set_recipient_preferences: { Args: { _token: string; _weekly: boolean }; Returns: string }
       set_recipient_topics: { Args: { _token: string; _topics: string[] | null }; Returns: string }

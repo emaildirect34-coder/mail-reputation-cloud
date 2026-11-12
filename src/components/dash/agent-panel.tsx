@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { KeyRound, FileCode2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Panel, Pill } from './kit';
-import { issueAgentToken, previewAgentConfig } from '@/lib/infrastructure.functions';
+import { issueAgentToken, previewAgentConfig, readServerConfigHistory } from '@/lib/infrastructure.functions';
 
 type Agent = { status: string; agent_version: string | null; kumo_version: string | null; config_hash: string | null; applied_hash: string | null; metrics: any; last_error: string | null; last_seen: string | null };
 
 export function AgentPanel({ serverId, agent, admin }: { serverId: string; agent?: Agent | undefined; admin: boolean }) {
   const qc = useQueryClient(), issue = useServerFn(issueAgentToken), preview = useServerFn(previewAgentConfig);
+  const readHistory = useServerFn(readServerConfigHistory);
+  const history = useQuery({ queryKey: ['server-config-history', serverId], queryFn: () => readHistory({ data: { id: serverId } }), enabled: !!agent, refetchInterval: 60_000 });
   const [cmd, setCmd] = useState(''), [lua, setLua] = useState(''), [busy, setBusy] = useState(false);
   const stale = agent?.last_seen ? Date.now() - new Date(agent.last_seen).getTime() > 5 * 60_000 : true;
   const tone = !agent ? 'neutral' : agent.status === 'error' ? 'bad' : agent.status === 'online' && !stale ? 'ok' : 'warn';
@@ -24,12 +26,19 @@ export function AgentPanel({ serverId, agent, admin }: { serverId: string; agent
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div><p className="text-muted-foreground">Agent</p><Pill tone={tone as any}>{label}</Pill></div>
         <div><p className="text-muted-foreground">Configuration</p><p>{!agent?.config_hash ? '—' : synced ? 'Appliquée' : 'En cours d’application'}</p></div>
-        <div><p className="text-muted-foreground">CPU / RAM</p><p>{m.cpu != null ? `${Math.round(m.cpu)} % / ${Math.round(m.ram ?? 0)} %` : '—'}</p></div>
+        <div><p className="text-muted-foreground">CPU / RAM / disque</p><p>{m.cpu != null ? `${Math.round(m.cpu)} % / ${Math.round(m.ram ?? 0)} % / ${m.diskUsedPct != null ? `${Math.round(m.diskUsedPct)} %` : '—'}` : '—'}</p></div>
         <div><p className="text-muted-foreground">Dernier contact</p><p>{agent?.last_seen ? new Date(agent.last_seen).toLocaleString('fr-FR') : '—'}</p></div>
       </div>
       {agent?.kumo_version && <p className="mt-2 text-xs text-muted-foreground">{agent.kumo_version} · agent {agent.agent_version}</p>}
       {agent?.last_error && <p role="alert" className="mt-2 text-sm text-destructive break-all">{agent.last_error}</p>}
       <p className="mt-3 text-sm text-muted-foreground">L’agent récupère chaque minute la configuration (pools, IPs, quotas de chauffe, double DKIM) et installe automatiquement les clés DKIM des domaines associés.</p>
+      {agent && <details className="mt-3 rounded-md border p-3 text-sm">
+        <summary className="cursor-pointer font-medium">Historique des configurations</summary>
+        {history.error && <p role="alert" className="mt-2 text-destructive">{history.error.message}</p>}
+        {history.data === null && <p className="mt-2 text-xs text-muted-foreground">Applique la migration 0079. Seuls les empreintes et leurs dates sont conservées; aucune clé ni configuration secrète n’est archivée.</p>}
+        {history.data?.length ? <ul className="mt-2 space-y-1">{history.data.map(item => <li key={`${item.config_hash}:${item.first_seen_at}`} className="flex flex-wrap items-center gap-2"><code>{item.config_hash.slice(0, 12)}…</code><span className="text-muted-foreground">{new Date(item.first_seen_at).toLocaleString('fr-FR')}</span>{item.config_hash === agent.config_hash && <Pill tone="ok">Configuration actuelle</Pill>}{item.config_hash === agent.applied_hash && <Pill tone="ok">Appliquée</Pill>}</li>)}</ul>
+          : history.data && <p className="mt-2 text-xs text-muted-foreground">Aucune révision enregistrée. Le prochain appel de l’agent créera la première entrée.</p>}
+      </details>}
       {admin && <div className="mt-3 flex flex-wrap gap-2">
         <Button disabled={busy} onClick={() => go(async () => { const r = await issue({ data: { id: serverId } }); setCmd(`curl -fsSL ${location.origin}/api/public/agent/install.sh | sudo KAG_TOKEN=${r.token} bash`); await qc.invalidateQueries({ queryKey: ['infrastructure'] }); })}><KeyRound className="h-4 w-4" /> {agent ? 'Réinstaller l’agent' : 'Installer l’agent'}</Button>
         <Button variant="outline" disabled={busy} onClick={() => go(async () => setLua((await preview({ data: { id: serverId } })).lua))}><FileCode2 className="h-4 w-4" /> Voir la configuration</Button>

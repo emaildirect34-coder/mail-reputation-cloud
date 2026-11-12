@@ -69,6 +69,8 @@ def main():
     files = sorted(path for path in Path('/var/log/kumomta').rglob('*') if path.is_file() and
                    (path.suffix == '.zst' or re.fullmatch(r'\d{8}-\d{6}(?:[-.]\d+)?', path.name)))
     pending = []
+    scan_started = datetime.datetime.now(datetime.timezone.utc)
+    scan_complete = Path('/var/log/kumomta').is_dir()
     def save_state():
         tmp = state_path.with_suffix('.tmp'); tmp.write_text(json.dumps(state)); tmp.chmod(0o600); tmp.replace(state_path)
     def flush():
@@ -87,7 +89,10 @@ def main():
             with path.open('rb') as raw, zstandard.ZstdDecompressor().stream_reader(raw) as stream, io.TextIOWrapper(stream) as lines:
                 for num, line in enumerate(lines,1):
                     if num <= skip: continue
-                    if not line.endswith('\n'): break
+                    if not line.endswith('\n'):
+                        if path.stat().st_mtime < scan_started.timestamp() - 120:
+                            scan_complete = False
+                        break
                     record = json.loads(line)
                     if record.get('type') == 'Reception' and str(record.get('recipient','')).lower().startswith('unsubscribe@'):
                         # RFC 8058 mailto fallback: Subject carries the unsubscribe token.
@@ -108,8 +113,18 @@ def main():
                     pending.append((event,key,num))
                     if len(pending)>=200: flush()
         except (zstandard.ZstdError, json.JSONDecodeError):
-            # Open segments are retried; cursors move only after acknowledgment.
-            pass
+            if path.stat().st_mtime < scan_started.timestamp() - 120:
+                scan_complete = False
         flush()
+    if scan_complete:
+        # Allow time for SMTP log segments to be flushed.
+        observed = scan_started - datetime.timedelta(minutes=2)
+        req = urllib.request.Request(base+'/events', data=json.dumps({
+            'events': [], 'scanThrough': observed.isoformat()
+        }).encode(), headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'}, method='POST')
+        try:
+            with urllib.request.urlopen(req, timeout=15): pass
+        except urllib.error.HTTPError as error:
+            if error.code != 400: raise
 if __name__ == '__main__': main()
 `;
