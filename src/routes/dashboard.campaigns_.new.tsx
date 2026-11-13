@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Kpi } from "@/components/dash/lux";
 import { CampaignTabs } from "@/components/dash/campaign-tabs";
+import { BuilderDelivery } from "@/components/dash/builder-delivery";
 import { LaunchPanel } from "@/components/dash/launch-panel";
 import { CampaignInboxTest } from "@/components/dash/campaign-inbox-test";
 import { AiDiagnostic } from '@/components/dash/ai-diagnostic';
@@ -333,14 +334,8 @@ function Builder() {
 
       {/* Délivrabilité */}
       <div className="flex min-w-0 flex-col">
-        <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
-          <p className="text-[13px] font-bold text-primary">Serveur de livraison</p>
-          {inventory.isPending && <p role="status" className="text-xs">Chargement des serveurs…</p>}
-          {inventory.error && <p role="alert" className="text-xs text-destructive">{inventory.error.message}</p>}
-          {inventory.data?.length === 0 && <p className="text-xs text-muted-foreground">Aucun serveur avec agent installé.</p>}
-          {selectedServer && <p className="text-sm">{selectedServer.label}</p>}
-          <a href="#envoi" className="text-xs font-medium text-primary underline">{selectedServer ? "Modifier le serveur d’envoi" : "Choisir le serveur dans Envoi réel"}</a>
-          </Col>
+        <div id="deliv" className="scroll-mt-24"><BuilderDelivery servers={inventory.data ?? []} serverId={d.serverId} poolId={d.vmtaPoolId} onServer={id => setD(p => ({ ...p, serverId: id, vmtaPoolId: id === p.serverId ? p.vmtaPoolId : "" }))} onPool={id => u("vmtaPoolId", id)} /></div>
+        {inventory.error && <p role="alert" className="text-xs text-destructive">{inventory.error.message}</p>}
 
         <details className="card-lux mb-3 break-inside-avoid p-3.5"><summary className="flex cursor-pointer list-none items-center gap-2 text-[14px] font-bold text-primary"><Braces className="size-5" />Variables (Placeholders)<span className="ml-auto text-lg">+</span></summary>
           <div className="mt-2 flex flex-wrap gap-1">{["{first_name}", "{to}", "{subject}", "{from_name}", "{from_email}", "{domain}", "{offer_url}", "{unsubscribe_url}", "{smtp_date}", "{n,15}", "{A,3}"].map(v => <button key={v} onClick={() => { navigator.clipboard?.writeText(v); toast.success(`${v} copié.`); }} className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] text-primary">{v}</button>)}</div>
