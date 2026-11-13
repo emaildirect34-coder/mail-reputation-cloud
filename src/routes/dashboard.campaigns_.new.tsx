@@ -211,16 +211,18 @@ function Builder() {
     </section>}
 
     {/* KPIs */}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:[&>*]:col-span-2 lg:[&>*:nth-child(n+4)]:col-span-3 xl:grid-cols-5 xl:[&>*]:col-span-1 xl:[&>*:nth-child(n+4)]:col-span-1">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <Kpi icon={<Server />} label="Serveurs avec agent" value={inventory.data ? String(inventory.data.length) : "—"} sub="Inventaire KumoMTA" tone="blue" />
       <Kpi icon={<Network />} label="Serveur de la campagne" value={selectedServer ? "1" : "—"} sub={selectedServer?.label ?? "À choisir dans Envoi réel"} tone="blue" />
       <Kpi icon={<Check />} label="Champs renseignés" value={`${passed} / ${checks.length}`} sub={ready ? "Contrôles du brouillon réussis" : "Préflight en attente"} tone={ready ? "green" : "amber"} />
+      <Kpi icon={<BadgeCheck />} label="Tests validés" value={lastTest ? `${passed} / ${checks.length}` : "—"} sub={lastTest ? `Dernier test ${lastTest}` : "Lancer les tests"} tone={lastTest && ready ? "green" : "amber"} />
+      <Kpi icon={<ShieldCheck />} label="Mode d’envoi" value={testMode ? "Test" : "Réel"} sub={d.sponsorOfferId ? "Offre sponsor suivie" : "Liens & désinscription protégés"} tone={testMode ? "amber" : "green"} />
     </div>
 
     {/* 4 columns */}
-    <div className="columns-1 gap-3 md:columns-2 xl:columns-3 min-[1700px]:columns-4">
+    <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-4">
       {/* Offre */}
-      <div className="contents">
+      <div className="flex min-w-0 flex-col">
         <Col id="offre" title="Offre" icon={<Tag />}>
           <Row label="Nom de la campagne" w="w-32">{inp("name")}</Row>
           <Row label="Planifier le" w="w-32"><div className="relative"><CalendarDays className="pointer-events-none absolute left-2 top-1.5 size-4 text-muted-foreground" /><input aria-label="Planifier le" type="datetime-local" value={d.schedule} onChange={e => u("schedule", e.target.value)} className={`${inCls} pl-8`} /></div></Row>
@@ -239,7 +241,7 @@ function Builder() {
       </div>
 
       {/* Structure */}
-      <div className="contents">
+      <div className="flex min-w-0 flex-col">
         <Col id="structure" title="Structure Email" icon={<Mail />}>
           <Row label="Profil expéditeur">
             <select aria-label="Profil expéditeur" className={inCls} value={d.senderProfileId} onChange={event => selectProfile(event.target.value)}>
@@ -265,7 +267,7 @@ function Builder() {
       </div>
 
       {/* Corps */}
-      <div className="contents">
+      <div className="flex min-w-0 flex-col">
         <Col id="corps" title="Corps de l'Email (HTML)" icon={<Code2 />} right={<AiDiagnostic compact input={{skill:'content',subject:d.subject,body:d.body}} before={d.body} onApply={v=>u('body',v)}/> }>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={digestMode} onChange={event => u('digestMode', event.target.checked ? 'on' : 'off')} />Créer un récapitulatif hebdomadaire</label>
           {digestMode && <div className="space-y-2 text-sm">
@@ -330,7 +332,7 @@ function Builder() {
       </div>
 
       {/* Délivrabilité */}
-      <div className="contents">
+      <div className="flex min-w-0 flex-col">
         <Col id="deliv" title="Délivrabilité" icon={<Zap />}>
           <p className="text-[13px] font-bold text-primary">Serveur de livraison</p>
           {inventory.isPending && <p role="status" className="text-xs">Chargement des serveurs…</p>}
